@@ -1,0 +1,106 @@
+{
+  "name": "nexus",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Nexus - Institutional-Grade Crypto Derivatives Terminal",
+  "author": {
+    "name": "Nexus",
+    "email": "support@nexus.local"
+  },
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start --port 3000",
+    "lint": "eslint",
+    "icon": "python electron/build-icon.py",
+    "electron:dev": "cross-env NODE_ENV=development electron .",
+    "electron:build": "npm run build && electron-builder --win",
+    "electron:pack": "electron-builder --dir",
+    "electron:start": "cross-env NODE_ENV=production electron ."
+  },
+  "build": {
+    "appId": "com.nexus.terminal",
+    "productName": "Nexus",
+    "copyright": "Copyright © 2026 Nexus",
+    "directories": {
+      "output": "dist-electron",
+      "buildResources": "electron"
+    },
+    "asar": true,
+    "compression": "maximum",
+    "win": {
+      "target": [
+        { "target": "nsis",     "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "electron/icon.ico",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Nexus",
+      "uninstallDisplayName": "Nexus Terminal",
+      "installerIcon": "electron/icon.ico",
+      "uninstallerIcon": "electron/icon.ico",
+      "installerHeaderIcon": "electron/icon.ico",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true,
+      "artifactName": "Nexus-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Nexus-Portable-${version}.${ext}"
+    },
+    "files": [
+      "electron/**/*",
+      ".next/**/*",
+      "public/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "electron/icon.ico",
+        "to": "icon.ico"
+      },
+      {
+        "from": "electron/icon.png",
+        "to": "icon.png"
+      }
+    ],
+    "protocols": [
+      {
+        "name": "Nexus Terminal",
+        "schemes": [
+          "nexus"
+        ]
+      }
+    ]
+  },
+  "dependencies": {
+    "lightweight-charts": "^5.1.0",
+    "next": "^16.2.4",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "concurrently": "^9",
+    "cross-env": "^7",
+    "electron": "^36",
+    "electron-builder": "^26",
+    "eslint": "^9",
+    "eslint-config-next": "^16.2.4",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "wait-on": "^8"
+  }
+}

@@ -1,0 +1,968 @@
+@import "tailwindcss";
+
+/* ============================================================
+   NEXUS - Institutional Obsidian Theme
+   (Based on nexus app layout / nexus_institutional design system)
+   Charts use TRADITIONAL red/green - design silver-only is overridden
+   ============================================================ */
+
+:root {
+  /* ---------- Surfaces: tonal layering, no harsh lines ---------- */
+  --surface: #0e0e0e;
+  --surface-dim: #0a0a0a;
+  --surface-bright: #2c2c2c;
+  --surface-container-lowest: #000000;
+  --surface-container-low: #131313;
+  --surface-container: #191a1a;
+  --surface-container-high: #1f2020;
+  --surface-container-highest: #252626;
+  --surface-variant: #252626;
+  --inverse-surface: #fcf9f8;
+
+  /* Legacy aliases (keep existing components working) */
+  --bg-primary: var(--surface);
+  --bg-secondary: var(--surface-container-low);
+  --bg-card: var(--surface-container);
+  --bg-card-alt: var(--surface-container-high);
+  --bg-hover: var(--surface-container-high);
+  --bg-active: var(--surface-container-highest);
+  --bg-input: var(--surface-container-lowest);
+
+  /* ---------- Text: porcelain hierarchy ---------- */
+  --on-surface: #e7e5e4;
+  --on-surface-variant: #acabaa;
+  --on-surface-dim: #767575;
+  --on-surface-muted: #484848;
+
+  /* Legacy aliases */
+  --text-primary: var(--on-surface);
+  --text-secondary: var(--on-surface-variant);
+  --text-tertiary: var(--on-surface-dim);
+  --text-muted: var(--on-surface-muted);
+
+  /* ---------- Primary: metallic silver ---------- */
+  --primary: #c6c6c7;
+  --primary-rgb: 198,198,199;
+  --primary-dim: #b8b9b9;
+  --primary-fixed: #e2e2e2;
+  --primary-fixed-dim: #d4d4d4;
+  --primary-container: #454747;
+  --on-primary: #3f4041;
+  --on-primary-container: #d0d0d0;
+  --inverse-primary: #5e5f5f;
+
+  /* ---------- Secondary ---------- */
+  --secondary: #9d9e9e;
+  --secondary-container: #3a3c3c;
+  --on-secondary: #1f2021;
+  --on-secondary-container: #bfbfbf;
+
+  /* ---------- Tertiary (highlight / porcelain on porcelain) ---------- */
+  --tertiary: #fcf9f8;
+  --tertiary-container: #edeaea;
+  --on-tertiary: #605f5e;
+
+  /* ---------- Error / salmon (design system) ---------- */
+  --error: #ee7d77;
+  --error-dim: #bb5551;
+  --error-container: #7f2927;
+  --on-error: #490106;
+  --on-error-container: #ff9993;
+
+  /* ---------- Outline / borders (ghost) ---------- */
+  --outline: #767575;
+  --outline-variant: #484848;
+  --hairline: rgba(255, 255, 255, 0.05);
+  --hairline-strong: rgba(255, 255, 255, 0.10);
+
+  /* Legacy aliases */
+  --border-primary: var(--hairline);
+  --border-secondary: var(--hairline-strong);
+  --border-accent: rgba(198, 198, 199, 0.2);
+  --border-glow: rgba(198, 198, 199, 0.15);
+
+  /* ---------- Accent (aliased for legacy components) ---------- */
+  --accent-amber: var(--primary);
+  --accent-amber-dim: var(--primary-dim);
+  --accent-amber-glow: rgba(198, 198, 199, 0.12);
+
+  /* ---------- CHART COLORS - classic red/green per user request ---------- */
+  --chart-bull: #16c784;          /* vivid green */
+  --chart-bull-bright: #00e676;
+  --chart-bull-dim: #0c8f5e;
+  --chart-bull-soft: rgba(22, 199, 132, 0.15);
+
+  --chart-bear: #ea3943;          /* vivid red */
+  --chart-bear-bright: #ff3d3d;
+  --chart-bear-dim: #a02830;
+  --chart-bear-soft: rgba(234, 57, 67, 0.15);
+
+  --chart-neutral: var(--on-surface-variant);
+  --chart-grid: rgba(255, 255, 255, 0.03);
+  --chart-axis: rgba(255, 255, 255, 0.08);
+
+  /* Legacy green/red aliases now point at chart colors */
+  --accent-green: var(--chart-bull);
+  --accent-green-dim: var(--chart-bull-dim);
+  --accent-green-bright: var(--chart-bull-bright);
+  --accent-red: var(--chart-bear);
+  --accent-red-dim: var(--chart-bear-dim);
+  --accent-red-bright: var(--chart-bear-bright);
+  --accent-blue: #60a5fa;
+  --accent-blue-dim: #3b82f6;
+  --accent-cyan: #22d3ee;
+  --accent-purple: #a78bfa;
+  --accent-orange: #fb923c;
+
+  --pnl-profit: var(--chart-bull);
+  --pnl-loss: var(--chart-bear);
+  --pnl-neutral: var(--on-surface-variant);
+
+  /* ---------- Glass / elevation ---------- */
+  --glass-bg: rgba(25, 26, 26, 0.72);
+  --glass-border: rgba(198, 198, 199, 0.08);
+  --glass-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+
+  /* ---------- Typography scale ---------- */
+  --fs-data: 12px;
+  --fs-data-sm: 11px;
+  --fs-data-xs: 10px;
+  --fs-label: 10px;
+  --fs-header: 11px;
+  --fs-title: 13px;
+  --fs-hero: 24px;
+  --fs-display: 56px;
+
+  --font-sans: "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
+
+  /* ---------- Layout constants ---------- */
+  --nav-top-h: 56px;
+  --nav-side-w: 256px;
+
+  /* ---------- Radius (sharp / machined) ---------- */
+  --radius-sm: 2px;
+  --radius: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+}
+
+/* ============================================================ */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  box-sizing: border-box;
+}
+
+html, body {
+  background: var(--surface);
+  color: var(--on-surface);
+  font-size: var(--fs-data);
+  line-height: 1.4;
+  font-family: var(--font-sans);
+  overflow: hidden;
+  letter-spacing: -0.005em;
+  scroll-behavior: smooth;
+}
+
+/* Smooth scroll + momentum for any overflow container */
+.scroll-smooth,
+[class*="overflow-auto"],
+[class*="overflow-y-auto"],
+[class*="overflow-x-auto"] {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* ============================================================
+   Scrollbars - thin institutional
+   ============================================================ */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--outline-variant);
+  border-radius: 2px;
+  transition: background-color 140ms cubic-bezier(0.25, 0.85, 0.3, 1);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--outline); }
+::-webkit-scrollbar-corner { background: transparent; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ============================================================
+   Silver-glow signature (chamfered metal-edge highlight)
+   ============================================================ */
+.silver-glow {
+  box-shadow:
+    0 0 15px -3px rgba(198, 198, 199, 0.18),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+}
+.silver-glow-top {
+  box-shadow: inset 0 1px 0 0 rgba(198, 198, 199, 0.12);
+}
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+}
+
+/* ============================================================
+   Card system (tonal nesting, no hard borders)
+   ============================================================ */
+.card {
+  background: var(--surface-container);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.card-elevated {
+  background: var(--surface-container-high);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+}
+.card-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface-container-low);
+  font-size: var(--fs-label);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--on-surface-variant);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.card-body { padding: 10px 12px; }
+.card-glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: var(--glass-shadow);
+}
+
+/* ============================================================
+   Data table
+   ============================================================ */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-data);
+}
+.data-table thead th {
+  padding: 7px 10px;
+  font-size: var(--fs-data-xs);
+  font-weight: 700;
+  color: var(--on-surface-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border-bottom: 1px solid var(--hairline);
+  text-align: left;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  background: var(--surface-container-low);
+  z-index: 1;
+}
+.data-table tbody td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--hairline);
+  white-space: nowrap;
+}
+.data-table tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
+.data-table tbody tr:last-child td { border-bottom: none; }
+.data-table .col-right { text-align: right; }
+
+/* ============================================================
+   Zone tiers (silver gradient - replaces amber)
+   ============================================================ */
+.zone-bronze {
+  background: rgba(180, 140, 60, 0.05);
+  border-left: 2px solid rgba(180, 140, 60, 0.25);
+}
+.zone-silver {
+  background: rgba(198, 198, 199, 0.05);
+  border-left: 2px solid rgba(198, 198, 199, 0.35);
+}
+.zone-golden {
+  background: rgba(198, 198, 199, 0.09);
+  border-left: 2px solid rgba(198, 198, 199, 0.6);
+}
+.zone-platinum {
+  background: rgba(252, 249, 248, 0.08);
+  border-left: 2px solid rgba(252, 249, 248, 0.75);
+}
+
+/* ============================================================
+   PnL (green/red per user request)
+   ============================================================ */
+.pnl-positive { color: var(--chart-bull); }
+.pnl-negative { color: var(--chart-bear); }
+.pnl-neutral { color: var(--on-surface-variant); }
+
+.pnl-bg-positive { background: var(--chart-bull-soft); }
+.pnl-bg-negative { background: var(--chart-bear-soft); }
+
+/* ============================================================
+   Animations
+   ============================================================ */
+@keyframes pulse-live { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+@keyframes pulse-glow {
+  0%,100% { box-shadow: 0 0 4px rgba(198, 198, 199, 0.2); }
+  50%     { box-shadow: 0 0 12px rgba(198, 198, 199, 0.5); }
+}
+@keyframes pulse-dot {
+  0%,100% { transform: scale(1); opacity: 1; }
+  50%     { transform: scale(1.3); opacity: 0.6; }
+}
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes silver-sweep {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+/* Modal overlay animations - centred cards in IndicatorModal et al. */
+@keyframes nx-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes nx-scale-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ──────── Global motion curves ────────
+   `--ease-buttery` = spring-feeling cubic, great for page + button state.
+   `--ease-snap`    = fast decel for small UI tweaks (chips, toggles). */
+:root {
+  --ease-buttery: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-snap:    cubic-bezier(0.25, 0.85, 0.3, 1);
+  --t-fast: 140ms;
+  --t-med:  220ms;
+  --t-slow: 320ms;
+}
+
+.animate-pulse-live { animation: pulse-live 2s ease-in-out infinite; }
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+.animate-pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
+/* Tab swap / panel enter: slightly longer + buttery curve reads as smooth,
+   not sluggish, because the curve front-loads the motion. */
+.animate-slide-in { animation: slide-in var(--t-med) var(--ease-buttery); }
+
+/* Buttery default for all buttons + nav + links (unless inline overrides). */
+button,
+a,
+.nav-item,
+[role="button"] {
+  transition:
+    background-color var(--t-fast) var(--ease-snap),
+    color            var(--t-fast) var(--ease-snap),
+    border-color     var(--t-fast) var(--ease-snap),
+    box-shadow       var(--t-med)  var(--ease-buttery),
+    transform        var(--t-med)  var(--ease-buttery),
+    opacity          var(--t-fast) var(--ease-snap);
+}
+
+/* Respect reduced motion - kill transforms + animations, keep colors fast. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* ============================================================
+   Signal bars - now green spectrum
+   ============================================================ */
+.signal-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 12px;
+}
+.signal-bar {
+  width: 3px;
+  border-radius: 1px;
+  background: var(--on-surface-muted);
+  transition: background 0.2s;
+}
+.signal-bar:nth-child(1) { height: 3px; }
+.signal-bar:nth-child(2) { height: 5px; }
+.signal-bar:nth-child(3) { height: 8px; }
+.signal-bar:nth-child(4) { height: 11px; }
+.signal-bar:nth-child(5) { height: 14px; }
+
+.signal-bars[data-strength="1"] .signal-bar:nth-child(1) { background: var(--chart-bear); }
+.signal-bars[data-strength="2"] .signal-bar:nth-child(-n+2) { background: var(--accent-orange); }
+.signal-bars[data-strength="3"] .signal-bar:nth-child(-n+3) { background: var(--primary); }
+.signal-bars[data-strength="4"] .signal-bar:nth-child(-n+4) { background: var(--chart-bull); }
+.signal-bars[data-strength="5"] .signal-bar { background: var(--chart-bull-bright); }
+
+/* ============================================================
+   Heatmap cells
+   ============================================================ */
+.heatmap-cell {
+  transition: background-color 0.15s;
+  min-width: 4px;
+  min-height: 4px;
+}
+.heatmap-grid-bg {
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.footprint-cell-buy  { background: linear-gradient(90deg, rgba(22,199,132,0.14) 0%, rgba(22,199,132,0.02) 100%); }
+.footprint-cell-sell { background: linear-gradient(270deg, rgba(234,57,67,0.14) 0%, rgba(234,57,67,0.02) 100%); }
+
+/* ============================================================
+   Status dots
+   ============================================================ */
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.status-dot-connected {
+  background: var(--chart-bull);
+  box-shadow: 0 0 6px rgba(22, 199, 132, 0.5);
+}
+.status-dot-disconnected { background: var(--chart-bear-dim); }
+.status-dot-unknown { background: var(--on-surface-muted); }
+
+/* ============================================================
+   Composite score gradient (red -> neutral -> green)
+   ============================================================ */
+.score-gradient {
+  background: linear-gradient(90deg,
+    var(--chart-bear)       0%,
+    var(--chart-bear-dim)  20%,
+    var(--on-surface-muted) 40%,
+    var(--on-surface-muted) 60%,
+    var(--chart-bull-dim)  80%,
+    var(--chart-bull)     100%
+  );
+}
+
+/* ============================================================
+   Confidence bar (silver fill)
+   ============================================================ */
+.confidence-bar {
+  height: 3px;
+  background: var(--surface-container-highest);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.confidence-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--primary-dim), var(--primary-fixed));
+  transition: width var(--t-slow) var(--ease-buttery);
+}
+
+/* ============================================================
+   Direction indicators
+   ============================================================ */
+.dir-long { color: var(--chart-bull); }
+.dir-short { color: var(--chart-bear); }
+.dir-neutral { color: var(--on-surface-variant); }
+
+/* ============================================================
+   Badges
+   ============================================================ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 2px;
+  font-size: var(--fs-data-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.badge-scalp  { background: rgba(167, 139, 250, 0.15); color: #c4b5fd; }
+.badge-short  { background: rgba( 96, 165, 250, 0.15); color: #93c5fd; }
+.badge-medium { background: rgba( 34, 211, 238, 0.15); color: #67e8f9; }
+.badge-long   { background: rgba(198, 198, 199, 0.15); color: var(--primary-fixed); }
+.badge-swing  { background: rgba(251, 146,  60, 0.15); color: #fdba74; }
+
+.badge-bullish { background: var(--chart-bull-soft); color: var(--chart-bull); }
+.badge-bearish { background: var(--chart-bear-soft); color: var(--chart-bear); }
+.badge-neutral { background: rgba(172, 171, 170, 0.12); color: var(--on-surface-variant); }
+
+/* ============================================================
+   Skeletons
+   ============================================================ */
+.skeleton {
+  background: linear-gradient(90deg,
+    var(--surface-container) 25%,
+    var(--surface-container-high) 50%,
+    var(--surface-container) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 2px;
+}
+
+/* ============================================================
+   Tab active underline (silver)
+   ============================================================ */
+.tab-active-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--primary);
+}
+
+/* ============================================================
+   Buttons - institutional metallic
+   ============================================================ */
+/* Buttons - explicit property list (no `all`) → GPU-accelerated,
+   no layout thrash. :active scale gives tactile click feedback. */
+.btn-primary {
+  padding: 6px 14px;
+  background: linear-gradient(180deg, var(--primary-fixed), var(--primary-dim));
+  color: var(--on-primary);
+  font-size: var(--fs-data-sm);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: none;
+  box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.2), 0 1px 2px rgba(0,0,0,0.3);
+  transition:
+    background   var(--t-fast) var(--ease-snap),
+    box-shadow   var(--t-med)  var(--ease-buttery),
+    transform    var(--t-fast) var(--ease-buttery),
+    opacity      var(--t-fast) var(--ease-snap);
+}
+.btn-primary:hover {
+  background: linear-gradient(180deg, #ebebec, var(--primary));
+  box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.3), 0 0 12px rgba(198,198,199,0.25);
+  transform: translateY(-0.5px);
+}
+.btn-primary:active { transform: translateY(0) scale(0.97); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+.btn-secondary {
+  padding: 6px 14px;
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  font-size: var(--fs-data-sm);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1px solid var(--hairline);
+  transition:
+    background-color var(--t-fast) var(--ease-snap),
+    color            var(--t-fast) var(--ease-snap),
+    border-color     var(--t-fast) var(--ease-snap),
+    transform        var(--t-fast) var(--ease-buttery);
+}
+.btn-secondary:hover {
+  background: var(--surface-container-highest);
+  color: var(--on-surface);
+  border-color: var(--hairline-strong);
+}
+.btn-secondary:active { transform: scale(0.97); }
+
+.btn-ghost {
+  padding: 6px 10px;
+  background: transparent;
+  color: var(--on-surface-variant);
+  font-size: var(--fs-data-sm);
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    background-color var(--t-fast) var(--ease-snap),
+    color            var(--t-fast) var(--ease-snap),
+    transform        var(--t-fast) var(--ease-buttery);
+}
+.btn-ghost:hover {
+  background: rgba(255,255,255,0.04);
+  color: var(--on-surface);
+}
+.btn-ghost:active { transform: scale(0.97); }
+
+/* ============================================================
+   Nav item (sidebar)
+   ============================================================ */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  color: var(--on-surface-variant);
+  font-size: var(--fs-data);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color   var(--t-fast) var(--ease-snap),
+    color              var(--t-fast) var(--ease-snap),
+    border-left-color  var(--t-med)  var(--ease-buttery);
+}
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--on-surface);
+}
+.nav-item.active {
+  color: var(--on-surface);
+  background: rgba(255, 255, 255, 0.05);
+  border-left-color: var(--primary);
+  font-weight: 600;
+}
+.nav-item .kbd {
+  margin-left: auto;
+  font-size: 9px;
+  color: var(--on-surface-dim);
+  padding: 1px 5px;
+  border: 1px solid var(--hairline);
+  border-radius: 2px;
+  font-family: var(--font-sans);
+  letter-spacing: 0.1em;
+}
+
+/* ============================================================
+   Utility classes
+   ============================================================ */
+.text-data     { font-size: var(--fs-data); }
+.text-data-sm  { font-size: var(--fs-data-sm); }
+.text-data-xs  { font-size: var(--fs-data-xs); }
+.text-label    { font-size: var(--fs-label); }
+.text-header   { font-size: var(--fs-header); }
+.text-title    { font-size: var(--fs-title); }
+.text-hero     { font-size: var(--fs-hero); }
+
+.text-mono     { font-family: var(--font-mono, ui-monospace, "SF Mono", Menlo, monospace); font-variant-numeric: tabular-nums; }
+
+.eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--on-surface-dim);
+}
+
+.truncate-1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.no-select { user-select: none; }
+
+/* ============================================================
+   Quote ticker strip - seamless marquee (CryptoTicker.tsx)
+   Track holds two copies of the quote list; translating -50%
+   loops without a visible seam. Hover pauses the scroll.
+   ============================================================ */
+.quote-ticker-track {
+  display: flex;
+  width: max-content;
+  height: 100%;
+  animation: ticker-scroll 45s linear infinite;
+}
+.quote-ticker-group {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+.quote-ticker-viewport:hover .quote-ticker-track {
+  animation-play-state: paused;
+}
+.quote-ticker-item:hover {
+  background: rgba(127, 127, 127, 0.08) !important;
+}
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* ============================================================
+   Keyboard focus ring + selection (accessibility polish)
+   ============================================================ */
+:focus { outline: none; }
+:focus-visible {
+  outline: 1px solid rgba(var(--primary-rgb, 198, 198, 199), 0.65);
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+
+::selection {
+  background: rgba(var(--primary-rgb, 198, 198, 199), 0.28);
+  color: var(--on-surface);
+}
+
+/* Ensure Inter is loaded if available (falls back gracefully) */
+@font-face {
+  font-family: "Inter";
+  src: local("Inter"), local("Inter Regular");
+  font-weight: 400 700;
+  font-display: swap;
+}
+
+/* ── Nexus Light Mode Overrides ──────────────────────────────────────────────
+   Add these rules to your existing globals.css.
+   They override the dark-mode defaults when the user selects light mode
+   via the OS or a future theme toggle.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+@media (prefers-color-scheme: light) {
+  :root {
+    /* Surface layers */
+    --surface:                    #f4f4f6;
+    --surface-container-lowest:   #ffffff;
+    --surface-container-low:      #efefef;
+    --surface-container:          #e8e8ec;
+    --surface-container-high:     #e2e2e6;
+
+    /* Text */
+    --on-surface:                 #0d0d12;
+    --on-surface-dim:             #5a5a72;
+    --on-surface-variant:         #44445a;
+
+    /* Borders */
+    --hairline:                   rgba(0, 0, 0, 0.10);
+
+    /* Primary accent (keep green) */
+    --primary:                    #0d9e75;
+    --primary-rgb:                13,158,117;
+
+    /* Charts */
+    --chart-bull:                 #0a8f69;
+    --chart-bear:                 #d63a2e;
+  }
+
+  /* Nav items in light mode */
+  .nav-item {
+    color: var(--on-surface-dim) !important;
+  }
+  .nav-item:hover,
+  .nav-item.active {
+    background: rgba(0, 0, 0, 0.05) !important;
+    color: var(--primary) !important;
+  }
+  .nav-item.active {
+    border-left: 2px solid var(--primary) !important;
+  }
+
+  /* Primary button */
+  .btn-primary {
+    background: var(--primary);
+    color: #ffffff !important;
+  }
+
+  /* Force monospace elements to stay readable */
+  .text-mono,
+  code,
+  [style*="font-family: monospace"],
+  [style*="fontFamily: 'monospace'"],
+  [style*="fontFamily: 'var(--font-mono"] {
+    color: var(--on-surface);
+  }
+
+  /* Status dots */
+  .status-dot-connected    { background: var(--chart-bull) !important; }
+  .status-dot-disconnected { background: var(--chart-bear) !important; }
+
+  /* Chart canvases - keep dark background for readability */
+  canvas {
+    background: transparent;
+  }
+
+  /* Table rows */
+  tr:nth-child(even) {
+    background: rgba(0,0,0,0.02);
+  }
+
+  /* Cards / surface containers */
+  [style*="rgba(255,255,255,0.03)"],
+  [style*="rgba(255,255,255,0.025)"],
+  [style*="rgba(255,255,255,0.02)"] {
+    background: rgba(0,0,0,0.03) !important;
+  }
+
+  [style*="rgba(255,255,255,0.07)"],
+  [style*="rgba(255,255,255,0.06)"],
+  [style*="rgba(255,255,255,0.08)"] {
+    background: rgba(0,0,0,0.06) !important;
+  }
+
+  /* Hairline borders */
+  [style*="rgba(255,255,255,0.04)"] { border-color: rgba(0,0,0,0.06) !important; }
+  [style*="rgba(255,255,255,0.1)"]  { border-color: rgba(0,0,0,0.12) !important; }
+  [style*="rgba(255,255,255,0.12)"] { border-color: rgba(0,0,0,0.14) !important; }
+  [style*="rgba(255,255,255,0.14)"] { border-color: rgba(0,0,0,0.16) !important; }
+
+  /* Ensure chart green is dark enough on white */
+  [style*="color: #16c784"] { color: #0a8f69 !important; }
+  [style*="color: rgb(22, 199, 132)"] { color: #0a8f69 !important; }
+}
+
+/* ── Manual toggle support (add class="light" to <html>) ────────────────────
+   If you add a theme toggle button, apply this class to <html> or <body>
+   to force light mode regardless of OS preference.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+html.light,
+body.light {
+  --surface:                      #f4f4f6;
+  --surface-dim:                  #e8e8ea;
+  --surface-bright:               #ffffff;
+  --surface-container-lowest:     #ffffff;
+  --surface-container-low:        #efefef;
+  --surface-container:            #e8e8ec;
+  --surface-container-high:       #e2e2e6;
+  --surface-container-highest:    #dcdce0;
+  --surface-variant:              #dcdce0;
+  --inverse-surface:              #1a1a1a;
+
+  --on-surface:                   #0d0d12;
+  --on-surface-variant:           #44445a;
+  --on-surface-dim:               #5a5a72;
+  --on-surface-muted:             #9090a0;
+
+  --text-primary:                 #0d0d12;
+  --text-secondary:               #44445a;
+  --text-tertiary:                #5a5a72;
+  --text-muted:                   #9090a0;
+
+  --primary:                      #0d9e75;
+  --primary-dim:                  #0b8a66;
+  --primary-fixed:                #0d9e75;
+  --primary-container:            #d0f0e8;
+  --on-primary:                   #ffffff;
+  --on-primary-container:         #004d36;
+
+  --hairline:                     rgba(0, 0, 0, 0.10);
+  --hairline-strong:              rgba(0, 0, 0, 0.16);
+  --border-primary:               rgba(0, 0, 0, 0.10);
+  --border-secondary:             rgba(0, 0, 0, 0.16);
+
+  --glass-bg:                     rgba(240, 240, 244, 0.85);
+  --glass-border:                 rgba(0, 0, 0, 0.08);
+  --glass-shadow:                 0 8px 40px rgba(0, 0, 0, 0.12);
+
+  --chart-bull:                   #0a8f69;
+  --chart-bull-bright:            #0db37f;
+  --chart-bull-dim:               #077a59;
+  --chart-bull-soft:              rgba(10, 143, 105, 0.12);
+
+  --chart-bear:                   #d63a2e;
+  --chart-bear-bright:            #e84a3d;
+  --chart-bear-dim:               #b02f25;
+  --chart-bear-soft:              rgba(214, 58, 46, 0.12);
+
+  --chart-grid:                   rgba(0, 0, 0, 0.04);
+  --chart-axis:                   rgba(0, 0, 0, 0.10);
+
+  --accent-green:                 #0a8f69;
+  --accent-red:                   #d63a2e;
+  --pnl-profit:                   #0a8f69;
+  --pnl-loss:                     #d63a2e;
+
+  --outline:                      rgba(0, 0, 0, 0.30);
+  --outline-variant:              rgba(0, 0, 0, 0.16);
+}
+
+/* ── System Docs - light-mode Tailwind opacity overrides ───────────────────
+   SystemDocsTab.tsx uses hard-coded text-white/NN classes that become
+   invisible on light surfaces. Remap to dark text on light theme.
+   ─────────────────────────────────────────────────────────────────────── */
+
+html.light .text-white\/90,
+html.light .text-white\/85,
+html.light .text-white\/80,
+html.light .text-white\/75,
+body.light  .text-white\/90,
+body.light  .text-white\/85,
+body.light  .text-white\/80,
+body.light  .text-white\/75 { color: var(--on-surface) !important; }
+
+html.light .text-white\/60,
+html.light .text-white\/50,
+html.light .text-white\/45,
+html.light .text-white\/40,
+html.light .text-white\/35,
+body.light  .text-white\/60,
+body.light  .text-white\/50,
+body.light  .text-white\/45,
+body.light  .text-white\/40,
+body.light  .text-white\/35 { color: var(--on-surface-variant) !important; }
+
+html.light .text-white\/30,
+html.light .text-white\/25,
+html.light .text-white\/20,
+body.light  .text-white\/30,
+body.light  .text-white\/25,
+body.light  .text-white\/20 { color: var(--on-surface-dim) !important; }
+
+/* Silver-only mandate: remap all Tailwind amber tones to institutional silver
+   (dark) / silver-on-light. SystemDocsTab still uses raw amber utility classes;
+   instead of a deep refactor of the docs JSX, kill the amber globally. */
+.text-amber-400,
+.text-amber-300,
+.text-amber-400\/90,
+.text-amber-400\/80,
+.text-amber-400\/70,
+.text-amber-400\/60,
+.text-amber-300\/80 { color: var(--primary) !important; }
+
+.bg-amber-500\/15,
+.bg-amber-500\/10 { background: rgba(198, 198, 199, 0.10) !important; }
+
+.border-amber-500\/20 { border-color: rgba(198, 198, 199, 0.20) !important; }
+
+.bg-amber-400 { background: var(--primary) !important; }
+
+html.light .text-amber-400,
+html.light .text-amber-300,
+html.light .text-amber-400\/90,
+html.light .text-amber-400\/80,
+html.light .text-amber-400\/70,
+html.light .text-amber-400\/60,
+html.light .text-amber-300\/80,
+body.light  .text-amber-400,
+body.light  .text-amber-300,
+body.light  .text-amber-400\/90,
+body.light  .text-amber-400\/80,
+body.light  .text-amber-400\/70,
+body.light  .text-amber-400\/60,
+body.light  .text-amber-300\/80 { color: var(--on-surface-variant) !important; }
+
+html.light .text-blue-400\/70,
+html.light .text-blue-300\/80,
+body.light  .text-blue-400\/70,
+body.light  .text-blue-300\/80 { color: #1d4ed8 !important; }
+
+html.light .text-red-300\/80,
+body.light  .text-red-300\/80 { color: #b91c1c !important; }
+
+/* bump cramped 10px captions to 11px globally (both themes) */
+.text-\[10px\] { font-size: 11px !important; }

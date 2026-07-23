@@ -1,0 +1,52 @@
+# ---- Secrets (NEVER commit) ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---- Databases / local state ----
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---- Node / Next.js ----
+node_modules/
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+
+# ---- Electron build output ----
+frontend/dist-electron/
+frontend/release/
+
+# ---- Models / large binaries ----
+models/*.pkl
+models/*.pt
+models/*.onnx
+*.exe
+
+# ---- Logs ----
+*.log
+logs/
+
+# ---- IDE / OS ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
