@@ -121,7 +121,7 @@ The Research tab can synthesise a market brief with a local LLM. Install
 [Ollama](https://ollama.com), then:
 
 ```bash
-ollama pull gemma2:2b   # or any model you prefer
+ollama pull gemma4:e4b   # or any model you prefer
 ollama serve
 ```
 
