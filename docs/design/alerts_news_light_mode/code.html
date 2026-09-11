@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Alerts &amp; News - Light Mode</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: Manrope (Display) & Inter (Body) -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "tertiary-fixed": "#f5f3f3",
+                        "secondary-fixed": "#e3e2e2",
+                        "inverse-on-surface": "#9c9d9d",
+                        "secondary-fixed-dim": "#d4d4d4",
+                        "on-secondary-fixed": "#3e3f40",
+                        "on-secondary-container": "#515252",
+                        "on-surface": "#2d3435",
+                        "on-primary-container": "#525151",
+                        "on-primary-fixed": "#403f3f",
+                        "surface-container-high": "#e4e9ea",
+                        "on-tertiary-container": "#5b5c5c",
+                        "on-tertiary": "#faf8f8",
+                        "outline-variant": "#adb3b4",
+                        "on-primary": "#faf7f6",
+                        "on-error": "#fff7f6",
+                        "surface-dim": "#d4dbdd",
+                        "surface-tint": "#5f5e5e",
+                        "primary": "#5f5e5e",
+                        "error": "#9f403d",
+                        "surface-container-low": "#f2f4f4",
+                        "primary-fixed-dim": "#d6d4d3",
+                        "surface-container-highest": "#dde4e5",
+                        "background": "#f9f9f9",
+                        "on-secondary-fixed-variant": "#5a5c5c",
+                        "tertiary-container": "#f5f3f3",
+                        "on-tertiary-fixed": "#494a4a",
+                        "tertiary": "#5f5f5f",
+                        "on-error-container": "#752121",
+                        "error-dim": "#4e0309",
+                        "on-primary-fixed-variant": "#5c5b5b",
+                        "primary-fixed": "#e5e2e1",
+                        "inverse-surface": "#0c0f0f",
+                        "primary-container": "#e5e2e1",
+                        "surface-bright": "#f9f9f9",
+                        "on-surface-variant": "#5a6061",
+                        "secondary": "#5e5f5f",
+                        "on-background": "#2d3435",
+                        "error-container": "#fe8983",
+                        "secondary-container": "#e3e2e2",
+                        "secondary-dim": "#525353",
+                        "outline": "#757c7d",
+                        "surface-variant": "#dde4e5",
+                        "tertiary-dim": "#535353",
+                        "tertiary-fixed-dim": "#e6e5e5",
+                        "on-secondary": "#f9f9f9",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed-variant": "#666666",
+                        "primary-dim": "#535252",
+                        "inverse-primary": "#ffffff",
+                        "surface": "#f9f9f9",
+                        "surface-container": "#ebeeef"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Ambient Shadow Utility */
+        .ambient-shadow {
+            box-shadow: 0px 20px 40px rgba(45, 52, 53, 0.06);
+        }
+        /* Gradient Button Textures */
+        .bg-gradient-primary {
+            background-image: linear-gradient(to bottom, #5f5e5e, #535252);
+        }
+        /* Ghost Border Utility */
+        .border-ghost {
+            border-color: rgba(173, 179, 180, 0.15); /* outline-variant at 15% */
+        }
+        
+        /* Material Icon Base Class */
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body antialiased overflow-hidden w-full h-screen flex">
+<!-- JSON Component: SideNavBar -->
+<nav class="fixed left-0 top-0 h-full w-64 z-40 bg-neutral-100 dark:bg-neutral-900 border-r border-ghost flex flex-col pt-20 pb-6 px-4 scale-98 active:scale-95 text-neutral-800 dark:text-neutral-200 font-inter text-sm font-medium">
+<!-- Header Info -->
+<div class="mb-10 px-4">
+<div class="w-12 h-12 rounded-lg bg-surface-container-lowest ambient-shadow flex items-center justify-center mb-4 border border-ghost">
+<span class="material-symbols-outlined text-primary text-2xl" data-weight="fill" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+</div>
+<h3 class="font-headline font-bold text-lg text-on-surface">Global Macro Fund</h3>
+<p class="text-xs text-on-surface-variant font-label mt-1">Tier 1 Connectivity</p>
+</div>
+<!-- Navigation Links -->
+<div class="flex-1 flex flex-col gap-2">
+<!-- Active state omitted intentionally as Alerts & News is a sub-context, leaving nav neutral -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-md text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200/30 dark:hover:bg-neutral-800/30 hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">terminal</span>
+<span>Terminal</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-md text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200/30 dark:hover:bg-neutral-800/30 hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">list_alt</span>
+<span>Order Book</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-md text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200/30 dark:hover:bg-neutral-800/30 hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">pie_chart</span>
+<span>Positions</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-md text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200/30 dark:hover:bg-neutral-800/30 hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">security</span>
+<span>Risk Manager</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-md text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200/30 dark:hover:bg-neutral-800/30 hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">database</span>
+<span>Historical Data</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-md text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200/30 dark:hover:bg-neutral-800/30 hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">code</span>
+<span>API Access</span>
+</a>
+</div>
+<!-- CTA & Footer -->
+<div class="mt-auto flex flex-col gap-4">
+<button class="w-full py-3 bg-gradient-primary text-on-primary rounded-md font-medium text-sm transition-opacity hover:opacity-90 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">add</span>
+                New Trade
+            </button>
+<div class="pt-4 border-t border-ghost flex flex-col gap-2">
+<a class="flex items-center gap-3 px-4 py-2 rounded-md text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200/30 dark:hover:bg-neutral-800/30 hover:translate-x-1 transition-transform duration-200 text-xs" href="#">
+<span class="material-symbols-outlined text-lg">help_outline</span>
+<span>Support</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 rounded-md text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200/30 dark:hover:bg-neutral-800/30 hover:translate-x-1 transition-transform duration-200 text-xs" href="#">
+<span class="material-symbols-outlined text-lg">sensors</span>
+<span>System Status</span>
+</a>
+</div>
+</div>
+</nav>
+<!-- JSON Component: TopNavBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-6 py-3 bg-opacity-80 backdrop-blur-xl bg-neutral-50 dark:bg-neutral-950 text-neutral-700 dark:text-neutral-300 font-manrope tracking-tighter uppercase text-xs font-bold border-b border-neutral-200/50 dark:border-neutral-800/50 transition-all duration-200 ease-in-out pl-[280px]">
+<div class="flex items-center gap-8">
+<div class="text-xl font-black tracking-tighter text-neutral-900 dark:text-neutral-50 hidden">NEXUS v0.2.0</div>
+<!-- Navigation Links -->
+<nav class="flex items-center gap-6">
+<a class="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-50 transition-colors py-2" href="#">Portfolio</a>
+<!-- Active Link: Markets (closest to Alerts & News) -->
+<a class="text-neutral-900 dark:text-neutral-50 border-b-2 border-neutral-900 dark:border-neutral-50 pb-1 py-2" href="#">Markets</a>
+<a class="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-50 transition-colors py-2" href="#">Execution</a>
+<a class="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-50 transition-colors py-2" href="#">Analytics</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<!-- Search Bar (on_left implicitly handled by layout order if visible) -->
+<div class="relative hidden md:block mr-4">
+<input class="bg-transparent border-b border-outline-variant/40 focus:border-primary focus:border-b-2 text-sm text-on-surface py-1 pl-8 w-48 transition-all focus:outline-none placeholder:text-on-surface-variant lowercase normal-case" placeholder="Search entity or ticker..." type="text"/>
+<span class="material-symbols-outlined absolute left-0 top-1 text-on-surface-variant text-lg">search</span>
+</div>
+<!-- Trailing Actions -->
+<button class="hover:bg-neutral-100 dark:hover:bg-neutral-900 p-2 rounded-full transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="hover:bg-neutral-100 dark:hover:bg-neutral-900 p-2 rounded-full transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="ml-2 px-4 py-2 bg-gradient-primary text-on-primary rounded-md font-body text-xs font-medium tracking-normal normal-case hover:opacity-90 transition-opacity">
+                Connect Wallet
+            </button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 mt-[60px] flex-1 w-full p-8 overflow-y-auto bg-surface">
+<!-- Page Header -->
+<div class="mb-10 flex justify-between items-end">
+<div>
+<h1 class="font-headline font-bold text-[3.5rem] tracking-tight leading-none text-on-surface mb-2">Market Intelligence</h1>
+<p class="font-body text-on-surface-variant text-base">Live alerts and algorithmic news processing.</p>
+</div>
+<!-- Silver Filter Chips -->
+<div class="flex gap-2">
+<button class="px-4 py-1.5 rounded-full bg-secondary-container text-on-secondary-container font-label text-sm font-medium transition-colors hover:bg-surface-dim border border-transparent">Global</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-label text-sm font-medium transition-colors hover:bg-surface-container-high border border-ghost">Equities</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-label text-sm font-medium transition-colors hover:bg-surface-container-high border border-ghost">FX / Rates</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-label text-sm font-medium transition-colors hover:bg-surface-container-high border border-ghost">Commodities</button>
+</div>
+</div>
+<!-- Split Layout Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Left Column: Live Alerts Feed (Span 7) -->
+<div class="lg:col-span-7 flex flex-col gap-6">
+<div class="flex items-center justify-between mb-2">
+<h2 class="font-headline text-xl font-semibold text-on-surface flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-error animate-pulse"></span>
+                        Live Alerts Stream
+                    </h2>
+<span class="text-xs font-label text-on-surface-variant">Last updated: Just now</span>
+</div>
+<!-- Alert Item 1 (High Impact) -->
+<div class="bg-surface-container-lowest p-6 rounded-lg ambient-shadow border border-ghost flex gap-5 relative overflow-hidden group">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-error rounded-l-lg"></div>
+<div class="flex-shrink-0 pt-1">
+<span class="material-symbols-outlined text-error" data-weight="fill" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start mb-1">
+<span class="font-body font-semibold text-on-surface">ECB Unexpected Rate Decision</span>
+<span class="text-xs font-label text-on-secondary-fixed-variant">08:42:15 GMT</span>
+</div>
+<p class="font-body text-sm text-on-surface-variant leading-relaxed">
+                            European Central Bank announces an unscheduled 50bps hike. Immediate volatility detected across EUR pairs and European equities index futures.
+                        </p>
+<div class="mt-3 flex gap-2">
+<span class="text-[10px] font-label uppercase tracking-wider text-error bg-error/10 px-2 py-0.5 rounded">High Impact</span>
+<span class="text-[10px] font-label uppercase tracking-wider text-on-surface-variant border border-ghost px-2 py-0.5 rounded">EUR/USD</span>
+</div>
+</div>
+</div>
+<!-- Alert Item 2 (Medium Impact) -->
+<div class="bg-surface-container-lowest p-6 rounded-lg ambient-shadow border border-ghost flex gap-5 relative overflow-hidden group">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-l-lg opacity-50"></div>
+<div class="flex-shrink-0 pt-1">
+<span class="material-symbols-outlined text-primary">monitoring</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start mb-1">
+<span class="font-body font-semibold text-on-surface">Unusual Options Volume: TSLA</span>
+<span class="text-xs font-label text-on-secondary-fixed-variant">08:15:02 GMT</span>
+</div>
+<p class="font-body text-sm text-on-surface-variant leading-relaxed">
+                            Detection of significant out-of-the-money call buying expiring this Friday. Volume exceeds 300% of 30-day average.
+                        </p>
+<div class="mt-3 flex gap-2">
+<span class="text-[10px] font-label uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded">Elevated Volume</span>
+<span class="text-[10px] font-label uppercase tracking-wider text-on-surface-variant border border-ghost px-2 py-0.5 rounded">TSLA</span>
+</div>
+</div>
+</div>
+<!-- Alert Item 3 (Informational) -->
+<div class="bg-surface-container-lowest p-6 rounded-lg ambient-shadow border border-ghost flex gap-5 relative overflow-hidden group">
+<div class="flex-shrink-0 pt-1">
+<span class="material-symbols-outlined text-on-surface-variant">info</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start mb-1">
+<span class="font-body font-semibold text-on-surface">Macro Schedule: US Non-Farm Payrolls</span>
+<span class="text-xs font-label text-on-secondary-fixed-variant">07:00:00 GMT</span>
+</div>
+<p class="font-body text-sm text-on-surface-variant leading-relaxed">
+                            Reminder: US NFP data release scheduled in 60 minutes. Consensus estimates at +180k. Expect widened spreads prior to release.
+                        </p>
+</div>
+</div>
+<!-- Alert Item 4 (Medium Impact) -->
+<div class="bg-surface-container-lowest p-6 rounded-lg ambient-shadow border border-ghost flex gap-5 relative overflow-hidden group">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-l-lg opacity-50"></div>
+<div class="flex-shrink-0 pt-1">
+<span class="material-symbols-outlined text-primary">swap_horiz</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start mb-1">
+<span class="font-body font-semibold text-on-surface">Block Trade Executed: AAPL</span>
+<span class="text-xs font-label text-on-secondary-fixed-variant">06:45:11 GMT</span>
+</div>
+<p class="font-body text-sm text-on-surface-variant leading-relaxed">
+                            Dark pool execution detected. 2.5M shares matched at $174.50. Pricing indicates institutional accumulation.
+                        </p>
+<div class="mt-3 flex gap-2">
+<span class="text-[10px] font-label uppercase tracking-wider text-on-surface-variant border border-ghost px-2 py-0.5 rounded">Dark Pool</span>
+<span class="text-[10px] font-label uppercase tracking-wider text-on-surface-variant border border-ghost px-2 py-0.5 rounded">AAPL</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: News Intelligence Panel (Span 5) -->
+<div class="lg:col-span-5 flex flex-col gap-6">
+<h2 class="font-headline text-xl font-semibold text-on-surface mb-2">Algorithmic Briefing</h2>
+<!-- Featured News Block -->
+<div class="bg-surface-container-lowest rounded-lg ambient-shadow border border-ghost overflow-hidden">
+<div class="h-48 w-full bg-surface-container relative">
+<img alt="Abstract visualization" class="w-full h-full object-cover mix-blend-multiply opacity-80 grayscale" data-alt="Abstract architectural visualization of global market data flows in bright silver and porcelain tones with subtle geometric glass overlays" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC_fkhuqg9qQ9gxWTKJu5ys5-vno5oq2-XqznbL_rRpXBjZWE6Y-NAFHU35g5N-ykn8xsHXlbykcaJ-56Gzae_nla1HtBzc-AtfyGeYIwvt7VYHzcYR-U6I2J2wSg8pD0vtd5BMowQhSXxybjn51a7YKCMGKH4fUmgWbka9X2WUisj0LNQ-YwhWPjuHKVpwvRBWbeqJ7S7TFFgg7vwEDClvGdRymQSGTwuH35LKwpCP5sbXG0f6nFAERLkVKTq98_64SXeqcYbbynuh"/>
+<div class="absolute bottom-4 left-4">
+<span class="px-2 py-1 bg-surface-container-lowest/90 backdrop-blur text-on-surface text-xs font-bold font-label uppercase tracking-wide rounded">Macro Analysis</span>
+</div>
+</div>
+<div class="p-6">
+<h3 class="font-headline font-bold text-lg text-on-surface mb-2 leading-tight">Navigating the Liquidity Paradox in Q3</h3>
+<p class="font-body text-sm text-on-surface-variant mb-4 line-clamp-3">
+                            Our proprietary sentiment algorithms indicate a massive divergence between retail positioning and institutional dark pool flows across major tech indices. The current low-volatility environment masks underlying fragility in order book depth.
+                        </p>
+<a class="text-xs font-bold font-label uppercase tracking-wider text-primary hover:text-on-surface transition-colors flex items-center gap-1" href="#">
+                            Read Full Analysis <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</a>
+</div>
+</div>
+<!-- Secondary News List -->
+<div class="bg-surface-container-lowest p-6 rounded-lg ambient-shadow border border-ghost flex flex-col gap-5">
+<div class="group cursor-pointer">
+<div class="flex justify-between items-start gap-4">
+<div>
+<h4 class="font-body font-semibold text-sm text-on-surface group-hover:text-primary transition-colors">Semiconductor Sector Downgrade Contagion</h4>
+<p class="text-xs text-on-surface-variant mt-1 line-clamp-2">Multiple Tier-1 analysts simultaneously issue guidance warnings citing supply chain channel checks in Southeast Asia.</p>
+</div>
+<span class="text-xs text-on-secondary-fixed-variant whitespace-nowrap">2h ago</span>
+</div>
+</div>
+<div class="h-px w-full bg-outline-variant/10"></div>
+<div class="group cursor-pointer">
+<div class="flex justify-between items-start gap-4">
+<div>
+<h4 class="font-body font-semibold text-sm text-on-surface group-hover:text-primary transition-colors">Treasury Yield Curve Inversion Deepens</h4>
+<p class="text-xs text-on-surface-variant mt-1 line-clamp-2">The 2s10s spread reaches new local lows as market prices out the probability of a soft landing scenario.</p>
+</div>
+<span class="text-xs text-on-secondary-fixed-variant whitespace-nowrap">4h ago</span>
+</div>
+</div>
+<div class="h-px w-full bg-outline-variant/10"></div>
+<div class="group cursor-pointer">
+<div class="flex justify-between items-start gap-4">
+<div>
+<h4 class="font-body font-semibold text-sm text-on-surface group-hover:text-primary transition-colors">Energy Markets: Geopolitical Premium Recalculation</h4>
+<p class="text-xs text-on-surface-variant mt-1 line-clamp-2">Brent crude tests major resistance levels following unconfirmed reports of infrastructure disruption in key transit straits.</p>
+</div>
+<span class="text-xs text-on-secondary-fixed-variant whitespace-nowrap">5h ago</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

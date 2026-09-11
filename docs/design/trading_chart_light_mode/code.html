@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Trading Chart - Light Mode</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#f5f3f3",
+                        "secondary-fixed": "#e3e2e2",
+                        "inverse-on-surface": "#9c9d9d",
+                        "secondary-fixed-dim": "#d4d4d4",
+                        "on-secondary-fixed": "#3e3f40",
+                        "on-secondary-container": "#515252",
+                        "on-surface": "#2d3435",
+                        "on-primary-container": "#525151",
+                        "on-primary-fixed": "#403f3f",
+                        "surface-container-high": "#e4e9ea",
+                        "on-tertiary-container": "#5b5c5c",
+                        "on-tertiary": "#faf8f8",
+                        "outline-variant": "#adb3b4",
+                        "on-primary": "#faf7f6",
+                        "on-error": "#fff7f6",
+                        "surface-dim": "#d4dbdd",
+                        "surface-tint": "#5f5e5e",
+                        "primary": "#5f5e5e",
+                        "error": "#9f403d",
+                        "surface-container-low": "#f2f4f4",
+                        "primary-fixed-dim": "#d6d4d3",
+                        "surface-container-highest": "#dde4e5",
+                        "background": "#f9f9f9",
+                        "on-secondary-fixed-variant": "#5a5c5c",
+                        "tertiary-container": "#f5f3f3",
+                        "on-tertiary-fixed": "#494a4a",
+                        "tertiary": "#5f5f5f",
+                        "on-error-container": "#752121",
+                        "error-dim": "#4e0309",
+                        "on-primary-fixed-variant": "#5c5b5b",
+                        "primary-fixed": "#e5e2e1",
+                        "inverse-surface": "#0c0f0f",
+                        "primary-container": "#e5e2e1",
+                        "surface-bright": "#f9f9f9",
+                        "on-surface-variant": "#5a6061",
+                        "secondary": "#5e5f5f",
+                        "on-background": "#2d3435",
+                        "error-container": "#fe8983",
+                        "secondary-container": "#e3e2e2",
+                        "secondary-dim": "#525353",
+                        "outline": "#757c7d",
+                        "surface-variant": "#dde4e5",
+                        "tertiary-dim": "#535353",
+                        "tertiary-fixed-dim": "#e6e5e5",
+                        "on-secondary": "#f9f9f9",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed-variant": "#666666",
+                        "primary-dim": "#535252",
+                        "inverse-primary": "#ffffff",
+                        "surface": "#f9f9f9",
+                        "surface-container": "#ebeeef"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.surface');
+            color: theme('colors.on-surface');
+            font-family: theme('fontFamily.body');
+        }
+        h1, h2, h3, h4, h5, h6 {
+            font-family: theme('fontFamily.headline');
+        }
+        .ghost-border {
+            border: 1px solid rgba(173, 179, 180, 0.15); /* outline-variant at 15% opacity */
+        }
+        .atmospheric-shadow {
+            box-shadow: 0px 20px 40px rgba(45, 52, 53, 0.06);
+        }
+        .gradient-btn {
+            background: linear-gradient(to bottom, theme('colors.primary'), theme('colors.primary-dim'));
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col md:flex-row antialiased">
+<!-- SideNavBar (Hidden on mobile, visible on desktop) -->
+<nav class="hidden md:flex flex-col pt-20 pb-6 px-4 h-screen fixed left-0 top-0 w-64 z-40 bg-surface-container-low border-r border-[rgba(173,179,180,0.15)] text-on-surface">
+<div class="mb-10 px-4">
+<h2 class="font-headline text-lg font-bold tracking-tight">Global Macro Fund</h2>
+<p class="font-body text-xs text-on-surface-variant mt-1">Tier 1 Connectivity</p>
+</div>
+<div class="flex-1 space-y-2">
+<a class="flex items-center px-4 py-3 text-sm font-medium rounded-DEFAULT text-on-surface font-bold border-l-4 border-on-surface bg-surface-container-highest" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]" style="font-variation-settings: 'FILL' 1;">terminal</span>
+                Terminal
+            </a>
+<a class="flex items-center px-4 py-3 text-sm font-medium rounded-DEFAULT text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">list_alt</span>
+                Order Book
+            </a>
+<a class="flex items-center px-4 py-3 text-sm font-medium rounded-DEFAULT text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">pie_chart</span>
+                Positions
+            </a>
+<a class="flex items-center px-4 py-3 text-sm font-medium rounded-DEFAULT text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">security</span>
+                Risk Manager
+            </a>
+<a class="flex items-center px-4 py-3 text-sm font-medium rounded-DEFAULT text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">database</span>
+                Historical Data
+            </a>
+<a class="flex items-center px-4 py-3 text-sm font-medium rounded-DEFAULT text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">code</span>
+                API Access
+            </a>
+</div>
+<div class="mt-auto space-y-4">
+<button class="w-full py-3 gradient-btn text-on-primary rounded-md font-medium text-sm transition-transform duration-200 active:scale-95 flex items-center justify-center">
+<span class="material-symbols-outlined mr-2 text-[18px]">add</span>
+                New Trade
+            </button>
+<div class="pt-4 border-t border-[rgba(173,179,180,0.15)] space-y-1">
+<a class="flex items-center px-4 py-2 text-xs font-medium text-on-surface-variant hover:bg-surface-container rounded-DEFAULT transition-colors" href="#">
+<span class="material-symbols-outlined mr-3 text-[18px]">help_outline</span>
+                    Support
+                </a>
+<a class="flex items-center px-4 py-2 text-xs font-medium text-on-surface-variant hover:bg-surface-container rounded-DEFAULT transition-colors" href="#">
+<span class="material-symbols-outlined mr-3 text-[18px]">sensors</span>
+                    System Status
+                </a>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col md:ml-64 w-full h-screen overflow-hidden">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center w-full px-6 py-3 bg-surface/80 backdrop-blur-xl z-50 fixed top-0 md:w-[calc(100%-16rem)] right-0">
+<div class="flex items-center space-x-6">
+<span class="font-headline text-xl font-black tracking-tighter text-on-surface">NEXUS v0.2.0</span>
+<!-- Search (Atmospheric Shadow Example) -->
+<div class="hidden lg:flex items-center bg-surface-container-lowest atmospheric-shadow px-3 py-1.5 rounded-full ghost-border w-64">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px] mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-full text-on-surface placeholder:text-on-surface-variant font-label p-0" placeholder="Search symbol or command..." type="text"/>
+</div>
+</div>
+<nav class="hidden md:flex items-center space-x-6 font-headline tracking-tighter text-xs font-bold uppercase">
+<a class="text-on-surface border-b-2 border-on-surface pb-1" href="#">Portfolio</a>
+<a class="text-on-surface-variant hover:text-on-surface transition-colors pb-1" href="#">Markets</a>
+<a class="text-on-surface-variant hover:text-on-surface transition-colors pb-1" href="#">Execution</a>
+<a class="text-on-surface-variant hover:text-on-surface transition-colors pb-1" href="#">Analytics</a>
+</nav>
+<div class="flex items-center space-x-4">
+<button class="text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="gradient-btn text-on-primary px-4 py-2 rounded-md font-medium text-xs hidden sm:block">
+                    Connect Wallet
+                </button>
+</div>
+</header>
+<!-- Charting Workspace -->
+<div class="flex-1 flex flex-col lg:flex-row mt-14 p-4 gap-4 overflow-hidden bg-surface">
+<!-- Main Chart Area -->
+<div class="flex-1 flex flex-col gap-4 min-w-0">
+<!-- Asset Header -->
+<div class="flex flex-wrap items-end justify-between bg-surface-container-lowest p-4 rounded-xl ghost-border atmospheric-shadow shrink-0">
+<div>
+<div class="flex items-center gap-3">
+<h1 class="font-headline text-3xl font-bold tracking-tighter text-on-surface">BTC/USD</h1>
+<span class="font-label text-sm px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container">Perpetual</span>
+</div>
+<div class="flex items-baseline gap-4 mt-2">
+<span class="font-headline text-2xl font-medium text-on-surface">$64,230.50</span>
+<span class="font-body text-sm font-medium text-error flex items-center">
+<span class="material-symbols-outlined text-[16px] mr-1">arrow_downward</span>
+                                1.2% ($780.00)
+                            </span>
+</div>
+</div>
+<div class="flex gap-2 mt-4 sm:mt-0">
+<button class="px-3 py-1.5 text-xs font-label font-medium bg-surface-container-high text-on-surface rounded-DEFAULT transition-colors hover:bg-surface-variant">15m</button>
+<button class="px-3 py-1.5 text-xs font-label font-medium bg-primary text-on-primary rounded-DEFAULT transition-colors">1H</button>
+<button class="px-3 py-1.5 text-xs font-label font-medium bg-surface-container-high text-on-surface rounded-DEFAULT transition-colors hover:bg-surface-variant">4H</button>
+<button class="px-3 py-1.5 text-xs font-label font-medium bg-surface-container-high text-on-surface rounded-DEFAULT transition-colors hover:bg-surface-variant">1D</button>
+</div>
+</div>
+<!-- Chart Visualization (Simulated) -->
+<div class="flex-1 bg-surface-container-lowest rounded-xl ghost-border atmospheric-shadow flex flex-col relative overflow-hidden min-h-[400px]">
+<!-- Chart Tools -->
+<div class="flex justify-between items-center p-3 border-b border-[rgba(173,179,180,0.15)] bg-surface-bright shrink-0">
+<div class="flex gap-3">
+<button class="text-on-surface-variant hover:text-on-surface"><span class="material-symbols-outlined text-[20px]">draw</span></button>
+<button class="text-on-surface-variant hover:text-on-surface"><span class="material-symbols-outlined text-[20px]">show_chart</span></button>
+<button class="text-on-surface-variant hover:text-on-surface"><span class="material-symbols-outlined text-[20px]">add_chart</span></button>
+</div>
+<div class="flex gap-4 text-xs font-label text-on-secondary-fixed-variant">
+<span>O: <span class="text-on-surface font-medium">64,500</span></span>
+<span>H: <span class="text-on-surface font-medium">65,100</span></span>
+<span>L: <span class="text-on-surface font-medium">63,800</span></span>
+<span>C: <span class="text-on-surface font-medium">64,230</span></span>
+</div>
+</div>
+<!-- Main Chart Canvas area -->
+<div class="flex-1 relative p-4 w-full h-full flex flex-col gap-4">
+<!-- Simulated Candlestick Area -->
+<div class="flex-1 relative border-b border-[rgba(173,179,180,0.15)]">
+<img alt="Financial chart showing technical analysis" class="w-full h-full object-cover opacity-20 absolute inset-0 mix-blend-multiply pointer-events-none rounded-lg" data-alt="Clean, minimalist abstract light grey wave patterns resembling a technical financial chart on a porcelain white background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCwveaTRCZByXM_UztfA0zS5iuI8sBwFv_qrl6DUjOmHTlfUQT-Ctd7m-SWu3mY5cS1BmLkDqJXpZTleYP9P6bu-S9kJWWRk2-OKf9XFHdw4Pz849KPpzprY2wxfoO_dZduj7y4EwAnxlNJ6FedNhSU9aL34T03ruB20DVL6gdA2i97PKRJMEE23MAnW1-enmnku1YSETiCQO95MQ4l0a0EXIB9csA0DRBGnpO2uSQ5-nqvVYahuMk97ASE9efLFTHZnE3OSBlzdeGz"/>
+<!-- Overlay technical elements (simulated) -->
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="font-headline text-on-surface-variant opacity-50 font-bold text-xl tracking-widest uppercase">Chart Visualization Area</span>
+</div>
+</div>
+<!-- Indicators Area (RSI / MACD) -->
+<div class="h-32 shrink-0 flex flex-col gap-2">
+<div class="flex justify-between items-center text-xs font-label text-on-secondary-fixed-variant">
+<span>RSI (14) <span class="text-on-surface font-medium">42.5</span></span>
+</div>
+<div class="flex-1 relative bg-surface-container rounded-DEFAULT overflow-hidden">
+<!-- Simulated RSI line -->
+<div class="absolute top-1/2 left-0 right-0 border-t border-[rgba(173,179,180,0.3)] border-dashed"></div>
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 100 100">
+<path class="text-primary opacity-50" d="M0,50 Q10,70 20,40 T40,60 T60,30 T80,80 T100,45" fill="none" stroke="currentColor" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Sidebar: Order Book & Trades -->
+<div class="w-full lg:w-80 flex flex-col gap-4 shrink-0">
+<!-- Order Entry Quick Action -->
+<div class="bg-surface-container-lowest p-4 rounded-xl ghost-border atmospheric-shadow shrink-0">
+<div class="flex rounded-md overflow-hidden bg-surface-container p-1 mb-4">
+<button class="flex-1 py-1.5 text-xs font-label font-bold text-on-primary bg-primary rounded shadow-sm">Limit</button>
+<button class="flex-1 py-1.5 text-xs font-label font-medium text-on-surface-variant hover:text-on-surface transition-colors">Market</button>
+<button class="flex-1 py-1.5 text-xs font-label font-medium text-on-surface-variant hover:text-on-surface transition-colors">Stop</button>
+</div>
+<div class="space-y-3">
+<div class="relative">
+<input class="w-full bg-transparent border-b border-[rgba(173,179,180,0.4)] focus:border-primary focus:border-b-2 py-2 text-right text-sm font-medium text-on-surface outline-none transition-all pr-12" type="text" value="64,230.50"/>
+<span class="absolute left-0 top-2.5 text-xs font-label text-on-surface-variant">Price</span>
+<span class="absolute right-0 top-2.5 text-xs font-label text-on-surface-variant">USD</span>
+</div>
+<div class="relative">
+<input class="w-full bg-transparent border-b border-[rgba(173,179,180,0.4)] focus:border-primary focus:border-b-2 py-2 text-right text-sm font-medium text-on-surface outline-none transition-all pr-12" placeholder="0.00" type="text"/>
+<span class="absolute left-0 top-2.5 text-xs font-label text-on-surface-variant">Size</span>
+<span class="absolute right-0 top-2.5 text-xs font-label text-on-surface-variant">BTC</span>
+</div>
+<!-- Slider -->
+<div class="pt-2 pb-4">
+<div class="h-1 bg-surface-container-high rounded-full relative">
+<div class="absolute left-0 top-0 bottom-0 w-1/3 bg-primary rounded-full"></div>
+<div class="absolute left-1/3 top-1/2 -translate-y-1/2 w-3 h-3 bg-surface-container-lowest border-2 border-primary rounded-full cursor-pointer"></div>
+</div>
+<div class="flex justify-between mt-1 text-[10px] text-on-surface-variant font-label">
+<span>0%</span>
+<span>25%</span>
+<span>50%</span>
+<span>75%</span>
+<span>100%</span>
+</div>
+</div>
+<div class="flex gap-2 pt-2">
+<button class="flex-1 py-2 bg-secondary-container hover:bg-secondary text-on-secondary-container hover:text-on-secondary text-sm font-bold rounded-md transition-colors">Buy / Long</button>
+<button class="flex-1 py-2 border border-outline-variant hover:bg-surface-container text-on-surface text-sm font-bold rounded-md transition-colors">Sell / Short</button>
+</div>
+</div>
+</div>
+<!-- Order Book -->
+<div class="flex-1 bg-surface-container-lowest rounded-xl ghost-border atmospheric-shadow flex flex-col overflow-hidden min-h-[300px]">
+<div class="p-3 border-b border-[rgba(173,179,180,0.15)] flex justify-between items-center shrink-0">
+<h3 class="font-headline text-sm font-bold text-on-surface">Order Book</h3>
+<div class="flex gap-1">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant cursor-pointer">format_list_bulleted</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col overflow-hidden p-2 text-xs font-body">
+<!-- Headers -->
+<div class="flex justify-between px-2 py-1 text-on-surface-variant font-label border-b border-[rgba(173,179,180,0.15)] mb-1">
+<span>Price (USD)</span>
+<span>Size (BTC)</span>
+<span>Total</span>
+</div>
+<!-- Asks (Sells) -->
+<div class="flex-1 overflow-y-auto space-y-px">
+<!-- Rows (Simulated density without borders) -->
+<div class="flex justify-between px-2 py-1 hover:bg-surface-container relative group cursor-pointer">
+<div class="absolute right-0 top-0 bottom-0 bg-[rgba(173,179,180,0.1)] w-[80%] -z-10 rounded-l"></div>
+<span class="text-error font-medium">64,250.00</span>
+<span class="text-on-surface">1.45</span>
+<span class="text-on-surface-variant">12.50</span>
+</div>
+<div class="flex justify-between px-2 py-1 hover:bg-surface-container relative group cursor-pointer">
+<div class="absolute right-0 top-0 bottom-0 bg-[rgba(173,179,180,0.1)] w-[65%] -z-10 rounded-l"></div>
+<span class="text-error font-medium">64,245.50</span>
+<span class="text-on-surface">0.80</span>
+<span class="text-on-surface-variant">11.05</span>
+</div>
+<div class="flex justify-between px-2 py-1 hover:bg-surface-container relative group cursor-pointer">
+<div class="absolute right-0 top-0 bottom-0 bg-[rgba(173,179,180,0.1)] w-[40%] -z-10 rounded-l"></div>
+<span class="text-error font-medium">64,240.00</span>
+<span class="text-on-surface">2.10</span>
+<span class="text-on-surface-variant">10.25</span>
+</div>
+<div class="flex justify-between px-2 py-1 hover:bg-surface-container relative group cursor-pointer">
+<div class="absolute right-0 top-0 bottom-0 bg-[rgba(173,179,180,0.1)] w-[55%] -z-10 rounded-l"></div>
+<span class="text-error font-medium">64,235.50</span>
+<span class="text-on-surface">0.50</span>
+<span class="text-on-surface-variant">8.15</span>
+</div>
+</div>
+<!-- Spread / Last Price -->
+<div class="py-2 flex justify-center items-center gap-2 border-y border-[rgba(173,179,180,0.15)] my-1 bg-surface-container-low shrink-0">
+<span class="font-headline text-lg font-bold text-on-surface">64,230.50</span>
+<span class="material-symbols-outlined text-[16px] text-error">arrow_downward</span>
+</div>
+<!-- Bids (Buys) -->
+<div class="flex-1 overflow-y-auto space-y-px">
+<!-- Rows -->
+<div class="flex justify-between px-2 py-1 hover:bg-surface-container relative group cursor-pointer">
+<div class="absolute right-0 top-0 bottom-0 bg-[rgba(173,179,180,0.1)] w-[30%] -z-10 rounded-l"></div>
+<span class="text-on-surface font-medium">64,228.00</span>
+<span class="text-on-surface">1.20</span>
+<span class="text-on-surface-variant">1.20</span>
+</div>
+<div class="flex justify-between px-2 py-1 hover:bg-surface-container relative group cursor-pointer">
+<div class="absolute right-0 top-0 bottom-0 bg-[rgba(173,179,180,0.1)] w-[45%] -z-10 rounded-l"></div>
+<span class="text-on-surface font-medium">64,225.50</span>
+<span class="text-on-surface">0.45</span>
+<span class="text-on-surface-variant">1.65</span>
+</div>
+<div class="flex justify-between px-2 py-1 hover:bg-surface-container relative group cursor-pointer">
+<div class="absolute right-0 top-0 bottom-0 bg-[rgba(173,179,180,0.1)] w-[70%] -z-10 rounded-l"></div>
+<span class="text-on-surface font-medium">64,220.00</span>
+<span class="text-on-surface">3.50</span>
+<span class="text-on-surface-variant">5.15</span>
+</div>
+<div class="flex justify-between px-2 py-1 hover:bg-surface-container relative group cursor-pointer">
+<div class="absolute right-0 top-0 bottom-0 bg-[rgba(173,179,180,0.1)] w-[85%] -z-10 rounded-l"></div>
+<span class="text-on-surface font-medium">64,215.00</span>
+<span class="text-on-surface">1.80</span>
+<span class="text-on-surface-variant">6.95</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

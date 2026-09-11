@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>NEXUS v0.2.0 | Liquidity Map</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed": "#3e4040",
+                    "on-secondary-container": "#bfbfbf",
+                    "on-tertiary-fixed": "#4a4949",
+                    "error": "#ee7d77",
+                    "on-primary-fixed-variant": "#5a5c5c",
+                    "secondary-fixed": "#e3e2e2",
+                    "surface-container-lowest": "#000000",
+                    "tertiary-dim": "#edeaea",
+                    "on-tertiary": "#605f5e",
+                    "on-secondary-fixed": "#3e3f40",
+                    "on-tertiary-container": "#575656",
+                    "on-tertiary-fixed-variant": "#676666",
+                    "surface-container-high": "#1f2020",
+                    "surface-container-low": "#131313",
+                    "on-secondary": "#1f2021",
+                    "primary-fixed-dim": "#d4d4d4",
+                    "on-error-container": "#ff9993",
+                    "on-primary-container": "#d0d0d0",
+                    "surface-container-highest": "#252626",
+                    "secondary-container": "#3a3c3c",
+                    "outline": "#767575",
+                    "on-background": "#e7e5e4",
+                    "primary-dim": "#b8b9b9",
+                    "inverse-on-surface": "#565555",
+                    "primary": "#c6c6c7",
+                    "tertiary-fixed-dim": "#e8e5e4",
+                    "surface-container": "#191a1a",
+                    "surface-dim": "#0e0e0e",
+                    "tertiary-container": "#edeaea",
+                    "surface": "#0e0e0e",
+                    "error-dim": "#bb5551",
+                    "outline-variant": "#484848",
+                    "on-secondary-fixed-variant": "#5a5c5c",
+                    "error-container": "#7f2927",
+                    "inverse-primary": "#5e5f5f",
+                    "tertiary-fixed": "#f6f3f2",
+                    "secondary-fixed-dim": "#d4d4d4",
+                    "secondary": "#9d9e9e",
+                    "surface-tint": "#c6c6c7",
+                    "tertiary": "#fcf9f8",
+                    "on-surface": "#e7e5e4",
+                    "primary-container": "#454747",
+                    "surface-variant": "#252626",
+                    "on-primary": "#3f4041",
+                    "inverse-surface": "#fcf9f8",
+                    "surface-bright": "#2c2c2c",
+                    "primary-fixed": "#e2e2e2",
+                    "secondary-dim": "#9d9e9e",
+                    "on-error": "#490106",
+                    "background": "#0e0e0e",
+                    "on-surface-variant": "#acabaa"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            font-size: 18px;
+        }
+        .heatmap-grid {
+            background-image: 
+                linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        .silver-glow {
+            box-shadow: 0 -1px 0 0 rgba(198, 198, 199, 0.3);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0e0e0e;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #484848;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary selection:text-surface overflow-hidden">
+<!-- TopNavBar Execution -->
+<nav class="fixed top-0 w-full z-50 flex items-center justify-between px-6 h-14 bg-surface/80 backdrop-blur-xl border-b border-white/5 shadow-2xl shadow-black/50">
+<div class="flex items-center gap-8">
+<span class="text-lg font-bold tracking-tighter text-on-surface uppercase">NEXUS v0.2.0</span>
+<div class="hidden md:flex items-center gap-6">
+<a class="text-on-surface-variant hover:text-on-surface transition-colors font-medium tracking-tight" href="#">BTC/USD</a>
+<a class="text-on-surface-variant hover:text-on-surface transition-colors font-medium tracking-tight" href="#">ETH/USD</a>
+<a class="text-on-surface-variant hover:text-on-surface transition-colors font-medium tracking-tight" href="#">SOL/USD</a>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex flex-col items-end">
+<span class="text-primary font-bold text-sm tracking-tighter">$142,502.24</span>
+<span class="text-error text-[10px] font-medium">+2.4% Δ</span>
+</div>
+<div class="flex items-center gap-3 border-l border-white/10 pl-6">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-on-surface transition-all duration-200">monitoring</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-on-surface transition-all duration-200">account_balance_wallet</button>
+<div class="w-7 h-7 bg-surface-container-highest border border-white/10 overflow-hidden flex items-center justify-center">
+<img alt="Executive User Profile" class="w-full h-full object-cover grayscale opacity-80" data-alt="Close up portrait of a serious executive man in a dark suit with minimal dramatic studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA9Yl5FwXG5_Cv-RDz3VRcHUt_LwN7JWiZFnRPlazvS_YPk41Ugp5evn-Olu_tX6EKvVoSOQtXf14X_QVHuMQVXUA2fEiNKnB5-L-QzPqoZXPZik8zKhO8l_Cg2E-CZKVzQlNNyaNkS6-K26Hf2CZiYN265YhXKGqLMALU0A9qHwpD0u4xVLHl1jR080UfA53RCt0qHgW9Ue1tqaoRmCVJN3tG73EjhknH5AWO9IfYLEtUKahoSfbrQvda_V3VfcE5qvljqN8wb1b50"/>
+</div>
+</div>
+</div>
+</nav>
+<!-- SideNavBar Execution -->
+<aside class="fixed left-0 top-14 h-[calc(100vh-3.5rem)] w-64 bg-surface-container-low border-r border-white/5 flex flex-col justify-between z-40 hidden md:flex">
+<div class="py-6">
+<div class="px-6 mb-8">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-primary/10 border border-primary/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">terminal</span>
+</div>
+<div>
+<p class="text-on-surface font-black uppercase tracking-widest text-[11px]">Institutional</p>
+<p class="text-on-surface-variant text-[10px] tracking-tight">v0.2.0 Alpha</p>
+</div>
+</div>
+</div>
+<nav class="space-y-1">
+<a class="text-on-surface-variant flex items-center gap-3 px-6 py-3 hover:bg-white/5 hover:text-on-surface transition-all duration-150" href="#">
+<span class="material-symbols-outlined">query_stats</span>
+<span class="font-medium text-[13px] tracking-wide">Trading Chart</span>
+</a>
+<a class="text-on-surface-variant flex items-center gap-3 px-6 py-3 hover:bg-white/5 hover:text-on-surface transition-all duration-150" href="#">
+<span class="material-symbols-outlined">auto_awesome</span>
+<span class="font-medium text-[13px] tracking-wide">Alpha Signals</span>
+</a>
+<!-- Active State Logic: Liquidity Map -->
+<a class="text-on-surface border-l-2 border-primary bg-white/5 flex items-center gap-3 px-6 py-3 transition-all duration-150" href="#">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">waves</span>
+<span class="font-medium text-[13px] tracking-wide">Liquidity Map</span>
+</a>
+<a class="text-on-surface-variant flex items-center gap-3 px-6 py-3 hover:bg-white/5 hover:text-on-surface transition-all duration-150" href="#">
+<span class="material-symbols-outlined">menu_book</span>
+<span class="font-medium text-[13px] tracking-wide">Research</span>
+</a>
+<a class="text-on-surface-variant flex items-center gap-3 px-6 py-3 hover:bg-white/5 hover:text-on-surface transition-all duration-150" href="#">
+<span class="material-symbols-outlined">reorder</span>
+<span class="font-medium text-[13px] tracking-wide">Order Flow</span>
+</a>
+<a class="text-on-surface-variant flex items-center gap-3 px-6 py-3 hover:bg-white/5 hover:text-on-surface transition-all duration-150" href="#">
+<span class="material-symbols-outlined">notifications_active</span>
+<span class="font-medium text-[13px] tracking-wide">Alerts &amp; News</span>
+</a>
+</nav>
+</div>
+<div class="p-6 space-y-4">
+<button class="w-full bg-primary py-3 text-on-primary text-[11px] font-black uppercase tracking-widest shadow-lg shadow-primary/10 active:scale-[0.98] transition-transform">
+                Execute Order
+            </button>
+<div class="pt-4 border-t border-white/5 space-y-1">
+<a class="text-on-surface-variant flex items-center gap-3 py-2 hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+<span class="text-[12px]">Settings</span>
+</a>
+<a class="text-on-surface-variant flex items-center gap-3 py-2 hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">help_center</span>
+<span class="text-[12px]">Support</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="md:ml-64 mt-14 h-[calc(100vh-3.5rem)] p-4 lg:p-8 bg-surface overflow-y-auto custom-scrollbar">
+<!-- Header & Stats -->
+<header class="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 mb-8">
+<div class="space-y-1">
+<p class="text-on-surface-variant text-[10px] font-bold uppercase tracking-[0.2em]">Market Intelligence</p>
+<h1 class="text-4xl font-extrabold tracking-tighter text-on-surface leading-none">Liquidity Map</h1>
+<p class="text-on-surface-variant text-sm font-medium">BTC/USDT Persistent Depth Heatmap (24H Aggregate)</p>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full lg:w-auto">
+<div class="bg-surface-container-low p-4 border-l border-primary/20 silver-glow">
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Max Concentration</p>
+<p class="text-xl font-bold tracking-tighter">$68.4K</p>
+<div class="h-1 w-full bg-surface-container-high mt-2 overflow-hidden">
+<div class="h-full bg-primary w-[85%]"></div>
+</div>
+</div>
+<div class="bg-surface-container-low p-4 border-l border-error/20">
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Liq. Zone Risk</p>
+<p class="text-xl font-bold tracking-tighter text-error">CRITICAL</p>
+<div class="h-1 w-full bg-surface-container-high mt-2 overflow-hidden">
+<div class="h-full bg-error w-[92%]"></div>
+</div>
+</div>
+<div class="bg-surface-container-low p-4 border-l border-primary/20">
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Volatility Index</p>
+<p class="text-xl font-bold tracking-tighter">4.21</p>
+<div class="h-1 w-full bg-surface-container-high mt-2 overflow-hidden">
+<div class="h-full bg-on-surface-variant w-[45%]"></div>
+</div>
+</div>
+<div class="bg-surface-container-low p-4 border-l border-primary/20">
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">Refresh Latency</p>
+<p class="text-xl font-bold tracking-tighter">14ms</p>
+<div class="flex gap-1 mt-2">
+<div class="w-1 h-3 bg-primary"></div>
+<div class="w-1 h-3 bg-primary"></div>
+<div class="w-1 h-3 bg-primary"></div>
+<div class="w-1 h-3 bg-white/10"></div>
+</div>
+</div>
+</div>
+</header>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-4">
+<!-- Liquidity Heatmap Main Panel -->
+<section class="col-span-12 lg:col-span-9 bg-surface-container-low border border-white/5 relative h-[600px] overflow-hidden group">
+<div class="absolute inset-0 heatmap-grid opacity-30"></div>
+<!-- Axis Labels -->
+<div class="absolute right-0 top-0 bottom-0 w-16 flex flex-col justify-between py-4 border-l border-white/5 bg-surface/40 backdrop-blur-md z-10">
+<span class="text-[10px] text-on-surface-variant text-right pr-2">72,000</span>
+<span class="text-[10px] text-on-surface-variant text-right pr-2">70,000</span>
+<span class="text-[10px] text-primary font-bold text-right pr-2">68,402</span>
+<span class="text-[10px] text-on-surface-variant text-right pr-2">66,000</span>
+<span class="text-[10px] text-on-surface-variant text-right pr-2">64,000</span>
+<span class="text-[10px] text-on-surface-variant text-right pr-2">62,000</span>
+</div>
+<!-- Simulated Heatmap Clusters -->
+<div class="absolute inset-0 p-8">
+<!-- High Liquidity Clusters (Whites/Silvers) -->
+<div class="absolute top-[10%] left-[20%] w-32 h-16 bg-white/20 blur-xl rounded-full opacity-60"></div>
+<div class="absolute top-[12%] left-[18%] w-48 h-8 bg-white/30 blur-2xl rounded-full"></div>
+<div class="absolute top-[45%] right-[10%] w-64 h-24 bg-primary/20 blur-3xl rounded-full opacity-40"></div>
+<div class="absolute top-[47%] right-[15%] w-40 h-12 bg-white/10 blur-xl rounded-full"></div>
+<div class="absolute bottom-[20%] left-[40%] w-[400px] h-12 bg-white/10 blur-2xl rounded-full opacity-50"></div>
+<!-- Liquidation Zones (Sharp Gradients) -->
+<div class="absolute top-[28%] left-0 right-0 h-px bg-error/40 shadow-[0_0_8px_#ee7d77]"></div>
+<div class="absolute top-[28%] left-10 px-2 bg-error text-[10px] text-on-error font-bold py-0.5">LIQUIDATION CLUSTER - $140M</div>
+<!-- Price Level Lines -->
+<div class="absolute top-[45%] left-0 right-16 h-[2px] bg-primary/60 border-t border-white/20 z-20"></div>
+<div class="absolute top-[45%] right-20 -translate-y-1/2 bg-surface border border-primary/50 px-2 py-1 flex items-center gap-2 z-30">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+<span class="text-xs font-bold text-on-surface tracking-tighter">LIVE: 68,402.12</span>
+</div>
+<!-- Dynamic Trend Line -->
+<svg class="absolute inset-0 w-full h-full opacity-80" preserveaspectratio="none" viewbox="0 0 1000 500">
+<path d="M0,250 L100,240 L200,280 L300,230 L400,220 L500,250 L600,245 L700,210 L800,225 L900,230 L1000,225" fill="none" stroke="rgba(198,198,199,0.8)" stroke-width="2"></path>
+</svg>
+</div>
+<!-- Control Overlay -->
+<div class="absolute bottom-4 left-4 flex items-center gap-2 z-30">
+<div class="bg-surface-container-high/80 backdrop-blur-md p-1 border border-white/10 flex gap-1">
+<button class="px-3 py-1 bg-primary text-on-primary text-[10px] font-bold uppercase">1H</button>
+<button class="px-3 py-1 text-on-surface-variant hover:text-on-surface text-[10px] font-bold uppercase">4H</button>
+<button class="px-3 py-1 text-on-surface-variant hover:text-on-surface text-[10px] font-bold uppercase">1D</button>
+</div>
+<div class="bg-surface-container-high/80 backdrop-blur-md p-1 border border-white/10 flex gap-2 px-3 items-center">
+<span class="text-[10px] text-on-surface-variant font-bold uppercase">Intensity</span>
+<div class="w-24 h-1 bg-white/10 relative">
+<div class="absolute inset-0 w-3/4 bg-primary"></div>
+</div>
+</div>
+</div>
+<!-- Legend Overlay -->
+<div class="absolute top-4 right-20 bg-surface-container-high/80 backdrop-blur-md p-3 border border-white/10 z-30">
+<p class="text-[9px] text-on-surface-variant uppercase tracking-widest mb-2 font-bold text-center">Density Key</p>
+<div class="flex items-center gap-2 h-2 w-32 bg-gradient-to-r from-surface-container-highest via-primary/50 to-white"></div>
+<div class="flex justify-between mt-1">
+<span class="text-[8px] text-on-surface-variant">Low</span>
+<span class="text-[8px] text-on-surface-variant">Institutional</span>
+<span class="text-[8px] text-on-surface-variant">Critical</span>
+</div>
+</div>
+</section>
+<!-- Order Depth & Whale Tracking -->
+<aside class="col-span-12 lg:col-span-3 space-y-4">
+<!-- Whale Activity -->
+<div class="bg-surface-container-low border border-white/5 p-5">
+<div class="flex justify-between items-center mb-6">
+<h3 class="text-xs font-black uppercase tracking-widest text-on-surface">Whale Monitor</h3>
+<span class="w-2 h-2 rounded-full bg-error animate-ping"></span>
+</div>
+<div class="space-y-4">
+<div class="flex justify-between items-start">
+<div>
+<p class="text-xs font-bold text-on-surface">582 BTC Sell Order</p>
+<p class="text-[10px] text-on-surface-variant">Binance • $68,900</p>
+</div>
+<span class="text-[10px] font-medium text-on-surface-variant">2m ago</span>
+</div>
+<div class="flex justify-between items-start">
+<div>
+<p class="text-xs font-bold text-on-surface">1.2K BTC Buy Wall</p>
+<p class="text-[10px] text-on-surface-variant">Coinbase • $64,200</p>
+</div>
+<span class="text-[10px] font-medium text-on-surface-variant">8m ago</span>
+</div>
+<div class="flex justify-between items-start">
+<div>
+<p class="text-xs font-bold text-on-surface">Active Iceberg Detected</p>
+<p class="text-[10px] text-on-surface-variant">Kraken • $67,500</p>
+</div>
+<span class="text-[10px] font-medium text-primary">LIVE</span>
+</div>
+</div>
+<button class="w-full mt-6 text-[10px] font-bold text-on-surface-variant hover:text-on-surface border border-white/10 py-2 transition-colors">VIEW ALL TRANSACTIONS</button>
+</div>
+<!-- Liquidation Heat List -->
+<div class="bg-surface-container-highest border border-white/5 p-5 relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-error"></div>
+<h3 class="text-xs font-black uppercase tracking-widest text-on-surface mb-4">Liquidation Risk Zones</h3>
+<div class="space-y-3">
+<div class="flex items-center justify-between">
+<span class="text-[11px] text-on-surface-variant">Primary Pool</span>
+<span class="text-[11px] font-mono text-on-surface">$69,250</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-low">
+<div class="h-full bg-error-dim w-[88%]"></div>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-[11px] text-on-surface-variant">Secondary Pool</span>
+<span class="text-[11px] font-mono text-on-surface">$63,100</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-low">
+<div class="h-full bg-primary/40 w-[42%]"></div>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-[11px] text-on-surface-variant">Leverage Cascade</span>
+<span class="text-[11px] font-mono text-on-surface">$58,800</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-low">
+<div class="h-full bg-primary/10 w-[15%]"></div>
+</div>
+</div>
+</div>
+<!-- Signal Feed -->
+<div class="bg-surface-container-low border border-white/5 p-5">
+<h3 class="text-xs font-black uppercase tracking-widest text-on-surface mb-4">Real-time Alpha</h3>
+<div class="bg-surface-container-lowest border border-white/5 p-3 flex gap-3 items-start">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">insights</span>
+<div>
+<p class="text-[10px] font-bold text-on-surface leading-tight">Short-Gamma squeeze probable if $68.5K breached.</p>
+<p class="text-[9px] text-on-surface-variant mt-1">Institutional Consensus: 74% Long</p>
+</div>
+</div>
+</div>
+</aside>
+</div>
+<!-- Order Flow & Tape (Dense Table Section) -->
+<section class="mt-8 mb-12">
+<div class="flex justify-between items-center mb-4">
+<h2 class="text-lg font-bold tracking-tighter text-on-surface">Persistent Depth Analytics</h2>
+<div class="flex gap-4">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest">Bids</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest">Asks</span>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-low border border-white/5 overflow-hidden">
+<table class="w-full text-left">
+<thead class="bg-surface-container-high border-b border-white/5">
+<tr>
+<th class="px-6 py-3 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Price Level</th>
+<th class="px-6 py-3 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Volume (24H)</th>
+<th class="px-6 py-3 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Concentration</th>
+<th class="px-6 py-3 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Impact Factor</th>
+<th class="px-6 py-3 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest text-right">Delta</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-white/5">
+<tr class="hover:bg-white/5 transition-colors group">
+<td class="px-6 py-4 font-mono text-sm text-on-surface">$69,420.00</td>
+<td class="px-6 py-4 text-sm text-on-surface-variant">1,242.82 BTC</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="w-24 h-1.5 bg-surface-container-highest">
+<div class="h-full bg-white/40 w-[85%]"></div>
+</div>
+<span class="text-[10px] font-bold text-on-surface">HIGH</span>
+</div>
+</td>
+<td class="px-6 py-4 text-sm text-on-surface-variant">0.824 bps</td>
+<td class="px-6 py-4 text-right">
+<span class="text-error text-xs font-bold">-0.12%</span>
+</td>
+</tr>
+<tr class="hover:bg-white/5 transition-colors group">
+<td class="px-6 py-4 font-mono text-sm text-on-surface">$68,500.00</td>
+<td class="px-6 py-4 text-sm text-on-surface-variant">3,120.45 BTC</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="w-24 h-1.5 bg-surface-container-highest">
+<div class="h-full bg-primary w-[95%]"></div>
+</div>
+<span class="text-[10px] font-bold text-primary">PEAK</span>
+</div>
+</td>
+<td class="px-6 py-4 text-sm text-on-surface-variant">1.450 bps</td>
+<td class="px-6 py-4 text-right">
+<span class="text-primary text-xs font-bold">+0.44%</span>
+</td>
+</tr>
+<tr class="hover:bg-white/5 transition-colors group">
+<td class="px-6 py-4 font-mono text-sm text-on-surface">$67,200.00</td>
+<td class="px-6 py-4 text-sm text-on-surface-variant">842.10 BTC</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="w-24 h-1.5 bg-surface-container-highest">
+<div class="h-full bg-white/20 w-[35%]"></div>
+</div>
+<span class="text-[10px] font-bold text-on-surface-variant">MID</span>
+</div>
+</td>
+<td class="px-6 py-4 text-sm text-on-surface-variant">0.412 bps</td>
+<td class="px-6 py-4 text-right">
+<span class="text-on-surface-variant text-xs font-bold">0.00%</span>
+</td>
+</tr>
+<tr class="hover:bg-white/5 transition-colors group">
+<td class="px-6 py-4 font-mono text-sm text-on-surface">$66,800.00</td>
+<td class="px-6 py-4 text-sm text-on-surface-variant">1,940.00 BTC</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="w-24 h-1.5 bg-surface-container-highest">
+<div class="h-full bg-white/40 w-[60%]"></div>
+</div>
+<span class="text-[10px] font-bold text-on-surface">HIGH</span>
+</div>
+</td>
+<td class="px-6 py-4 text-sm text-on-surface-variant">0.672 bps</td>
+<td class="px-6 py-4 text-right">
+<span class="text-primary text-xs font-bold">+0.18%</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</main>
+<!-- Floating Action Button Suppression (As per rules for Detail/Technical views) -->
+</body></html>

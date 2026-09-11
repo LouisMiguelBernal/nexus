@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#3e4040",
+                        "on-secondary-container": "#bfbfbf",
+                        "on-tertiary-fixed": "#4a4949",
+                        "error": "#ee7d77",
+                        "on-primary-fixed-variant": "#5a5c5c",
+                        "secondary-fixed": "#e3e2e2",
+                        "surface-container-lowest": "#000000",
+                        "tertiary-dim": "#edeaea",
+                        "on-tertiary": "#605f5e",
+                        "on-secondary-fixed": "#3e3f40",
+                        "on-tertiary-container": "#575656",
+                        "on-tertiary-fixed-variant": "#676666",
+                        "surface-container-high": "#1f2020",
+                        "surface-container-low": "#131313",
+                        "on-secondary": "#1f2021",
+                        "primary-fixed-dim": "#d4d4d4",
+                        "on-error-container": "#ff9993",
+                        "on-primary-container": "#d0d0d0",
+                        "surface-container-highest": "#252626",
+                        "secondary-container": "#3a3c3c",
+                        "outline": "#767575",
+                        "on-background": "#e7e5e4",
+                        "primary-dim": "#b8b9b9",
+                        "inverse-on-surface": "#565555",
+                        "primary": "#c6c6c7",
+                        "tertiary-fixed-dim": "#e8e5e4",
+                        "surface-container": "#191a1a",
+                        "surface-dim": "#0e0e0e",
+                        "tertiary-container": "#edeaea",
+                        "surface": "#0e0e0e",
+                        "error-dim": "#bb5551",
+                        "outline-variant": "#484848",
+                        "on-secondary-fixed-variant": "#5a5c5c",
+                        "error-container": "#7f2927",
+                        "inverse-primary": "#5e5f5f",
+                        "tertiary-fixed": "#f6f3f2",
+                        "secondary-fixed-dim": "#d4d4d4",
+                        "secondary": "#9d9e9e",
+                        "surface-tint": "#c6c6c7",
+                        "tertiary": "#fcf9f8",
+                        "on-surface": "#e7e5e4",
+                        "primary-container": "#454747",
+                        "surface-variant": "#252626",
+                        "on-primary": "#3f4041",
+                        "inverse-surface": "#fcf9f8",
+                        "surface-bright": "#2c2c2c",
+                        "primary-fixed": "#e2e2e2",
+                        "secondary-dim": "#9d9e9e",
+                        "on-error": "#490106",
+                        "background": "#0e0e0e",
+                        "on-surface-variant": "#acabaa"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #0e0e0e; color: #e7e5e4; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .glass-panel { backdrop-filter: blur(20px); }
+        .silver-glow-top { border-top: 1px solid rgba(198, 198, 199, 0.15); }
+    </style>
+</head>
+<body class="bg-surface overflow-hidden">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 flex items-center justify-between px-6 h-14 bg-surface/80 backdrop-blur-xl border-b border-white/5 shadow-2xl shadow-black/50">
+<div class="flex items-center gap-8">
+<span class="text-lg font-bold tracking-tighter text-on-surface uppercase">NEXUS v0.2.0</span>
+<div class="hidden md:flex items-center gap-6 text-[13px] font-medium tracking-tight">
+<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">BTC/USD</a>
+<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">ETH/USD</a>
+<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">SOL/USD</a>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex flex-col items-end">
+<span class="text-primary font-bold text-sm tracking-tight">$142,502.24</span>
+<span class="text-error text-[10px] font-bold">+2.4% Δ</span>
+</div>
+<div class="flex items-center gap-3">
+<button class="p-2 hover:bg-white/5 transition-all duration-200 text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined text-[20px]">monitoring</span>
+</button>
+<button class="p-2 hover:bg-white/5 transition-all duration-200 text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
+</button>
+<div class="w-8 h-8 overflow-hidden rounded-sm border border-white/10">
+<img alt="Executive User Profile" class="w-full h-full object-cover" data-alt="Professional executive portrait in dark suit with neutral background and soft dramatic side lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDNaPrHHxWSGt3OKwDAfnHNDEEoyRUy9vNjxWPr8i1zLX2LXucKfybnGMnr5XpoP8u43tnP3qgsDhP-f7AFkvKmGBxu4z0ZjTZjMZQGYePoPdKR_XsZgxATLHk3UDpQpPMY251tmzDrsocaXKGePoHiR1QOhY2Z8kJrKhbl5bWpM6QvJ4dpkr-U0udL4kgA8hbxNGzP2k7F1BVuFs8kpSMNy8dfh6UKbwn2yHBa3v5YDG-EL3d5qjZn-upfquocVu0277GCCr_cnXyv"/>
+</div>
+</div>
+</div>
+</nav>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-14 h-[calc(100vh-3.5rem)] w-64 bg-surface-container-low border-r border-white/5 flex flex-col justify-between z-40">
+<div class="flex flex-col py-4">
+<div class="px-6 mb-8">
+<span class="text-on-surface font-black uppercase tracking-widest text-xs block">Institutional</span>
+<span class="text-on-surface-variant text-[10px] uppercase tracking-tighter">v0.2.0 Alpha</span>
+</div>
+<div class="flex flex-col gap-1">
+<a class="text-on-surface-variant flex items-center gap-3 px-6 py-3 hover:bg-white/5 hover:text-on-surface transition-all duration-150 ease-in-out font-medium text-[13px] tracking-wide" href="#">
+<span class="material-symbols-outlined">query_stats</span>
+<span>Trading Chart</span>
+</a>
+<a class="text-on-surface-variant flex items-center gap-3 px-6 py-3 hover:bg-white/5 hover:text-on-surface transition-all duration-150 ease-in-out font-medium text-[13px] tracking-wide" href="#">
+<span class="material-symbols-outlined">auto_awesome</span>
+<span>Alpha Signals</span>
+</a>
+<a class="text-on-surface-variant flex items-center gap-3 px-6 py-3 hover:bg-white/5 hover:text-on-surface transition-all duration-150 ease-in-out font-medium text-[13px] tracking-wide" href="#">
+<span class="material-symbols-outlined">waves</span>
+<span>Liquidity Map</span>
+</a>
+<a class="text-on-surface-variant flex items-center gap-3 px-6 py-3 hover:bg-white/5 hover:text-on-surface transition-all duration-150 ease-in-out font-medium text-[13px] tracking-wide" href="#">
+<span class="material-symbols-outlined">menu_book</span>
+<span>Research</span>
+</a>
+<a class="text-on-surface-variant flex items-center gap-3 px-6 py-3 hover:bg-white/5 hover:text-on-surface transition-all duration-150 ease-in-out font-medium text-[13px] tracking-wide" href="#">
+<span class="material-symbols-outlined">reorder</span>
+<span>Order Flow</span>
+</a>
+<a class="text-on-surface border-l-2 border-primary bg-white/5 flex items-center gap-3 px-6 py-3 font-medium text-[13px] tracking-wide" href="#">
+<span class="material-symbols-outlined">notifications_active</span>
+<span>Alerts &amp; News</span>
+</a>
+</div>
+</div>
+<div class="flex flex-col py-6">
+<button class="mx-6 mb-6 bg-primary text-on-primary font-bold text-xs uppercase py-3 rounded-sm tracking-widest hover:bg-primary-dim transition-colors">
+                Execute Order
+            </button>
+<div class="flex flex-col gap-1">
+<a class="text-on-surface-variant flex items-center gap-3 px-6 py-2 hover:bg-white/5 hover:text-on-surface text-[12px]" href="#">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+<span>Settings</span>
+</a>
+<a class="text-on-surface-variant flex items-center gap-3 px-6 py-2 hover:bg-white/5 hover:text-on-surface text-[12px]" href="#">
+<span class="material-symbols-outlined text-[18px]">help_center</span>
+<span>Support</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 mt-14 h-[calc(100vh-3.5rem)] flex overflow-hidden">
+<!-- Left: Chronological Alerts Feed -->
+<section class="flex-1 border-r border-white/5 flex flex-col bg-surface-container-low">
+<header class="h-16 px-6 flex items-center justify-between border-b border-white/5 bg-surface-container">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">notifications_active</span>
+<h2 class="text-sm font-bold uppercase tracking-widest text-on-surface">Live Alerts Feed</h2>
+</div>
+<div class="flex gap-2">
+<button class="px-3 py-1 bg-surface-container-highest border border-white/5 text-[10px] font-bold uppercase tracking-tighter text-on-surface-variant">All Triggers</button>
+<button class="px-3 py-1 hover:bg-white/5 text-[10px] font-bold uppercase tracking-tighter text-on-surface-variant">High Priority</button>
+</div>
+</header>
+<div class="flex-1 overflow-y-auto p-4 space-y-2">
+<!-- Alert Item 1 -->
+<div class="group p-4 bg-surface-container-lowest hover:bg-surface-container-highest transition-all duration-150 silver-glow-top">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 bg-error/10 text-error text-[9px] font-bold uppercase tracking-tighter rounded-sm">Price Action</span>
+<span class="text-on-surface font-bold text-[13px] tracking-tight">BTC Breakout</span>
+</div>
+<span class="text-[10px] text-on-surface-variant font-medium">12:04:32</span>
+</div>
+<p class="text-[12px] text-on-surface-variant leading-relaxed">
+                        BTC/USD surpassed resistance level at <span class="text-on-surface">$64,500.00</span>. Heavy volume confirmed on Binance and Coinbase.
+                    </p>
+<div class="mt-3 flex items-center gap-4">
+<div class="flex items-center gap-1 text-[10px] font-bold text-primary cursor-pointer hover:underline">
+<span class="material-symbols-outlined text-[14px]">query_stats</span> View Chart
+                        </div>
+<div class="flex items-center gap-1 text-[10px] font-bold text-on-surface-variant cursor-pointer hover:text-on-surface">
+<span class="material-symbols-outlined text-[14px]">done_all</span> Dismiss
+                        </div>
+</div>
+</div>
+<!-- Alert Item 2 -->
+<div class="p-4 bg-surface-container border border-transparent hover:border-white/5 transition-all">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 bg-primary/10 text-primary text-[9px] font-bold uppercase tracking-tighter rounded-sm">Signal Hit</span>
+<span class="text-on-surface font-bold text-[13px] tracking-tight">MACD Crossover (4H)</span>
+</div>
+<span class="text-[10px] text-on-surface-variant font-medium">11:58:15</span>
+</div>
+<p class="text-[12px] text-on-surface-variant leading-relaxed">
+                        Bullish crossover detected on <span class="text-on-surface">ETH/USD</span>. Signal strength: 8.4/10. Momentum shifting.
+                    </p>
+</div>
+<!-- Alert Item 3 -->
+<div class="p-4 bg-surface-container-lowest border border-white/5 opacity-80">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 bg-secondary-container text-on-secondary-container text-[9px] font-bold uppercase tracking-tighter rounded-sm">Liquidity</span>
+<span class="text-on-surface font-bold text-[13px] tracking-tight">Large Whale Transfer</span>
+</div>
+<span class="text-[10px] text-on-surface-variant font-medium">11:42:01</span>
+</div>
+<p class="text-[12px] text-on-surface-variant leading-relaxed">
+                        Unknown wallet moved <span class="text-on-surface">4,200 BTC</span> ($270M) to Coinbase. Potential sell pressure incoming.
+                    </p>
+</div>
+<!-- Alert Item 4 -->
+<div class="p-4 bg-surface-container-lowest hover:bg-surface-container-highest transition-all duration-150 silver-glow-top">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<span class="px-1.5 py-0.5 bg-error/10 text-error text-[9px] font-bold uppercase tracking-tighter rounded-sm">Execution</span>
+<span class="text-on-surface font-bold text-[13px] tracking-tight">Stop-Loss Triggered</span>
+</div>
+<span class="text-[10px] text-on-surface-variant font-medium">11:15:00</span>
+</div>
+<p class="text-[12px] text-on-surface-variant leading-relaxed">
+                        Automated exit completed for <span class="text-on-surface">SOL/USD</span> at $142.05. Position closed with +1.2% net gain.
+                    </p>
+</div>
+</div>
+</section>
+<!-- Right: News Feed -->
+<section class="w-[450px] flex flex-col bg-surface">
+<header class="h-16 px-6 flex items-center justify-between border-b border-white/5">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant">article</span>
+<h2 class="text-sm font-bold uppercase tracking-widest text-on-surface">Intelligence</h2>
+</div>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-[18px] text-on-surface-variant">search</span>
+<input class="bg-surface-container-lowest border border-white/10 text-[11px] pl-8 pr-4 py-1.5 w-40 focus:outline-none focus:border-primary transition-colors" placeholder="Search News" type="text"/>
+</div>
+</header>
+<!-- News Categories -->
+<div class="px-6 py-4 flex gap-4 border-b border-white/5 bg-surface-container-low overflow-x-auto no-scrollbar">
+<button class="text-[11px] font-bold text-on-surface border-b-2 border-primary pb-1 flex-shrink-0 uppercase tracking-tighter">Breaking</button>
+<button class="text-[11px] font-bold text-on-surface-variant hover:text-on-surface pb-1 flex-shrink-0 uppercase tracking-tighter transition-colors">Macro</button>
+<button class="text-[11px] font-bold text-on-surface-variant hover:text-on-surface pb-1 flex-shrink-0 uppercase tracking-tighter transition-colors">Crypto</button>
+<button class="text-[11px] font-bold text-on-surface-variant hover:text-on-surface pb-1 flex-shrink-0 uppercase tracking-tighter transition-colors">Regulation</button>
+<button class="text-[11px] font-bold text-on-surface-variant hover:text-on-surface pb-1 flex-shrink-0 uppercase tracking-tighter transition-colors">Altcoins</button>
+</div>
+<div class="flex-1 overflow-y-auto px-6 py-4 space-y-8">
+<!-- News Article 1 -->
+<article class="flex flex-col gap-3 group cursor-pointer">
+<div class="relative w-full h-40 overflow-hidden rounded-sm grayscale group-hover:grayscale-0 transition-all duration-500">
+<img alt="Breaking News Visual" class="w-full h-full object-cover" data-alt="Modern geometric sculpture made of glass and steel reflecting dark office environment with blue and silver highlights" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5UO3C-UkBfl_wpW_qcnIpd7f1mTE0awB3jZGL3U-KF7SvnuOYTz6a7FS6aRcGtVwuZwrNuvVNisfWRcu6qFUO6Fwe_GsshfYIPVipvNxCqpc68zZ3_ZXExg7Z6TJJe9PyIR-Dzt7feJKqVUTdR3u70YOYX_qszL_5JcxreSSQOrhj_AHIf7XHikNb1Yn2NFAK7O0UbYWm9IYJ_7cOyup5flJ3UNZNDWsHIIkEhW7XVdYTShyvwGO8rfHAnCFIaEv-edPTMn6nLxcC"/>
+<div class="absolute top-2 left-2 bg-error text-on-error font-black text-[9px] px-2 py-0.5 tracking-widest uppercase">Flash</div>
+</div>
+<div class="space-y-1">
+<h3 class="text-on-surface text-lg font-bold leading-tight tracking-tight group-hover:text-primary transition-colors">
+                            Fed Chairman Signals Potential Rate Hold Amid Core Inflation Volatility
+                        </h3>
+<div class="flex items-center gap-3 text-[10px] font-medium text-on-surface-variant">
+<span>Bloomberg Intel</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span>4m ago</span>
+</div>
+</div>
+</article>
+<!-- News Article 2 -->
+<article class="flex gap-4 group cursor-pointer">
+<div class="flex-1 space-y-1">
+<div class="text-primary font-bold text-[10px] uppercase tracking-widest mb-1">Regulatory Update</div>
+<h3 class="text-on-surface text-sm font-bold leading-snug tracking-tight group-hover:text-primary transition-colors">
+                            SEC Internal Memo Suggests New Framework for Spot ETF Surveillance Sharing
+                        </h3>
+<div class="text-[10px] text-on-surface-variant font-medium">Reuters • 18m ago</div>
+</div>
+<div class="w-20 h-20 bg-surface-container-highest rounded-sm overflow-hidden flex-shrink-0 grayscale">
+<img alt="SEC News Thumbnail" class="w-full h-full object-cover" data-alt="Abstract macro shot of United States currency notes with extreme shallow depth of field and dramatic shadows" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDeITwpdc4n9Hq-ToMbvLsWfw1IH8UJVBfvp7VRwPDA9XDaJxCCzXYk9pGh_eKDFMn3GK4uZUeYSYneFORpNdueVZquKjsxkr7Q2XN8pVYKVzJbRQB2tyXhQVT6kWi5PmLxPvFOt0t_UUdpFn1eywgOXjtBaOLBGMAbbyGGmG1WihovdX_YNUF9B6tCrpjP4EEmVnYj7Sk83DX3IAv1md1a34HWrJeqLZqyENMh3BVEDznaaB5PITzFW0q9K6OrOk_55hREv5aWzcqp"/>
+</div>
+</article>
+<!-- News Article 3 -->
+<article class="flex gap-4 group cursor-pointer">
+<div class="flex-1 space-y-1">
+<div class="text-primary font-bold text-[10px] uppercase tracking-widest mb-1">On-Chain Alpha</div>
+<h3 class="text-on-surface text-sm font-bold leading-snug tracking-tight group-hover:text-primary transition-colors">
+                            L2 Transaction Volume Surpasses Ethereum Mainnet for Record Seventh Week
+                        </h3>
+<div class="text-[10px] text-on-surface-variant font-medium">The Block • 42m ago</div>
+</div>
+<div class="w-20 h-20 bg-surface-container-highest rounded-sm overflow-hidden flex-shrink-0 grayscale">
+<img alt="On-Chain Alpha Thumbnail" class="w-full h-full object-cover" data-alt="Close up of a computer screen showing complex lines of blue and white code on a deep black background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjM8ktV4EfYcZFvdAjx99WKh08nCud5oOFJophSmATfm_cdWCRyAamkbRINJpnvY9CcopgfNm4qZ2pZ9A2S71pNYiKQtt2jTZQrCdGaKnrPI_m1YwrQipHL3t5csjRl1BSi76AjK9QUlftkMj9_ya_fOb9kylJoNq66FetosFtP6K-yYH_hs7_GNzGtJswhAaZJg4BVHQ0lvjUx6CnYQIlZEKEdWqez1jLqr7iOieICvjKPeocQ59rGZ8_578nt_dhQKTf2gmklJAA"/>
+</div>
+</article>
+<!-- News Article 4 -->
+<article class="flex flex-col gap-2 group cursor-pointer border-t border-white/5 pt-4">
+<h3 class="text-on-surface text-md font-bold leading-tight group-hover:text-primary transition-colors">
+                        Japan's Largest Bank Announces Partnership with Major Stablecoin Provider for Cross-Border Settlement
+                    </h3>
+<p class="text-[11px] text-on-surface-variant leading-relaxed">
+                        Mitsubishi UFJ Financial Group (MUFG) has entered a strategic alliance to integrate JPY-backed stablecoins into their institutional clearing houses...
+                    </p>
+<div class="text-[10px] text-on-surface-variant font-medium uppercase tracking-tighter">Nikkei Asia • 1h ago</div>
+</article>
+</div>
+</section>
+</main>
+<!-- Contextual FAB (Hidden on this transactional/focused screen as per instructions, but placeholder added for system logic check if it were global) -->
+<!-- Suppression logic: Screen is 'Alerts & News' which is Task-Focused/Details -->
+</body></html>

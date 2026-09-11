@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>NEXUS v0.2.0 | Trading Terminal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed": "#3e4040",
+                    "on-secondary-container": "#bfbfbf",
+                    "on-tertiary-fixed": "#4a4949",
+                    "error": "#ee7d77",
+                    "on-primary-fixed-variant": "#5a5c5c",
+                    "secondary-fixed": "#e3e2e2",
+                    "surface-container-lowest": "#000000",
+                    "tertiary-dim": "#edeaea",
+                    "on-tertiary": "#605f5e",
+                    "on-secondary-fixed": "#3e3f40",
+                    "on-tertiary-container": "#575656",
+                    "on-tertiary-fixed-variant": "#676666",
+                    "surface-container-high": "#1f2020",
+                    "surface-container-low": "#131313",
+                    "on-secondary": "#1f2021",
+                    "primary-fixed-dim": "#d4d4d4",
+                    "on-error-container": "#ff9993",
+                    "on-primary-container": "#d0d0d0",
+                    "surface-container-highest": "#252626",
+                    "secondary-container": "#3a3c3c",
+                    "outline": "#767575",
+                    "on-background": "#e7e5e4",
+                    "primary-dim": "#b8b9b9",
+                    "inverse-on-surface": "#565555",
+                    "primary": "#c6c6c7",
+                    "tertiary-fixed-dim": "#e8e5e4",
+                    "surface-container": "#191a1a",
+                    "surface-dim": "#0e0e0e",
+                    "tertiary-container": "#edeaea",
+                    "surface": "#0e0e0e",
+                    "error-dim": "#bb5551",
+                    "outline-variant": "#484848",
+                    "on-secondary-fixed-variant": "#5a5c5c",
+                    "error-container": "#7f2927",
+                    "inverse-primary": "#5e5f5f",
+                    "tertiary-fixed": "#f6f3f2",
+                    "secondary-fixed-dim": "#d4d4d4",
+                    "secondary": "#9d9e9e",
+                    "surface-tint": "#c6c6c7",
+                    "tertiary": "#fcf9f8",
+                    "on-surface": "#e7e5e4",
+                    "primary-container": "#454747",
+                    "surface-variant": "#252626",
+                    "on-primary": "#3f4041",
+                    "inverse-surface": "#fcf9f8",
+                    "surface-bright": "#2c2c2c",
+                    "primary-fixed": "#e2e2e2",
+                    "secondary-dim": "#9d9e9e",
+                    "on-error": "#490106",
+                    "background": "#0e0e0e",
+                    "on-surface-variant": "#acabaa"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #0e0e0e; color: #e7e5e4; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .glass-panel { backdrop-filter: blur(20px); }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .silver-glow { box-shadow: inset 0 1px 0 0 rgba(198, 198, 199, 0.1); }
+    </style>
+</head>
+<body class="bg-surface overflow-hidden">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-50 flex items-center justify-between px-6 h-14 bg-surface/80 backdrop-blur-xl border-b border-white/5 shadow-2xl shadow-black/50">
+<div class="flex items-center gap-8">
+<span class="text-lg font-bold tracking-tighter text-on-surface uppercase">NEXUS v0.2.0</span>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-primary font-semibold border-b-2 border-primary pb-1 font-medium tracking-tight" href="#">BTC/USD</a>
+<a class="text-on-surface-variant hover:text-on-surface transition-colors font-medium tracking-tight" href="#">ETH/USD</a>
+<a class="text-on-surface-variant hover:text-on-surface transition-colors font-medium tracking-tight" href="#">SOL/USD</a>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex flex-col items-end">
+<span class="text-primary font-bold text-sm tracking-tight">$142,502.24</span>
+<span class="text-on-error-container text-[10px] font-bold">+2.4% Δ</span>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant">
+<button class="hover:bg-white/5 p-1.5 transition-all duration-200"><span class="material-symbols-outlined text-[20px]">monitoring</span></button>
+<button class="hover:bg-white/5 p-1.5 transition-all duration-200"><span class="material-symbols-outlined text-[20px]">account_balance_wallet</span></button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-white/10">
+<img alt="Executive User Profile" data-alt="Close up portrait of a professional executive in sharp focus with dramatic lighting and dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBmspRrn-eWdjkWP1iyV553yNR_QOON4gxvKi8L0uV2X62dZj0jTVITtBEL7hN1Ou0xyl7VSYnyI4g9mmLBoN-blKbCXXimNRWXGzl3UESEXpdh8or6OrZX6HUa0yqCTDldCnTwd195_HODOoge3Hsw91EROuJiQNIIGyrqPUyv2-GLO1oPsZos3TpZs4cPyNejPe24Voa-U7i3lFnRJNMtv0gx8Dvo5oc_lYCtaVBAL8L0iZxdRP-JpQUJ5ZFlH-k30-2yZnkBcG5s"/>
+</div>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-14 h-[calc(100vh-3.5rem)] w-64 bg-surface-container-low border-r border-white/5 flex flex-col justify-between z-40">
+<div class="py-4">
+<div class="px-6 mb-8">
+<h2 class="text-on-surface font-black uppercase tracking-widest text-xs">Institutional</h2>
+<p class="text-[10px] text-on-surface-variant opacity-60">v0.2.0 Alpha</p>
+</div>
+<nav class="space-y-1">
+<a class="text-on-surface border-l-2 border-primary bg-white/5 flex items-center gap-3 px-4 py-3 font-medium text-[13px] tracking-wide Inter" href="#">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">query_stats</span>
+                    Trading Chart
+                </a>
+<a class="text-on-surface-variant flex items-center gap-3 px-4 py-3 hover:bg-white/5 hover:text-on-surface transition-all duration-150 ease-in-out font-medium text-[13px] tracking-wide Inter" href="#">
+<span class="material-symbols-outlined">auto_awesome</span>
+                    Alpha Signals
+                </a>
+<a class="text-on-surface-variant flex items-center gap-3 px-4 py-3 hover:bg-white/5 hover:text-on-surface transition-all duration-150 ease-in-out font-medium text-[13px] tracking-wide Inter" href="#">
+<span class="material-symbols-outlined">waves</span>
+                    Liquidity Map
+                </a>
+<a class="text-on-surface-variant flex items-center gap-3 px-4 py-3 hover:bg-white/5 hover:text-on-surface transition-all duration-150 ease-in-out font-medium text-[13px] tracking-wide Inter" href="#">
+<span class="material-symbols-outlined">menu_book</span>
+                    Research
+                </a>
+<a class="text-on-surface-variant flex items-center gap-3 px-4 py-3 hover:bg-white/5 hover:text-on-surface transition-all duration-150 ease-in-out font-medium text-[13px] tracking-wide Inter" href="#">
+<span class="material-symbols-outlined">reorder</span>
+                    Order Flow
+                </a>
+<a class="text-on-surface-variant flex items-center gap-3 px-4 py-3 hover:bg-white/5 hover:text-on-surface transition-all duration-150 ease-in-out font-medium text-[13px] tracking-wide Inter" href="#">
+<span class="material-symbols-outlined">notifications_active</span>
+                    Alerts &amp; News
+                </a>
+</nav>
+</div>
+<div class="p-4 border-t border-white/5">
+<button class="w-full bg-primary text-on-primary font-bold py-2.5 rounded-sm text-xs uppercase tracking-tighter silver-glow transition-all active:scale-[0.98]">Execute Order</button>
+<div class="mt-4 flex flex-col gap-1">
+<a class="text-on-surface-variant flex items-center gap-3 px-2 py-2 hover:text-on-surface text-[12px]" href="#">
+<span class="material-symbols-outlined text-[18px]">settings</span> Settings
+                </a>
+<a class="text-on-surface-variant flex items-center gap-3 px-2 py-2 hover:text-on-surface text-[12px]" href="#">
+<span class="material-symbols-outlined text-[18px]">help_center</span> Support
+                </a>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 mt-14 h-[calc(100vh-3.5rem)] flex flex-col overflow-hidden">
+<!-- Dashboard Workspace -->
+<div class="flex-1 flex overflow-hidden">
+<!-- Center: Trading Chart -->
+<section class="flex-1 bg-surface flex flex-col min-w-0">
+<!-- Chart Header/Toolbar -->
+<div class="h-10 border-b border-white/5 flex items-center justify-between px-4 bg-surface-container-low/30">
+<div class="flex items-center gap-4 text-xs font-medium text-on-surface-variant">
+<span class="text-on-surface">BTC/USD <span class="text-primary opacity-60">Binance</span></span>
+<div class="flex gap-2 bg-surface-container-lowest px-2 py-1 rounded-sm border border-white/5">
+<button class="text-primary">1m</button>
+<button>5m</button>
+<button class="bg-primary/10 px-1 text-on-surface">15m</button>
+<button>1h</button>
+<button>4h</button>
+<button>1D</button>
+</div>
+<div class="h-4 w-[1px] bg-white/10 mx-1"></div>
+<button class="flex items-center gap-1 hover:text-on-surface"><span class="material-symbols-outlined text-[14px]">show_chart</span> Indicators</button>
+</div>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant hover:text-on-surface cursor-pointer">photo_camera</span>
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant hover:text-on-surface cursor-pointer">fullscreen</span>
+</div>
+</div>
+<!-- Actual Chart Canvas -->
+<div class="flex-1 relative overflow-hidden flex flex-col bg-surface-container-lowest">
+<!-- Grid Background Emulation -->
+<div class="absolute inset-0 opacity-10" style="background-image: linear-gradient(#acabaa 1px, transparent 1px), linear-gradient(90deg, #acabaa 1px, transparent 1px); background-size: 60px 40px;"></div>
+<!-- Main Chart Area (Simulated visual density) -->
+<div class="flex-1 w-full relative z-10 p-6 flex flex-col justify-between">
+<!-- Upper: Price and Volatility Sparks -->
+<div class="flex justify-between items-start">
+<div class="space-y-1">
+<h1 class="text-4xl font-black tracking-tighter text-on-surface leading-none">67,241.90</h1>
+<p class="text-xs text-on-error-container font-mono tracking-widest">+1,402.10 (2.41%)</p>
+</div>
+<div class="flex gap-8">
+<div class="text-right">
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest">24h High</p>
+<p class="text-sm font-bold">69,420.00</p>
+</div>
+<div class="text-right">
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest">24h Low</p>
+<p class="text-sm font-bold">64,112.50</p>
+</div>
+</div>
+</div>
+<!-- Candlestick Simulation Overlay -->
+<div class="flex-1 flex items-end justify-between px-10 pb-20 gap-1 opacity-90">
+<!-- High density simulated candlesticks -->
+<div class="flex-1 flex items-end gap-[2px]">
+<div class="w-1 h-32 bg-error/30 relative"><div class="absolute -top-4 left-1/2 -translate-x-1/2 w-[1px] h-40 bg-error/40"></div></div>
+<div class="w-1 h-36 bg-error/50 relative"></div>
+<div class="w-1 h-28 bg-error/40"></div>
+<div class="w-1 h-40 bg-primary/40 relative"><div class="absolute -top-8 left-1/2 -translate-x-1/2 w-[1px] h-56 bg-primary/40"></div></div>
+<div class="w-1 h-48 bg-primary/60"></div>
+<div class="w-1 h-52 bg-primary/80"></div>
+<div class="w-1 h-44 bg-error/40"></div>
+<div class="w-1 h-38 bg-error/60"></div>
+<div class="w-1 h-60 bg-primary/40"></div>
+<div class="w-1 h-64 bg-primary/70"></div>
+<div class="w-1 h-72 bg-primary shadow-[0_0_12px_rgba(198,198,199,0.3)]"></div>
+<div class="w-1 h-68 bg-primary/60"></div>
+<div class="w-1 h-56 bg-error/40"></div>
+<div class="w-1 h-48 bg-error/60"></div>
+<div class="w-1 h-40 bg-primary/40"></div>
+<div class="w-1 h-44 bg-primary/60"></div>
+<div class="w-1 h-50 bg-primary/80"></div>
+<div class="w-1 h-60 bg-primary/90"></div>
+<div class="w-1 h-58 bg-error/40"></div>
+<div class="w-1 h-64 bg-primary/70"></div>
+<div class="w-1 h-75 bg-primary shadow-[0_0_15px_rgba(198,198,199,0.4)]"></div>
+<div class="w-1 h-80 bg-primary shadow-[0_0_15px_rgba(198,198,199,0.4)]"></div>
+<div class="w-1 h-72 bg-error/40"></div>
+<div class="w-1 h-64 bg-error/60"></div>
+</div>
+</div>
+<!-- Indicator: Volume -->
+<div class="h-24 w-full flex items-end gap-[1px] opacity-20 border-t border-white/5 pt-2">
+<div class="flex-1 bg-primary/40 h-[10%]"></div><div class="flex-1 bg-error/40 h-[20%]"></div><div class="flex-1 bg-primary/40 h-[15%]"></div><div class="flex-1 bg-primary/40 h-[45%]"></div><div class="flex-1 bg-primary/40 h-[60%]"></div><div class="flex-1 bg-primary/40 h-[80%]"></div><div class="flex-1 bg-error/40 h-[70%]"></div><div class="flex-1 bg-error/40 h-[40%]"></div><div class="flex-1 bg-primary/40 h-[90%]"></div><div class="flex-1 bg-primary/40 h-[100%]"></div><div class="flex-1 bg-error/40 h-[85%]"></div><div class="flex-1 bg-primary/40 h-[60%]"></div><div class="flex-1 bg-error/40 h-[40%]"></div><div class="flex-1 bg-primary/40 h-[75%]"></div><div class="flex-1 bg-primary/40 h-[85%]"></div><div class="flex-1 bg-primary/40 h-[95%]"></div><div class="flex-1 bg-error/40 h-[50%]"></div><div class="flex-1 bg-primary/40 h-[60%]"></div><div class="flex-1 bg-primary/40 h-[100%]"></div><div class="flex-1 bg-error/40 h-[80%]"></div>
+</div>
+</div>
+<!-- Side Price Scale -->
+<div class="absolute right-0 top-0 bottom-0 w-12 border-l border-white/5 bg-surface-container-low flex flex-col justify-between py-10 items-center text-[10px] text-on-surface-variant font-mono z-20">
+<span>70,000</span><span>69,000</span><span>68,000</span><span class="bg-primary text-on-primary px-1 font-bold">67,241</span><span>66,000</span><span>65,000</span><span>64,000</span>
+</div>
+</div>
+<!-- Bottom Indicators: RSI / MACD -->
+<div class="h-32 border-t border-white/5 bg-surface-container-low/50 p-4 flex gap-4">
+<div class="flex-1 border border-white/5 rounded-sm p-3 relative overflow-hidden bg-surface-container-lowest">
+<div class="flex justify-between text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">
+<span>RSI (14) <span class="text-primary ml-2">64.21</span></span>
+<span class="material-symbols-outlined text-[14px]">settings</span>
+</div>
+<div class="h-14 w-full opacity-50 relative">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 100 20">
+<path d="M0,15 Q10,5 20,12 T40,8 T60,15 T80,5 T100,10" fill="none" stroke="#c6c6c7" stroke-width="0.5"></path>
+<rect fill="rgba(198, 198, 199, 0.05)" height="10" width="100" x="0" y="5"></rect>
+</svg>
+</div>
+</div>
+<div class="flex-1 border border-white/5 rounded-sm p-3 relative overflow-hidden bg-surface-container-lowest">
+<div class="flex justify-between text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">
+<span>MACD (12, 26, 9) <span class="text-primary ml-2">0.124</span></span>
+<span class="material-symbols-outlined text-[14px]">settings</span>
+</div>
+<div class="h-14 w-full opacity-50 flex items-end gap-[1px]">
+<div class="flex-1 bg-primary/40 h-[20%]"></div><div class="flex-1 bg-primary/40 h-[40%]"></div><div class="flex-1 bg-primary/40 h-[70%]"></div><div class="flex-1 bg-primary/40 h-[50%]"></div><div class="flex-1 bg-error/40 h-[30%]"></div><div class="flex-1 bg-error/40 h-[60%]"></div><div class="flex-1 bg-error/40 h-[40%]"></div><div class="flex-1 bg-primary/40 h-[20%]"></div><div class="flex-1 bg-primary/40 h-[50%]"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Right Panel: Order Book -->
+<aside class="w-80 bg-surface-container-low border-l border-white/5 flex flex-col">
+<div class="h-10 border-b border-white/5 flex items-center justify-between px-4">
+<h3 class="text-[11px] font-bold uppercase tracking-widest text-on-surface">Order Book</h3>
+<div class="flex gap-2 text-[10px]">
+<span class="text-on-surface">0.01</span>
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">expand_more</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col font-mono text-[11px] overflow-hidden">
+<!-- Column Headers -->
+<div class="grid grid-cols-3 px-4 py-2 text-on-surface-variant border-b border-white/5 bg-surface-container-lowest/50">
+<span>Price (USD)</span>
+<span class="text-right">Size (BTC)</span>
+<span class="text-right">Sum</span>
+</div>
+<!-- Asks (Red) -->
+<div class="flex-1 overflow-hidden flex flex-col justify-end">
+<div class="space-y-[2px] px-4">
+<div class="grid grid-cols-3 relative py-0.5 group hover:bg-white/5">
+<div class="absolute right-0 top-0 bottom-0 bg-error/10 w-[80%] -z-10"></div>
+<span class="text-error">67,258.10</span><span class="text-right text-on-surface">0.412</span><span class="text-right text-on-surface-variant">12.44</span>
+</div>
+<div class="grid grid-cols-3 relative py-0.5 group hover:bg-white/5">
+<div class="absolute right-0 top-0 bottom-0 bg-error/10 w-[65%] -z-10"></div>
+<span class="text-error">67,255.40</span><span class="text-right text-on-surface">1.205</span><span class="text-right text-on-surface-variant">12.02</span>
+</div>
+<div class="grid grid-cols-3 relative py-0.5 group hover:bg-white/5">
+<div class="absolute right-0 top-0 bottom-0 bg-error/10 w-[40%] -z-10"></div>
+<span class="text-error">67,252.00</span><span class="text-right text-on-surface">0.044</span><span class="text-right text-on-surface-variant">10.82</span>
+</div>
+<div class="grid grid-cols-3 relative py-0.5 group hover:bg-white/5">
+<div class="absolute right-0 top-0 bottom-0 bg-error/10 w-[20%] -z-10"></div>
+<span class="text-error">67,250.00</span><span class="text-right text-on-surface">2.410</span><span class="text-right text-on-surface-variant">10.77</span>
+</div>
+</div>
+</div>
+<!-- Mid Market Price -->
+<div class="bg-surface-container-highest px-4 py-3 border-y border-white/5 flex justify-between items-center">
+<span class="text-xl font-black text-on-surface tracking-tighter">67,241.90</span>
+<span class="text-[10px] text-on-surface-variant">Index: 67,240.52</span>
+</div>
+<!-- Bids (Green) -->
+<div class="flex-1 overflow-hidden">
+<div class="space-y-[2px] px-4 mt-1">
+<div class="grid grid-cols-3 relative py-0.5 group hover:bg-white/5">
+<div class="absolute right-0 top-0 bottom-0 bg-primary/10 w-[30%] -z-10"></div>
+<span class="text-primary">67,238.10</span><span class="text-right text-on-surface">1.412</span><span class="text-right text-on-surface-variant">1.41</span>
+</div>
+<div class="grid grid-cols-3 relative py-0.5 group hover:bg-white/5">
+<div class="absolute right-0 top-0 bottom-0 bg-primary/10 w-[55%] -z-10"></div>
+<span class="text-primary">67,235.40</span><span class="text-right text-on-surface">0.905</span><span class="text-right text-on-surface-variant">2.31</span>
+</div>
+<div class="grid grid-cols-3 relative py-0.5 group hover:bg-white/5">
+<div class="absolute right-0 top-0 bottom-0 bg-primary/10 w-[70%] -z-10"></div>
+<span class="text-primary">67,232.00</span><span class="text-right text-on-surface">4.044</span><span class="text-right text-on-surface-variant">6.35</span>
+</div>
+<div class="grid grid-cols-3 relative py-0.5 group hover:bg-white/5">
+<div class="absolute right-0 top-0 bottom-0 bg-primary/10 w-[95%] -z-10"></div>
+<span class="text-primary">67,230.00</span><span class="text-right text-on-surface">8.410</span><span class="text-right text-on-surface-variant">14.76</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Recent Trades Segment -->
+<div class="h-48 border-t border-white/5 flex flex-col bg-surface-container-lowest/20">
+<div class="h-8 border-b border-white/5 flex items-center px-4">
+<h3 class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Recent Trades</h3>
+</div>
+<div class="flex-1 overflow-y-auto no-scrollbar font-mono text-[10px] p-2 space-y-1">
+<div class="flex justify-between px-2 py-1"><span class="text-primary">67,241.90</span><span>0.004</span><span class="text-on-surface-variant">14:02:44</span></div>
+<div class="flex justify-between px-2 py-1"><span class="text-error">67,240.20</span><span>1.552</span><span class="text-on-surface-variant">14:02:42</span></div>
+<div class="flex justify-between px-2 py-1"><span class="text-primary">67,241.10</span><span>0.104</span><span class="text-on-surface-variant">14:02:39</span></div>
+<div class="flex justify-between px-2 py-1"><span class="text-primary">67,241.50</span><span>0.001</span><span class="text-on-surface-variant">14:02:37</span></div>
+</div>
+</div>
+</aside>
+</div>
+<!-- System Status Bar -->
+<footer class="h-6 bg-surface-container-lowest border-t border-white/5 px-4 flex items-center justify-between text-[10px] text-on-surface-variant tracking-wider font-medium">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_5px_#c6c6c7]"></span> System Connected</div>
+<span>Ping: 12ms</span>
+</div>
+<div class="flex gap-4">
+<span>Auto-save: ON</span>
+<span>Layout: DEFAULT_TRADING</span>
+<span class="text-primary">NEXUS_OS v0.2.0-STABLE</span>
+</div>
+</footer>
+</main>
+</body></html>

@@ -1,0 +1,51 @@
+# Secrets - never commit. The app reads .env read-only (NEXUS_ENV_FILE).
+.env
+.env.*
+!.env.example
+
+# Runtime data - lives in NEXUS_DATA_DIR (default ./data), never in the repo.
+/data/
+/logs/
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+/build/
+/dist/
+
+# Node / Next.js / Electron
+node_modules/
+.next/
+frontend/out/
+frontend/dist-electron/
+*.tsbuildinfo
+frontend/next-env.d.ts
+
+# Research artifacts - regenerable and large. (backend/research/ is the package; these are outputs.)
+/research/results/
+/research/archive/
+/research/data/
+/models/
+
+# Local tooling state
+.claude/settings.local.json
+.claude/*.lock
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

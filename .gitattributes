@@ -1,0 +1,11 @@
+* text=auto
+*.png binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.woff binary
+*.woff2 binary
+*.db binary
+*.parquet binary
+*.gz binary

@@ -1,0 +1,48 @@
+<!--
+  Nexus icon - design reference (not used at runtime; build-icon.py is the
+  source of truth for icon.ico/icon.png in the taskbar).
+
+  Static stencil version of the particle-rain "N": vertical tick lanes
+  silhouetting the letter, silver inside, dim flecks outside.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="silver" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#e2e2e2"/>
+      <stop offset="55%"  stop-color="#c6c6c7"/>
+      <stop offset="100%" stop-color="#6b6b6c"/>
+    </linearGradient>
+    <radialGradient id="obsidian" cx="0.5" cy="0.4" r="0.85">
+      <stop offset="0%"   stop-color="#1a1a1a"/>
+      <stop offset="100%" stop-color="#060606"/>
+    </radialGradient>
+
+    <!-- N silhouette clip: two verticals + diagonal strip -->
+    <clipPath id="nClip">
+      <rect x="32"  y="32" width="48"  height="192"/>
+      <rect x="176" y="32" width="48"  height="192"/>
+      <polygon points="80,32 104,32 176,224 152,224"/>
+    </clipPath>
+
+    <!-- Vertical tick lane pattern (silver) -->
+    <pattern id="lanesIn" width="11.6" height="9" patternUnits="userSpaceOnUse">
+      <rect x="2" y="0" width="7.6" height="6.5" fill="url(#silver)"/>
+    </pattern>
+    <pattern id="lanesOut" width="11.6" height="9" patternUnits="userSpaceOnUse">
+      <rect x="2" y="0" width="7.6" height="6.5" fill="#c6c6c7" opacity="0.08"/>
+    </pattern>
+  </defs>
+
+  <!-- Obsidian rounded body -->
+  <rect x="4" y="4" width="248" height="248" rx="56" ry="56" fill="url(#obsidian)"/>
+  <rect x="5" y="5" width="246" height="246" rx="55" ry="55"
+        fill="none" stroke="#c6c6c7" stroke-opacity="0.18" stroke-width="1.5"/>
+
+  <!-- Ambient field across full body -->
+  <rect x="8" y="8" width="240" height="240" rx="52" ry="52" fill="url(#lanesOut)"/>
+
+  <!-- Bright field clipped to N silhouette -->
+  <g clip-path="url(#nClip)">
+    <rect x="0" y="0" width="256" height="256" fill="url(#lanesIn)"/>
+  </g>
+</svg>

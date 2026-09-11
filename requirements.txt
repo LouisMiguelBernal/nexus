@@ -1,0 +1,42 @@
+# Nexus - Python Dependencies (Python 3.14 compatible)
+# Install: pip install -r requirements.txt
+
+# Core
+fastapi>=0.115
+uvicorn[standard]>=0.34
+python-dotenv>=1.0
+pydantic>=2.10
+
+# HTTP client
+httpx>=0.28
+
+# WebSockets
+websockets>=14.0
+
+# Data processing - Polars is primary, no pandas needed
+# numpy and polars have 3.14 wheels
+numpy>=2.2
+polars>=1.18
+
+# Technical analysis
+# TA-Lib requires separate C library installation
+# See: https://github.com/TA-Lib/ta-lib-python
+# ta-lib>=0.5
+
+# Exchange library
+ccxt>=4.4
+
+# AI / ML - install separately after core deps
+# torch and transformers may need --pre flag on Python 3.14
+# pip install torch --pre --index-url https://download.pytorch.org/whl/cu124
+# pip install transformers
+
+# Market data
+yfinance>=0.2.50
+
+# Scheduling
+apscheduler>=3.10
+
+# Development
+pytest>=8.3
+pytest-asyncio>=0.25
