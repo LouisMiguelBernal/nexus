@@ -834,12 +834,11 @@ async def debug_env():
 
     return {
         "BINANCE_API_KEY_set": bool(key),
-        "BINANCE_API_KEY_prefix": key[:6] + "..." if key else "(not set)",
         "BINANCE_API_SECRET_set": bool(sec),
         "binance_ping_ok": ping_ok,
         "cached_trades": len(_positions_cache),
         "cache_age_sec": round(time.time() - _last_fetch_ts) if _last_fetch_ts else None,
         "last_error": _last_error or None,
         "ollama_model": OLLAMA_MODEL,
-        "env_file_checked": str(_config.PROJECT_ROOT / ".env"),
+        "env_file_present": (_config.PROJECT_ROOT / ".env").exists(),
     }

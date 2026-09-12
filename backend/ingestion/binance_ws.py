@@ -5,7 +5,6 @@ Primary data source: order book, aggTrades, liquidations, klines, mark price.
 
 import asyncio
 import logging
-import ssl
 import time
 from collections import defaultdict, deque
 
@@ -16,6 +15,8 @@ from backend.config import (
     DEFAULT_SYMBOLS,
     WS_BINANCE_FUTURES,
 )
+from backend.data.http import HttpStatusError, fetch_json
+from backend.data.klines import KlineBuffer
 from backend.ingestion.ws_manager import WSConnection
 
 logger = logging.getLogger("nexus.binance_ws")
@@ -33,8 +34,11 @@ class BinanceFuturesData:
         self.liquidations: dict[str, deque] = defaultdict(lambda: deque(maxlen=500))
         # Latest klines per symbol+interval: {symbol: {interval: [ohlcv]}}
         self.klines: dict[str, dict[str, list]] = defaultdict(dict)
-        # Historical closed klines per symbol: {symbol: deque(maxlen=200)}
-        self.kline_history: dict[str, deque] = defaultdict(lambda: deque(maxlen=200))
+        # Closed klines per symbol at DEFAULT_INTERVAL, upserted by open_time so a
+        # REST backfill after a WS gap cannot duplicate bars (1000 x 15m ~ 10 days).
+        self.kline_history: dict[str, KlineBuffer] = defaultdict(
+            lambda: KlineBuffer(maxlen=1000, interval=DEFAULT_INTERVAL)
+        )
         # Mark price + funding: {symbol: {"mark_price": float, "funding_rate": float, "next_funding": int}}
         self.mark_prices: dict[str, dict] = {}
         # Last update timestamps
@@ -89,12 +93,9 @@ class BinanceFuturesData:
         self.klines[symbol][interval] = candle
         self.last_update[f"{symbol}_kline_{interval}"] = time.time()
 
-        # Accumulate closed candles into history for regime classifier
+        # Closed candles go to the history buffer, which upserts by open_time.
         if candle["is_closed"]:
-            history = self.kline_history[symbol]
-            # Avoid duplicates (same open_time)
-            if not history or history[-1]["open_time"] != candle["open_time"]:
-                history.append(candle)
+            self.kline_history[symbol].append(candle)
 
     def update_mark_price(self, symbol: str, data: dict):
         self.mark_prices[symbol] = {
@@ -110,9 +111,6 @@ class BinanceFuturesData:
         """Fetch historical klines from Binance REST API to seed kline_history.
         Uses urllib (sync, in thread) because aiohttp DNS resolver is blocked by PLDT ISP."""
         import concurrent.futures
-        import json
-        import urllib.error
-        import urllib.request
 
         from backend.ingestion.rate_guard import (
             BINANCE_FUTURES_HOST,
@@ -129,40 +127,19 @@ class BinanceFuturesData:
         url = f"{BINANCE_FUTURES_BASE}{BINANCE_FUTURES_ENDPOINTS['klines']}?symbol={symbol}&interval={interval}&limit={limit}"
 
         def _fetch():
-            """Sync fetch in thread - uses system DNS resolver which works with VPN."""
-            # Try strict SSL first
+            """Sync fetch in a thread - the system resolver works where the async
+            resolvers are blocked. TLS fallback is centralised and logged in
+            backend.data.http; a 418/429 ban is reported to rate_guard."""
             try:
-                req = urllib.request.Request(url, headers={"User-Agent": "Nexus/0.3"})
-                with urllib.request.urlopen(req, timeout=15) as resp:
-                    record_success(BINANCE_FUTURES_HOST)
-                    return json.loads(resp.read())
-            except urllib.error.HTTPError as http_err:
-                try:
-                    body = http_err.read().decode("utf-8", "replace")
-                except Exception:  # noqa: BLE001
-                    body = ""
-                if note_http_error(BINANCE_FUTURES_HOST, http_err.code, body):
-                    return None  # rate-limited - skip the permissive retry
-            except Exception:  # noqa: BLE001
-                pass
-            # Permissive SSL fallback
-            try:
-                ctx = ssl.create_default_context()
-                ctx.check_hostname = False
-                ctx.verify_mode = ssl.CERT_NONE
-                req = urllib.request.Request(url, headers={"User-Agent": "Nexus/0.3"})
-                with urllib.request.urlopen(req, timeout=15, context=ctx) as resp:
-                    record_success(BINANCE_FUTURES_HOST)
-                    return json.loads(resp.read())
-            except urllib.error.HTTPError as http_err:
-                try:
-                    body = http_err.read().decode("utf-8", "replace")
-                except Exception:  # noqa: BLE001
-                    body = ""
-                note_http_error(BINANCE_FUTURES_HOST, http_err.code, body)
+                data = fetch_json(url, timeout=15.0)
+            except HttpStatusError as http_err:
+                note_http_error(BINANCE_FUTURES_HOST, http_err.status, http_err.body)
                 return None
-            except Exception:  # noqa: BLE001
+            except Exception as exc:  # noqa: BLE001  # reason: network failure; caller logs and the WS feed keeps accumulating bars
+                logger.warning("kline seed fetch failed for %s: %s", symbol, exc)
                 return None
+            record_success(BINANCE_FUTURES_HOST)
+            return data
 
         try:
             loop = asyncio.get_event_loop()
@@ -174,6 +151,7 @@ class BinanceFuturesData:
 
         if data and isinstance(data, list):
             history = self.kline_history[symbol]
+            candles: list[dict] = []
             for k in data:
                 if not isinstance(k, list) or len(k) < 6:
                     continue
@@ -189,8 +167,9 @@ class BinanceFuturesData:
                     "trades": k[8] if len(k) > 8 else 0,
                     "is_closed": True,
                 }
-                history.append(candle)
-            logger.info(f"Loaded {len(data)} historical klines for {symbol}")
+                candles.append(candle)
+            added = history.extend(candles)
+            logger.info("Loaded %d historical klines for %s (%d new)", len(candles), symbol, added)
         else:
             logger.warning(f"Could not fetch historical klines for {symbol} (ISP block or network issue)")
 

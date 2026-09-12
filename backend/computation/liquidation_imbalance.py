@@ -238,3 +238,48 @@ class LiquidationAggregator:
             "active_window": active_window,
             "windows": windows,
         }
+
+
+def nearest_liquidation_distance_pct(
+    liquidations: list[dict],
+    mark_price: float,
+    *,
+    window_s: float = 3600.0,
+    band_pct: float = 0.001,
+    min_usd: float = 100_000.0,
+    now: float | None = None,
+) -> float | None:
+    """Distance (in %) from ``mark_price`` to the nearest recent liquidation cluster.
+
+    Recent forced-order flow is bucketed into ``band_pct``-wide price bands; a
+    band with at least ``min_usd`` of liquidations within ``window_s`` counts as
+    a cluster. Returns ``None`` when there is nothing to measure so callers fall
+    back to the squeeze meter's neutral default instead of a fake zero.
+
+    Feeds the squeeze meter's liquidation-proximity term, which `main.py` never
+    supplied before - 25 of its 100 points were structurally zero.
+    """
+    if mark_price <= 0 or not liquidations:
+        return None
+    now_s = time.time() if now is None else now
+    cutoff_ms = (now_s - window_s) * 1000.0
+    bands: dict[int, float] = {}
+    for ev in liquidations:
+        try:
+            price = float(ev.get("price") or 0.0)
+            ts_ms = float(ev.get("time") or 0.0)
+            usd = float(ev.get("usd_value") or price * float(ev.get("qty") or 0.0))
+        except (TypeError, ValueError, AttributeError):
+            continue
+        if price <= 0 or ts_ms < cutoff_ms:
+            continue
+        idx = int(round((price / mark_price - 1.0) / band_pct))
+        bands[idx] = bands.get(idx, 0.0) + usd
+    nearest: float | None = None
+    for idx, usd in bands.items():
+        if usd < min_usd:
+            continue
+        dist = abs(idx) * band_pct * 100.0
+        if nearest is None or dist < nearest:
+            nearest = dist
+    return nearest

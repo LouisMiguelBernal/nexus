@@ -32,10 +32,10 @@ References
 from __future__ import annotations
 
 import logging
-import math
 from collections.abc import Iterable, Mapping, Sequence
 
 import numpy as np
+from scipy.stats import t as _student_t
 
 logger = logging.getLogger("nexus.var")
 
@@ -86,71 +86,15 @@ def _fit_student_t_df(returns: np.ndarray, max_df: float = 30.0) -> float:
 def _student_t_quantile(alpha: float, df: float) -> float:
     """Inverse CDF of Student-t at left-tail probability *alpha*.
 
-    Pure-numpy fallback avoids a hard scipy dependency. When scipy is present
-    we use it for accuracy; otherwise we use a cornish-fisher-style expansion.
+    scipy is a declared dependency. The previous "pure-numpy fallback" was a
+    normal quantile scaled by sqrt(df/(df-2)) - not a t quantile - and it
+    under-stated the 99% tail by roughly 15% at df=4.
     """
-    try:
-        from scipy.stats import t as _t  # type: ignore
-
-        return float(_t.ppf(alpha, df))
-    except Exception:  # noqa: BLE001
-        # Cornish-Fisher expansion around normal quantile - adequate for
-        # alpha in [0.005, 0.10] and df ≥ 3.
-        # Normal inverse via rational approximation (Acklam).
-        a = [
-            -3.969683028665376e01,
-            2.209460984245205e02,
-            -2.759285104469687e02,
-            1.383577518672690e02,
-            -3.066479806614716e01,
-            2.506628277459239e00,
-        ]
-        b = [
-            -5.447609879822406e01,
-            1.615858368580409e02,
-            -1.556989798598866e02,
-            6.680131188771972e01,
-            -1.328068155288572e01,
-        ]
-        c = [
-            -7.784894002430293e-03,
-            -3.223964580411365e-01,
-            -2.400758277161838e00,
-            -2.549732539343734e00,
-            4.374664141464968e00,
-            2.938163982698783e00,
-        ]
-        d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e00, 3.754408661907416e00]
-        p = alpha
-        if p <= 0:
-            return -float("inf")
-        if p >= 1:
-            return float("inf")
-        p_low = 0.02425
-        p_high = 1 - p_low
-        if p < p_low:
-            q = math.sqrt(-2 * math.log(p))
-            z = (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / (
-                (((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1
-            )
-        elif p <= p_high:
-            q = p - 0.5
-            r = q * q
-            z = (
-                (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5])
-                * q
-                / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1)
-            )
-        else:
-            q = math.sqrt(-2 * math.log(1 - p))
-            z = -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / (
-                (((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1
-            )
-        # Kurtosis inflation to move normal quantile toward t_{df}.
-        if df > 4:
-            scale = math.sqrt(df / (df - 2))
-            return z * scale
-        return z * 1.15  # rough fat-tail bump when df is small
+    if alpha <= 0:
+        return -float("inf")
+    if alpha >= 1:
+        return float("inf")
+    return float(_student_t.ppf(alpha, df))
 
 
 def _sample_student_t(df: float, size: int, rng: np.random.Generator) -> np.ndarray:
@@ -377,9 +321,9 @@ class VaRCalculator:
         ------
         Build aligned return matrix R (T × N), w = weights from *positions*
         normalized to sum to 1 (or to total notional). Portfolio returns
-        r_p = R @ w. σ_p = std(r_p). For each i compute ρ(R_i, r_p). Under
-        the Gaussian approximation: marginal_i ≈ z_α · σ_i · ρ_i,p where
-        z_α is the normal quantile. Fine as an attribution view - the
+        r_p = R @ w. σ_p = std(r_p). For each i compute ρ(R_i, r_p). Under a
+        Student-t approximation (df fitted from r_p's kurtosis, consistent with
+        `parametric_t`): marginal_i ≈ t_α · σ_i · ρ_i,p. Fine as an attribution view - the
         headline VaR should still come from `compute()`.
         """
         symbols = [s for s, w in positions.items() if abs(w) > 0]
@@ -412,8 +356,10 @@ class VaRCalculator:
         if sigma_p <= 0:
             return {"error": "Zero portfolio variance"}
 
-        # Normal VaR quantile (positive number): |z_α| · σ_p
-        z_alpha = abs(_student_t_quantile(1 - confidence, 30.0))  # ~normal
+        # Tail quantile (positive number) with df fitted from the portfolio series -
+        # the module's premise is fat tails; a hard-coded df=30 contradicted it.
+        df_p = _fit_student_t_df(r_p)
+        z_alpha = abs(_student_t_quantile(1 - confidence, df_p))
         var_p = z_alpha * sigma_p * leverage
 
         contributions: dict[str, dict] = {}
@@ -433,6 +379,7 @@ class VaRCalculator:
         return {
             "portfolio_var_pct": round(var_p * 100, 4),
             "portfolio_sigma": round(sigma_p, 6),
+            "df": round(df_p, 3),
             "confidence": confidence,
             "leverage": leverage,
             "contributions": contributions,

@@ -18,6 +18,50 @@ interface FeedSummary {
 
 const VENUES = ["binance", "okx", "mexc"] as const;
 
+// Inlined at build time from the root VERSION file and git (next.config.ts).
+const FE_VERSION = process.env.NEXT_PUBLIC_NEXUS_VERSION ?? "0.0.0";
+const FE_SHA = process.env.NEXT_PUBLIC_NEXUS_GIT_SHA ?? "unknown";
+
+/**
+ * Frontend build identity next to the backend's. The desktop app serves a
+ * pre-built bundle, so source and running code have silently diverged before;
+ * a mismatch is now a visible badge instead of a mystery.
+ */
+function BuildStamp({ health }: { health: Record<string, unknown> | null }) {
+  const beVersion = health?.version ? String(health.version) : null;
+  const beSha = health?.git_sha ? String(health.git_sha) : null;
+  const shaComparable = FE_SHA !== "unknown" && beSha !== null && beSha !== "unknown";
+  const mismatch = beVersion !== null && (beVersion !== FE_VERSION || (shaComparable && beSha !== FE_SHA));
+  const title = `frontend v${FE_VERSION} ${FE_SHA} · backend ${
+    beVersion ? `v${beVersion} ${beSha ?? ""}` : "offline"
+  }`;
+  return (
+    <span className="flex items-center gap-2" title={title}>
+      <span>
+        NEXUS{" "}
+        <span className="text-mono">
+          v{FE_VERSION} · {FE_SHA}
+        </span>
+      </span>
+      {mismatch && (
+        <span
+          className="text-mono"
+          style={{
+            background: "var(--primary-container)",
+            color: "var(--on-primary-container)",
+            padding: "1px 6px",
+            borderRadius: 2,
+            fontSize: 9,
+            letterSpacing: "0.12em",
+          }}
+        >
+          BUILD MISMATCH
+        </span>
+      )}
+    </span>
+  );
+}
+
 /**
  * Status bar - bottom strip showing per-venue feed health and active symbol.
  * Feed dots are colour-coded by degradation factor (not just connected/disconnected):
@@ -121,7 +165,7 @@ export default function StatusBar({ api, symbol, health }: Props) {
       {/* Right: last update + version */}
       <div className="flex items-center gap-4">
         <span>UPD <span className="text-mono">{lastUpdate}</span></span>
-        <span>NEXUS <span className="text-mono">v{String(health?.version || "0.3.0")}</span></span>
+        <BuildStamp health={health} />
       </div>
     </footer>
   );

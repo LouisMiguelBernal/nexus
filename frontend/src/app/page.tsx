@@ -17,8 +17,12 @@ import TradingJournalTab from "@/components/tabs/TradingJournalTab";
 import RiskTab from "@/components/tabs/RiskTab";
 import WorldTab from "@/components/tabs/WorldTab";
 import DocsOverlay from "@/components/DocsOverlay";
+import { installApiAuth } from "@/lib/auth";
 
-const API = "http://localhost:8001";
+// 127.0.0.1 rather than localhost: the backend binds the IPv4 loopback only.
+const API = "http://127.0.0.1:8001";
+// Attach the local API token to every backend request (usePolling and raw fetch alike).
+installApiAuth(API);
 
 type TabId = "trading" | "alpha" | "heatmap" | "research" | "orderflow" | "alerts" | "docs" | "journal" | "risk" | "world";
 

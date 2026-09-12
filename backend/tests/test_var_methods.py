@@ -89,13 +89,14 @@ def test_contribution_var_components_sum_to_portfolio_var():
     b = 0.7 * a + rng.normal(0, 0.01, size=500)
     calc = VaRCalculator(seed=0)
     out = calc.contribution_var(
-        positions={"A": 1.0, "B": 1.0},
+        positions={"A": 10_000.0, "B": 10_000.0},
         returns_by_symbol={"A": a.tolist(), "B": b.tolist()},
         confidence=0.95,
     )
-    port_var = out.get("portfolio_var", 0.0)
-    components = out.get("component_var", {})
-    if components:
-        total = sum(components.values())
-        # Euler identity ≈ portfolio VaR (sign-agnostic tolerance).
-        assert abs(abs(total) - abs(port_var)) / max(abs(port_var), 1e-9) < 0.05
+    assert "error" not in out, out
+    gross = 20_000.0
+    portfolio_var_usd = out["portfolio_var_pct"] / 100.0 * gross
+    total = sum(c["component_var_usd"] for c in out["contributions"].values())
+    # Euler identity: Σ component_i == portfolio VaR on gross exposure. (The old
+    # assertion read keys that did not exist and therefore never ran.)
+    assert abs(total - portfolio_var_usd) / max(abs(portfolio_var_usd), 1e-9) < 0.02

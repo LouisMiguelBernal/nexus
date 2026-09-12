@@ -9,16 +9,16 @@
   },
   "main": "electron/main.js",
   "scripts": {
-    "dev": "next dev --port 3000",
-    "build": "next build",
-    "start": "next start --port 3000",
-    "lint": "eslint",
-    "typecheck": "next typegen && tsc --noEmit",
+    "dev": "node node_modules/next/dist/bin/next dev --port 3000",
+    "build": "node node_modules/next/dist/bin/next build",
+    "start": "node node_modules/next/dist/bin/next start --port 3000",
+    "lint": "node node_modules/eslint/bin/eslint.js",
+    "typecheck": "node node_modules/next/dist/bin/next typegen && node node_modules/typescript/bin/tsc --noEmit",
     "icon": "python electron/build-icon.py",
-    "electron:dev": "cross-env NODE_ENV=development electron .",
-    "electron:build": "npm run build && electron-builder --win",
-    "electron:pack": "electron-builder --dir",
-    "electron:start": "cross-env NODE_ENV=production electron ."
+    "electron:dev": "node node_modules/cross-env/src/bin/cross-env.js NODE_ENV=development node node_modules/electron/cli.js .",
+    "electron:build": "npm run build && node node_modules/electron-builder/cli.js --win",
+    "electron:pack": "node node_modules/electron-builder/cli.js --dir",
+    "electron:start": "node node_modules/cross-env/src/bin/cross-env.js NODE_ENV=production node node_modules/electron/cli.js ."
   },
   "build": {
     "appId": "com.nexus.terminal",
@@ -32,8 +32,18 @@
     "compression": "maximum",
     "win": {
       "target": [
-        { "target": "nsis",     "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "electron/icon.ico",
       "requestedExecutionLevel": "asInvoker"

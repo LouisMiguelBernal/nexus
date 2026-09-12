@@ -1,5 +1,5 @@
 /**
- * Nexus v0.3.0 - Electron Main Process
+ * Nexus - Electron Main Process (the version number lives in the root VERSION file)
  * One-click launcher: starts Next.js dev server + Python backend automatically.
  * Pinnable to taskbar, runs as standalone app.
  */
@@ -10,6 +10,7 @@ const { spawn, execSync } = require("child_process");
 const http = require("http");
 const fs = require("fs");
 const os = require("os");
+const crypto = require("crypto");
 
 let mainWindow = null;
 let tray = null;
@@ -24,7 +25,7 @@ const OLLAMA_PORT = 11434;
 
 // When packaged as an installer, __dirname lives inside the installed app
 // (%LOCALAPPDATA%\Programs\Nexus\resources\app.asar\electron) - not at
-// E:\nexus. The launcher always orchestrates the real codebase, so resolve
+// the repository root. The launcher always orchestrates the real codebase, so resolve
 // FRONTEND_DIR / PROJECT_DIR to absolute paths when packaged. Override via
 // NEXUS_HOME env var if you ever move the project.
 const NEXUS_HOME = process.env.NEXUS_HOME || path.join("E:", "Personal Projects & Tech Stack", "nexus");
@@ -39,6 +40,33 @@ const ICON_PNG  = path.join(__dirname, "icon.png");
 // Packaged installs always run production.
 const IS_PROD = IS_PACKAGED || process.env.NODE_ENV === "production";
 let ollamaProcess = null;
+
+// Runtime data (SQLite, logs, API token). Mirrors backend.config.NEXUS_DATA_DIR.
+const DATA_DIR = process.env.NEXUS_DATA_DIR || path.join(PROJECT_DIR, "data");
+const TOKEN_FILE = path.join(DATA_DIR, "api_token");
+
+// Local API token shared with the backend, which enforces it on /api/*. We hand
+// it to the backend via env, inject it into every renderer request to the API
+// at the network layer, and expose it to the preload for the fetch shim.
+function ensureApiToken() {
+  if (process.env.NEXUS_API_TOKEN) return process.env.NEXUS_API_TOKEN;
+  try {
+    const existing = fs.readFileSync(TOKEN_FILE, "utf8").trim();
+    if (existing) return existing;
+  } catch {
+    /* first run */
+  }
+  const token = crypto.randomBytes(32).toString("base64url");
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(TOKEN_FILE, token + "\n", { mode: 0o600 });
+    console.log("[Auth] generated API token at " + TOKEN_FILE);
+  } catch (e) {
+    console.warn("[Auth] could not persist API token: " + e.message);
+  }
+  return token;
+}
+const API_TOKEN = ensureApiToken();
 
 // Windows taskbar pinning & jumplist grouping key.
 // MUST be set BEFORE any window is created, otherwise pinned shortcuts will
@@ -152,7 +180,7 @@ function resolveOllamaBin() {
   const candidates = [
     process.env.OLLAMA_PATH,
     path.join(os.homedir(), "AppData", "Local", "Programs", "Ollama", "ollama.exe"),
-    "C:\Program Files\Ollama\ollama.exe",
+    "C:\\Program Files\\Ollama\\ollama.exe",
     "/usr/local/bin/ollama",
     "/opt/homebrew/bin/ollama",
   ].filter(Boolean);
@@ -225,10 +253,13 @@ function startBackend() {
       }
 
       const pythonCmd = process.platform === "win32" ? "python" : "python3";
-      backendProcess = spawn(pythonCmd, ["-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", String(API_PORT)], {
+      // Loopback only: the API serves signed exchange-account reads and must not
+      // be reachable from the LAN. The token and data dir travel via env.
+      backendProcess = spawn(pythonCmd, ["-m", "uvicorn", "backend.main:app", "--host", "127.0.0.1", "--port", String(API_PORT)], {
         cwd: PROJECT_DIR,
         stdio: "pipe",
         windowsHide: true,
+        env: { ...process.env, NEXUS_API_TOKEN: API_TOKEN, NEXUS_DATA_DIR: DATA_DIR },
       });
 
       backendProcess.stdout.on("data", (data) => {
@@ -280,7 +311,11 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: true,
       webSecurity: true,
+      preload: path.join(__dirname, "preload.js"),
+      // Read by preload.js and exposed as window.nexus.apiToken.
+      additionalArguments: ["--nexus-api-token=" + API_TOKEN],
     },
   });
 
@@ -288,6 +323,19 @@ function createWindow() {
   if (process.platform === "win32") {
     try { mainWindow.setAppDetails({ appId: APP_ID, relaunchDisplayName: "Nexus" }); } catch { /* ignore */ }
   }
+
+  // Belt and braces: attach the API token to every renderer request to the
+  // backend at the network layer, so even a frontend bundle that predates the
+  // fetch shim keeps working once the backend enforces auth.
+  mainWindow.webContents.session.webRequest.onBeforeSendHeaders(
+    { urls: [`http://127.0.0.1:${API_PORT}/*`, `http://localhost:${API_PORT}/*`] },
+    (details, callback) => {
+      if (!details.requestHeaders["Authorization"]) {
+        details.requestHeaders["Authorization"] = "Bearer " + API_TOKEN;
+      }
+      callback({ requestHeaders: details.requestHeaders });
+    }
+  );
 
   const loadApp = () => mainWindow.loadURL(`http://localhost:${NEXT_PORT}`);
   loadApp();
@@ -317,6 +365,14 @@ function createWindow() {
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: "deny" };
+  });
+
+  // Keep the renderer on the app origin; anything else opens in the browser.
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    if (!url.startsWith(`http://localhost:${NEXT_PORT}`)) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
   });
 
   mainWindow.on("close", (event) => {

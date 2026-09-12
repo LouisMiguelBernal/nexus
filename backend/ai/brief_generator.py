@@ -4,6 +4,7 @@ Collects all L2 signals and feeds them to Gemma 4 for synthesis.
 Delivered via Telegram at 08:00 daily.
 """
 
+import asyncio
 import logging
 import time
 
@@ -16,9 +17,12 @@ logger = logging.getLogger("nexus.brief_generator")
 class BriefGenerator:
     """Generates daily morning briefs using Gemma 4."""
 
-    def __init__(self):
-        self.gemma = Gemma4()
-        self.finbert = FinBERTScorer()
+    def __init__(self, gemma: Gemma4 | None = None, finbert: FinBERTScorer | None = None):
+        # Injected so the app's health probe, warm-up and brief generation all talk
+        # to the same client. A private Gemma4 here meant /api/health reported on
+        # an object that never generated anything.
+        self.gemma = gemma if gemma is not None else Gemma4()
+        self.finbert = finbert if finbert is not None else FinBERTScorer()
         self._last_brief: dict | None = None
         self._last_brief_time: float = 0
 
@@ -39,7 +43,8 @@ class BriefGenerator:
         # Score news if available
         sentiment = {}
         if news_headlines:
-            scored = self.finbert.score_batch(news_headlines)
+            # GPU inference is synchronous; keep it off the event loop.
+            scored = await asyncio.to_thread(self.finbert.score_batch, news_headlines)
             sentiment = self.finbert.aggregate_sentiment(scored)
 
         # Build signal context for Gemma 4

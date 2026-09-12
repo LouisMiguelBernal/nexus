@@ -182,6 +182,21 @@ class VPINTracker:
         var = sum((r - mean) ** 2 for r in self._return_hist) / len(self._return_hist)
         return math.sqrt(var) if var > 0 else 0.0
 
+    @staticmethod
+    def target_from_daily_volume(
+        quote_volume_24h: float,
+        *,
+        buckets_per_day: int = 50,
+        floor: float = 200_000.0,
+        cap: float = 20_000_000.0,
+    ) -> float:
+        """Paper convention: bucket = daily $-volume / 50, per symbol. A single
+        $2M bucket for BTC and XRP alike made one symbol's VPIN a minutes-scale
+        jitter and the other's a multi-hour average."""
+        if quote_volume_24h <= 0:
+            return floor
+        return float(min(cap, max(floor, quote_volume_24h / buckets_per_day)))
+
     def update_bucket_target(self, new_target: float) -> None:
         """Resize the bucket target (e.g. after a daily $-volume refresh)."""
         if new_target > 0:
@@ -200,16 +215,26 @@ class VPINTracker:
         sealed a bucket, else None."""
         if price <= 0 or qty <= 0:
             return None
-        self._current.add(price, qty, side, ts)
 
         closed: dict[str, float] | None = None
-        # Close bucket when target notional reached.
-        while self._current.notional >= self.bucket_target_notional:
-            closed = self._close_current()
-            # Any excess notional from the last trade is already captured in
-            # this bucket (we don't split a single trade across buckets - it
-            # distorts the BVC return calc). Next trades open a fresh bucket.
-            break
+        remaining_qty = float(qty)
+        while remaining_qty > 0:
+            room = self.bucket_target_notional - self._current.notional
+            if room <= 1e-9:
+                closed = self._close_current()
+                continue
+            if price * remaining_qty <= room:
+                self._current.add(price, remaining_qty, side, ts)
+                remaining_qty = 0.0
+            else:
+                # Split the print at the bucket boundary by notional. Dumping a
+                # whole whale trade into one bucket marked that bucket entirely
+                # one-sided and pinned VPIN at 1.0 for the next `window` buckets.
+                fill_qty = room / price
+                self._current.add(price, fill_qty, side, ts)
+                remaining_qty -= fill_qty
+            if self._current.notional >= self.bucket_target_notional - 1e-9:
+                closed = self._close_current()
         return closed
 
     def _close_current(self) -> dict[str, float]:

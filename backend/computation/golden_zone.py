@@ -18,6 +18,7 @@ Algorithm:
 """
 
 import logging
+import math
 import time
 from dataclasses import dataclass, field
 
@@ -108,6 +109,11 @@ class GoldenZoneEngine:
     Call update_order_book() with each exchange's data, then detect_zones().
     """
 
+    # Platinum = a golden (3+ venue) zone that has also persisted and scores in
+    # the top decile of the cycle. See _promote_platinum.
+    PLATINUM_MIN_AGE_HOURS = 0.5
+    PLATINUM_SCORE_QUANTILE = 0.9
+
     def __init__(self, symbol: str = "BTCUSDT"):
         self.symbol = symbol
         self._bin_size = BIN_SIZE_USD.get(symbol, BIN_SIZE_USD["DEFAULT"])
@@ -185,16 +191,34 @@ class GoldenZoneEngine:
         else:
             return "absorption"
 
-    def _classify_tier(self, exchange_count: int, has_coinglass: bool = False) -> str:
-        """Classify zone tier based on exchange overlap."""
-        if exchange_count >= 3 and has_coinglass:
-            return "platinum"
-        elif exchange_count >= 3:
+    def _classify_tier(self, exchange_count: int) -> str:
+        """Provisional tier from venue overlap. Platinum is assigned afterwards by
+        `_promote_platinum`, because it also depends on persistence and on the
+        zone's score relative to the rest of the cycle."""
+        if exchange_count >= 3:
             return "golden"
         elif exchange_count >= 2:
             return "silver"
         else:
             return "bronze"
+
+    def _promote_platinum(self, zones: list[GoldenZone]) -> None:
+        """Upgrade golden zones to platinum when they have persisted for at least
+        PLATINUM_MIN_AGE_HOURS and sit in the top PLATINUM_SCORE_QUANTILE of this
+        cycle's scores.
+
+        Replaces the old `has_coinglass` flag: no call site ever passed it after
+        CoinGlass was removed, so the tier - and its 1.5 weight - was unreachable.
+        """
+        golden = [z for z in zones if z.exchange_count >= 3]
+        if not golden:
+            return
+        scores = sorted(z.score for z in zones)
+        rank = max(0, min(len(scores) - 1, math.ceil(self.PLATINUM_SCORE_QUANTILE * len(scores)) - 1))
+        cutoff = scores[rank]
+        for zone in golden:
+            if zone.age_hours >= self.PLATINUM_MIN_AGE_HOURS and zone.score >= cutoff:
+                zone.tier = "platinum"
 
     def _zone_key(self, price_center: float) -> str:
         """Generate a unique key for a zone based on its center price."""
@@ -294,6 +318,9 @@ class GoldenZoneEngine:
                 )
                 self._zone_history[zone_key] = zone
                 zones.append(zone)
+
+        # Step 7b: platinum needs the whole cycle's scores, so assign it now.
+        self._promote_platinum(zones)
 
         # Prune stale zones (not seen in 4 hours)
         stale_keys = [k for k, z in self._zone_history.items() if now - z.last_seen > 4 * 3600]

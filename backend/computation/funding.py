@@ -39,6 +39,11 @@ from backend.ingestion.rate_guard import (
 # Annualization factor for 8-hour funding settlement.
 _FUNDING_SETTLES_PER_YEAR = 3 * 365  # 1095
 _SEVEN_DAYS_S = 7 * 24 * 3600
+# A rolling z-score is only meaningful once the window actually spans time: the
+# sampler appends on every poll, so a cold start had dozens of samples a few
+# minutes apart and read any drift as |z| > 3 - tripping the circuit breaker.
+_ZSCORE_MIN_SAMPLES = 30
+_ZSCORE_MIN_SPAN_HOURS = 48.0
 
 logger = logging.getLogger("nexus.funding")
 
@@ -321,13 +326,16 @@ class FundingTracker:
         called. Default window 168h (7 days) per plan spec.
         """
         cutoff = time.time() - window_hours * 3600
-        samples = [h["weighted_rate"] for h in self._history if h["timestamp"] >= cutoff]
+        window = [h for h in self._history if h["timestamp"] >= cutoff]
+        samples = [h["weighted_rate"] for h in window]
         n = len(samples)
-        if n < 10:
+        span_h = (window[-1]["timestamp"] - window[0]["timestamp"]) / 3600.0 if n >= 2 else 0.0
+        if n < _ZSCORE_MIN_SAMPLES or span_h < _ZSCORE_MIN_SPAN_HOURS:
             return {
                 "zscore": 0.0,
                 "window_hours": window_hours,
                 "samples": n,
+                "span_hours": round(span_h, 2),
                 "mean": 0.0,
                 "std": 0.0,
                 "current": float(self.get_weighted_rate().get("weighted_rate", 0.0)) if self._rates else 0.0,
@@ -349,11 +357,66 @@ class FundingTracker:
             "zscore": round(z, 3),
             "window_hours": window_hours,
             "samples": n,
+            "span_hours": round(span_h, 2),
             "mean": round(mean, 8),
             "std": round(std, 8),
             "current": round(current, 8),
             "classification": cls,
         }
+
+    # ------------------------------------------------------------------
+    # History seeding - warm the 7-day window from venue funding history
+    # ------------------------------------------------------------------
+
+    def seed_history(self, samples: list[tuple[float, float]]) -> int:
+        """Merge (timestamp_s, rate) samples into the history, skipping timestamps
+        already present, and keep it sorted. Returns the number added."""
+        known = {h["timestamp"] for h in self._history}
+        added = 0
+        for ts, rate in samples:
+            ts_f = float(ts)
+            if ts_f in known:
+                continue
+            known.add(ts_f)
+            self._history.append(
+                {
+                    "timestamp": ts_f,
+                    "weighted_rate": float(rate),
+                    "rates": {"binance": float(rate)},
+                    "seeded": True,
+                }
+            )
+            added += 1
+        if added:
+            self._history.sort(key=lambda h: h["timestamp"])
+        return added
+
+    async def seed_history_from_binance(self, limit: int = 45) -> int:
+        """Pull the last `limit` settlements (8h each; 45 = 15 days) so the rolling
+        z-score has real span from the first tick instead of after a week."""
+        if should_skip(BINANCE_FUTURES_HOST):
+            return 0
+        try:
+            url = f"{BINANCE_FUTURES_BASE}{BINANCE_FUTURES_ENDPOINTS['funding']}"
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(url, params={"symbol": self.symbol, "limit": limit})
+                if record_response(BINANCE_FUTURES_HOST, resp.status_code, resp.text):
+                    return 0
+                record_success(BINANCE_FUTURES_HOST)
+                rows = resp.json()
+        except Exception as e:  # noqa: BLE001  # reason: seeding is best effort; the live sampler still fills the window
+            logger.warning("funding history seed failed for %s: %s", self.symbol, e)
+            return 0
+        samples: list[tuple[float, float]] = []
+        for row in rows if isinstance(rows, list) else []:
+            try:
+                samples.append((float(row["fundingTime"]) / 1000.0, float(row["fundingRate"])))
+            except (KeyError, TypeError, ValueError):
+                continue
+        added = self.seed_history(samples)
+        if added:
+            logger.info("seeded %d funding samples for %s", added, self.symbol)
+        return added
 
     def carry_signal(self) -> dict:
         """Bounded funding-carry score in [-1, +1] for alpha composite use.

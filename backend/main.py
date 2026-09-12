@@ -48,7 +48,7 @@ from backend.computation.funding import FundingTracker
 
 # --- Computation ---
 from backend.computation.golden_zone import GoldenZoneEngine
-from backend.computation.liquidation_imbalance import LiquidationAggregator
+from backend.computation.liquidation_imbalance import LiquidationAggregator, nearest_liquidation_distance_pct
 from backend.computation.liquidity_heatmap import LiquidityHeatmap
 from backend.computation.obi_tracker import OBITracker
 from backend.computation.oi_analysis import OITracker
@@ -58,7 +58,8 @@ from backend.computation.squeeze_risk import SqueezeRiskMeter
 from backend.computation.tape_speed import TapeSpeedTracker
 from backend.computation.vol_spread import compute_spread as compute_vol_spread
 from backend.computation.vpin import VPINTracker
-from backend.config import DEFAULT_INTERVAL, DEFAULT_SYMBOLS, INSTITUTIONAL_DEPTH
+from backend.config import DEFAULT_INTERVAL, DEFAULT_SYMBOLS, INSTITUTIONAL_DEPTH, NEXUS_DATA_DIR
+from backend.data.http import fetch_json
 from backend.ingestion.binance_ws import binance_data, create_binance_connection
 from backend.ingestion.blofin_client import BloFinClient
 from backend.ingestion.consolidated_book import merge_books
@@ -91,6 +92,10 @@ from backend.macro.sentinel_bridge import SentinelBridge
 # --- Monitoring / event bus ---
 from backend.monitoring.event_bus import bus as event_bus
 from backend.monitoring.event_bus import wire_circuit_breaker
+from backend.ops.auth import TokenAuthMiddleware, describe_source, load_token
+from backend.ops.logutil import warn_throttled
+from backend.ops.version import build_info, uptime_s
+from backend.ops.version import version as nexus_version
 from backend.risk.circuit_breaker import CircuitBreaker
 
 # --- Risk ---
@@ -150,9 +155,46 @@ liq_aggregators: dict[str, LiquidationAggregator] = {}
 vpin_trackers: dict[str, VPINTracker] = {}
 absorption_detectors: dict[str, AbsorptionDetector] = {}
 
-# Default VPIN bucket: ~$2M notional ≈ daily $-vol/50 for liquid majors. Refreshed
-# nightly elsewhere is a P3; at startup the default is fine for warm-up.
+# Cold-start VPIN bucket (~$2M ≈ daily $-volume / 50 for a liquid major). Each
+# symbol's tracker is re-sized from its own 24h quote volume by
+# _vpin_bucket_refresh_loop shortly after startup and hourly thereafter.
 _VPIN_DEFAULT_BUCKET_USD = 2_000_000.0
+
+
+def _nearest_liq_distance(sym: str) -> float:
+    """Distance (%) from mark to the nearest recent liquidation cluster, or the
+    squeeze meter's neutral default (5.0) when there is nothing to measure.
+    Feeds the 25-point liquidation-proximity term that was never supplied."""
+    try:
+        mark = float((binance_data.mark_prices.get(sym) or {}).get("mark_price") or 0.0)
+        dist = nearest_liquidation_distance_pct(list(binance_data.liquidations.get(sym, [])), mark)
+        return dist if dist is not None else 5.0
+    except Exception as exc:  # noqa: BLE001  # reason: optional input; the meter degrades to its neutral default
+        warn_throttled(logger, f"liqdist:{sym}", "nearest liquidation distance failed for %s: %s", sym, exc)
+        return 5.0
+
+
+async def _vpin_bucket_refresh_loop(interval_s: float = 3600.0, initial_delay_s: float = 20.0) -> None:
+    """Size each symbol's VPIN bucket from its own 24h quote volume (paper: daily
+    $-volume / 50). One $2M bucket for BTC and XRP alike made XRP's VPIN a
+    multi-hour average and BTC's a minutes-scale jitter."""
+    await asyncio.sleep(initial_delay_s)
+    while True:
+        for sym in list(DEFAULT_SYMBOLS):
+            try:
+                data = await _afetch(f"/fapi/v1/ticker/24hr?symbol={sym}")
+                quote_volume = float((data or {}).get("quoteVolume") or 0.0)
+                tracker = vpin_trackers.get(sym)
+                if tracker is not None and quote_volume > 0:
+                    target = VPINTracker.target_from_daily_volume(quote_volume)
+                    tracker.update_bucket_target(target)
+                    logger.info("VPIN bucket %s -> $%.0f (24h quote volume $%.0f)", sym, target, quote_volume)
+            except Exception as exc:  # noqa: BLE001  # reason: keeps the previous target, which is still valid
+                warn_throttled(
+                    logger, f"vpin_bucket:{sym}", "VPIN bucket refresh failed for %s: %s", sym, exc
+                )
+        await asyncio.sleep(interval_s)
+
 
 # Per-symbol last ingested trade timestamp (ms) so we only forward new trades to
 # CVD / smart-money on each zone-loop tick.
@@ -172,7 +214,7 @@ world_state = world_poller.WorldState()
 
 gemma4 = Gemma4()
 finbert = FinBERTScorer()
-brief_generator = BriefGenerator()
+brief_generator = BriefGenerator(gemma4, finbert)
 
 telegram = TelegramBot()
 alert_scheduler = AlertScheduler(telegram)
@@ -359,7 +401,9 @@ async def _trade_ingest_loop():
                             },
                         )
                     except Exception as e:  # noqa: BLE001
-                        logger.debug(f"vpin publish error {sym}: {e}")
+                        warn_throttled(
+                            logger, f"vpin_publish:{sym}", "vpin publish error %s: %s", sym, e, exc_info=True
+                        )
                 # Sample tape speed once per tick for this symbol
                 if tape:
                     sample = tape.sample()
@@ -377,7 +421,14 @@ async def _trade_ingest_loop():
                                 ],
                             )
                         except Exception as e:  # noqa: BLE001
-                            logger.debug(f"tape persist error {sym}: {e}")
+                            warn_throttled(
+                                logger,
+                                f"tape_persist:{sym}",
+                                "tape persist error %s: %s",
+                                sym,
+                                e,
+                                exc_info=True,
+                            )
                 # Cursor is owned by trade_router now; keep _last_trade_cursor
                 # for backwards-compat read-only consumers (UI status panels).
                 _last_trade_cursor[sym] = int(new_trades[-1].get("time", _last_trade_cursor.get(sym, 0)))
@@ -432,7 +483,9 @@ async def _liquidation_loop():
                         ],
                     )
                 except Exception as e:  # noqa: BLE001
-                    logger.debug(f"liq persist error {sym}: {e}")
+                    warn_throttled(
+                        logger, f"liq_persist:{sym}", "liq persist error %s: %s", sym, e, exc_info=True
+                    )
 
                 # Rising-edge cascade alert
                 was = _liq_cascade_state.get(sym, False)
@@ -460,11 +513,11 @@ async def _liquidation_loop():
                             },
                         )
                     except Exception as e:  # noqa: BLE001
-                        logger.debug(f"save_alert error: {e}")
+                        logger.warning("save_alert error: %s", e, exc_info=True)
                     try:
                         await telegram.send_message(msg)
                     except Exception as e:  # noqa: BLE001
-                        logger.debug(f"telegram cascade send error: {e}")
+                        logger.warning("telegram cascade send error: %s", e, exc_info=True)
                 _liq_cascade_state[sym] = is_now
         except Exception as e:  # noqa: BLE001
             logger.error(f"liquidation_loop error: {e}")
@@ -493,14 +546,18 @@ async def _circuit_breaker_loop():
                 if report:
                     await event_bus.publish("ws.gap", {"gap_report": report})
             except Exception as e:  # noqa: BLE001
-                logger.debug(f"cb_loop ws.gap publish error: {e}")
+                warn_throttled(logger, "cb_ws_gap", "cb_loop ws.gap publish error: %s", e, exc_info=True)
 
             # 2) Correlation snapshot → correlation.snapshot
             try:
                 series: dict[str, list[float]] = {}
                 for sym in DEFAULT_SYMBOLS:
                     hist = list(binance_data.kline_history.get(sym, []))
-                    closes = [float(c.get("close", 0)) for c in hist[-96:] if c.get("close")]
+                    closes = [
+                        (int(c["open_time"]), float(c["close"]))
+                        for c in hist[-96:]
+                        if c.get("close") and c.get("open_time") is not None
+                    ]
                     if closes:
                         series[sym] = closes
                 if len(series) >= 2:
@@ -516,7 +573,9 @@ async def _circuit_breaker_loop():
                             },
                         )
             except Exception as e:  # noqa: BLE001
-                logger.debug(f"cb_loop correlation publish error: {e}")
+                warn_throttled(
+                    logger, "cb_correlation", "cb_loop correlation publish error: %s", e, exc_info=True
+                )
 
             # 3) Funding z-score per symbol → funding.zscore
             for sym, tracker in list(funding_trackers.items()):
@@ -531,7 +590,14 @@ async def _circuit_breaker_loop():
                             },
                         )
                 except Exception as e:  # noqa: BLE001
-                    logger.debug(f"cb_loop funding publish error {sym}: {e}")
+                    warn_throttled(
+                        logger,
+                        f"cb_funding:{sym}",
+                        "cb_loop funding publish error %s: %s",
+                        sym,
+                        e,
+                        exc_info=True,
+                    )
         except Exception as e:  # noqa: BLE001
             logger.error(f"circuit_breaker_loop error: {e}")
         await asyncio.sleep(30)
@@ -594,7 +660,9 @@ async def _zone_check_loop():
                             ],
                         )
                     except Exception as e:  # noqa: BLE001
-                        logger.debug(f"obi persist error {sym}: {e}")
+                        warn_throttled(
+                            logger, f"obi_persist:{sym}", "obi persist error %s: %s", sym, e, exc_info=True
+                        )
 
         # Feed heatmap with an AGGREGATED snapshot across all exchanges.
         # Walls reported by the heatmap are now cross-venue institutional
@@ -689,7 +757,7 @@ async def lifespan(app: FastAPI):
                     limit=100,
                 )
             except Exception as exc:  # noqa: BLE001
-                logger.debug("[%s] kline backfill %s: %s", name, sym, exc)
+                logger.warning("[%s] kline backfill %s failed: %s", name, sym, exc, exc_info=True)
 
     async def _on_okx_gap(name: str, gap_start: float, gap_end: float) -> None:
         gap_s = gap_end - gap_start
@@ -726,15 +794,31 @@ async def lifespan(app: FastAPI):
     ws_manager.add(mexc_conn)
     await ws_manager.start_all()
 
-    # Fetch historical klines for regime classifier (needs 20+ candles)
-    for sym in DEFAULT_SYMBOLS:
-        await binance_data.fetch_historical_klines(sym, DEFAULT_INTERVAL, limit=100)
+    # Seed kline history for the regime classifier, correlation and TSMOM.
+    # 400 x 15m = 100h - enough for TSMOM's 75-bar hourly window after
+    # resampling. One REST call per symbol regardless of limit.
+    await asyncio.gather(
+        *(binance_data.fetch_historical_klines(sym, DEFAULT_INTERVAL, limit=400) for sym in DEFAULT_SYMBOLS),
+        return_exceptions=True,
+    )
+    # Seed funding history so the 7-day z-score has real span from the first
+    # tick; over minutes of samples it read any drift as |z| > 3 and tripped the
+    # circuit breaker on every cold start.
+    await asyncio.gather(
+        *(
+            funding_trackers[sym].seed_history_from_binance()
+            for sym in DEFAULT_SYMBOLS
+            if sym in funding_trackers
+        ),
+        return_exceptions=True,
+    )
 
     alert_scheduler.set_zone_check_callback(_zone_check_loop)
     asyncio.create_task(alert_scheduler.start())
     asyncio.create_task(_trade_ingest_loop())
     asyncio.create_task(_liquidation_loop())
     asyncio.create_task(_metrics_pruner())
+    asyncio.create_task(_vpin_bucket_refresh_loop())
     # OI / funding background poller (P0 fix - was REST-only on demand)
     asyncio.create_task(oi_poll_loop(oi_trackers, funding_trackers, interval_s=30))
     # Absorption sampler - replaces inline single-shot heuristic in /api/orderflow
@@ -811,11 +895,11 @@ async def lifespan(app: FastAPI):
 
                 async with httpx.AsyncClient(timeout=20) as c:
                     await c.get(f"http://127.0.0.1:8001/api/matrix/{sym}")
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as exc:  # noqa: BLE001  # reason: warm-up is best effort
+                logger.warning("matrix cache warm failed: %s", exc)
             logger.info("default-view caches warmed (%s)", sym)
         except Exception as exc:  # noqa: BLE001
-            logger.debug("cache warm skipped: %s", exc)
+            logger.warning("default-view cache warm failed: %s", exc)
 
     asyncio.create_task(_warm_default_caches())
 
@@ -836,7 +920,7 @@ async def lifespan(app: FastAPI):
             await asyncio.to_thread(brief_generator.finbert.score_batch, ["warmup"])
             logger.info("FinBERT warm")
         except Exception as exc:  # noqa: BLE001
-            logger.debug("AI warmup skipped: %s", exc)
+            logger.warning("AI warmup failed: %s", exc)
 
     asyncio.create_task(_warm_llm())
     logger.info("Nexus ready.")
@@ -854,13 +938,32 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Nexus",
     description="Institutional-grade crypto derivatives research terminal",
-    version="0.3.0",
+    version=nexus_version(),
     lifespan=lifespan,
 )
 
+# Local API token. Enforced only when a token is configured (env or
+# NEXUS_DATA_DIR/api_token) so an older launcher keeps working until it is
+# rebuilt; `just dev-backend`, the Electron shell and `just doctor` ensure one.
+# Added before CORS so a rejected browser request still gets CORS headers.
+_API_TOKEN = load_token(NEXUS_DATA_DIR)
+if _API_TOKEN:
+    app.add_middleware(TokenAuthMiddleware, token=_API_TOKEN)
+    logger.info("API auth enabled (token source: %s)", describe_source(NEXUS_DATA_DIR))
+else:
+    logger.warning(
+        "API auth DISABLED - no NEXUS_API_TOKEN and no %s. Anything that can reach "
+        "port 8001 can read account data. Run: python -m backend.ops.auth",
+        NEXUS_DATA_DIR / "api_token",
+    )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://localhost:3001"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",
+        "http://localhost:3001",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -909,11 +1012,17 @@ app.include_router(make_world_router(state=world_state))
 # ---------------------------------------------------------------------------
 # Health
 # ---------------------------------------------------------------------------
+@app.get("/healthz")
+async def healthz():
+    """Unauthenticated liveness probe: the event loop answers. Nothing more."""
+    return {"status": "ok", **build_info()}
+
+
 @app.get("/api/health")
 async def health():
     return {
         "status": "ok",
-        "version": "0.3.0",
+        **build_info(),
         "websockets": ws_manager.status,
         "ws_gap_report": ws_manager.gap_report(),
         "symbols": DEFAULT_SYMBOLS,
@@ -927,7 +1036,7 @@ async def health():
         "circuit_breaker": circuit_breaker.state.to_dict(),
         "circuit_breaker_events": circuit_breaker.recent_events(32),
         "event_bus_recent": event_bus.recent(32),
-        "uptime": time.time(),
+        "uptime": round(uptime_s(), 1),
     }
 
 
@@ -1053,6 +1162,7 @@ async def get_brief(symbol: str):
 
     squeeze = (
         squeeze_meters[symbol].compute(
+            nearest_liq_distance_pct=_nearest_liq_distance(symbol),
             funding_rate_pct=funding.get("weighted_rate_pct", 0),
             oi_change_pct=oi_trackers[symbol].get_trend().get("change_pct", 0)
             if symbol in oi_trackers
@@ -1178,21 +1288,12 @@ async def _build_derivatives_strip(sym: str, interval: str, limit: int) -> dict:
     def _spot_get():
         url = f"https://api.binance.com/api/v3/klines?symbol={sym}&interval={interval}&limit={limit}"
         try:
-            # Short strict-SSL attempt - on PLDT-style networks this path can
-            # hang to full timeout before the permissive retry; 4s caps that.
-            req = _url.Request(url, headers={"User-Agent": "Nexus/0.3"})
-            with _url.urlopen(req, timeout=4) as resp:
-                return _json.loads(resp.read())
-        except Exception:  # noqa: BLE001
-            try:
-                ctx = _ssl.create_default_context()
-                ctx.check_hostname = False
-                ctx.verify_mode = _ssl.CERT_NONE
-                req = _url.Request(url, headers={"User-Agent": "Nexus/0.3"})
-                with _url.urlopen(req, timeout=10, context=ctx) as resp:
-                    return _json.loads(resp.read())
-            except Exception:  # noqa: BLE001
-                return None
+            # Short strict-TLS attempt (4s) before the logged permissive retry - on
+            # PLDT-style networks strict can hang to the full timeout.
+            return fetch_json(url, timeout=10.0, strict_timeout=4.0)
+        except Exception as exc:  # noqa: BLE001  # reason: spot klines are optional context for the strip; degrade to None
+            warn_throttled(logger, f"spot_klines:{sym}", "spot klines fetch failed for %s: %s", sym, exc)
+            return None
 
     loop = asyncio.get_event_loop()
     with _cf.ThreadPoolExecutor() as pool:
@@ -1393,7 +1494,11 @@ async def get_correlation(lookback: int = 96):
     series: dict[str, list[float]] = {}
     for sym in DEFAULT_SYMBOLS:
         hist = list(binance_data.kline_history.get(sym, []))
-        closes = [float(c.get("close", 0)) for c in hist[-lookback:] if c.get("close")]
+        closes = [
+            (int(c["open_time"]), float(c["close"]))
+            for c in hist[-lookback:]
+            if c.get("close") and c.get("open_time") is not None
+        ]
         if closes:
             series[sym] = closes
     matrix = correlation_matrix(series)
@@ -1744,8 +1849,8 @@ async def get_market_sentiment():
         try:
             await meter.fetch_ls_ratio()
             await meter.fetch_top_trader_ls()
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001  # reason: L/S ratios are optional sentiment inputs
+            warn_throttled(logger, f"ls_fetch:{sym}", "L/S ratio fetch failed for %s: %s", sym, exc)
         if getattr(meter, "_ls_ratio", None):
             ls_values.append(float(meter._ls_ratio))
         if getattr(meter, "_top_ls_ratio", None):
@@ -1913,6 +2018,7 @@ async def generate_ai_brief():
 
     squeeze = (
         squeeze_meters[sym].compute(
+            nearest_liq_distance_pct=_nearest_liq_distance(sym),
             funding_rate_pct=funding.get("weighted_rate_pct", 0),
             oi_change_pct=oi_trackers[sym].get_trend().get("change_pct", 0) if sym in oi_trackers else 0,
         )
@@ -2050,12 +2156,16 @@ async def _compute_alpha(symbol: str):
         smart_money_data = smt.get_whale_activity()
 
     # ----- P1 factor inputs -----
-    # tsmom needs ~73+ 1h closes; pull from kline_history (1h DEFAULT_INTERVAL).
-    closes_1h = []
+    # tsmom's annualisation assumes 1h bars. kline_history holds DEFAULT_INTERVAL
+    # (15m) bars, so resample instead of feeding 15m closes as if they were
+    # hourly - which made a 3h formation window look like 12h.
+    closes_1h: list[float] = []
     try:
-        kh = list(binance_data.kline_history.get(symbol, []))
-        closes_1h = [float(k.get("close", 0)) for k in kh if k.get("close")]
-    except Exception:  # noqa: BLE001
+        _kb = binance_data.kline_history.get(symbol)
+        if _kb is not None:
+            closes_1h = [float(b["close"]) for b in _kb.resample("1h")]
+    except Exception as exc:  # noqa: BLE001  # reason: tsmom is one optional factor; drop it rather than fail the composite
+        warn_throttled(logger, f"tsmom_resample:{symbol}", "tsmom resample failed for %s: %s", symbol, exc)
         closes_1h = []
     tsmom_payload = None
     try:
@@ -2064,7 +2174,7 @@ async def _compute_alpha(symbol: str):
 
             tsmom_payload = _tsmom(closes_1h)
     except Exception as _e:  # noqa: BLE001
-        logger.debug("tsmom %s: %s", symbol, _e)
+        warn_throttled(logger, f"tsmom:{symbol}", "tsmom failed for %s: %s", symbol, _e)
 
     # funding_carry needs FundingTracker history populated - already by oi_poller.
     funding_carry_payload = None
@@ -2073,7 +2183,7 @@ async def _compute_alpha(symbol: str):
         if ft:
             funding_carry_payload = ft.carry_signal()
     except Exception as _e:  # noqa: BLE001
-        logger.debug("funding_carry %s: %s", symbol, _e)
+        warn_throttled(logger, f"funding_carry:{symbol}", "funding_carry failed for %s: %s", symbol, _e)
 
     # oi_momentum from OITracker (history seeded by oi_poller, ~30s cadence).
     # Adaptive cascade: prefer the institutional-standard 4h/7d but fall back
@@ -2104,7 +2214,7 @@ async def _compute_alpha(symbol: str):
                 # All variants thin - surface the smallest so reason+samples is informative.
                 oi_momentum_payload = payload
     except Exception as _e:  # noqa: BLE001
-        logger.debug("oi_momentum %s: %s", symbol, _e)
+        warn_throttled(logger, f"oi_momentum:{symbol}", "oi_momentum failed for %s: %s", symbol, _e)
 
     # Squeeze risk (P1-A) - regime-aware contribution to composite alpha.
     # Reuses the same inputs as the brief endpoint: weighted funding, OI ROC,
@@ -2120,8 +2230,8 @@ async def _compute_alpha(symbol: str):
                 if ot:
                     trend = ot.get_trend()
                     oi_change_pct = float((trend or {}).get("change_pct", 0.0) or 0.0)
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as exc:  # noqa: BLE001  # reason: OI trend is optional; squeeze degrades to 0 OI change
+                warn_throttled(logger, f"oi_trend:{symbol}", "OI trend unavailable for %s: %s", symbol, exc)
             vpin_now: float | None = None
             try:
                 vt = vpin_trackers.get(symbol) if "vpin_trackers" in globals() else None
@@ -2131,13 +2241,14 @@ async def _compute_alpha(symbol: str):
             except Exception:  # noqa: BLE001
                 vpin_now = None
             squeeze_payload = meter.compute(
+                nearest_liq_distance_pct=_nearest_liq_distance(symbol),
                 funding_rate_pct=f_rate_pct,
                 oi_change_pct=oi_change_pct,
                 regime=(regime_data or {}).get("regime"),
                 vpin=vpin_now,
             )
     except Exception as _e:  # noqa: BLE001
-        logger.debug("squeeze %s: %s", symbol, _e)
+        warn_throttled(logger, f"squeeze:{symbol}", "squeeze failed for %s: %s", symbol, _e)
 
     # Deribit DVOL for vol_regime - replaces the previous {} which permanently
     # capped vol_regime confidence at 0. We pull a 24h slice; alpha_engine reads
@@ -2150,7 +2261,7 @@ async def _compute_alpha(symbol: str):
             if isinstance(dv, dict) and dv:
                 deribit_payload = dv
     except Exception as _e:  # noqa: BLE001
-        logger.debug("deribit dvol %s: %s", symbol, _e)
+        warn_throttled(logger, f"dvol:{symbol}", "deribit dvol failed for %s: %s", symbol, _e)
 
     # Generate composite
     try:
@@ -2289,8 +2400,10 @@ async def get_heatmap(symbol: str):
                 side = "long" if ev.get("side", "").lower() in ("sell", "long") else "short"
                 key = (band_idx, side)
                 buckets[key] = buckets.get(key, 0.0) + usd
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001  # reason: OKX is a secondary venue; Binance bands still render
+            warn_throttled(
+                logger, f"okx_liqs:{symbol}", "OKX liquidation merge failed for %s: %s", symbol, exc
+            )
         for (idx, side), usd in buckets.items():
             band_mid = mark * (1.0 + (idx + 0.5) * bucket_pct)
             liq_clusters.append(
@@ -2477,17 +2590,22 @@ async def get_kelly_for_symbol(
         var = sum((x - mu) ** 2 for x in last24) / max(len(last24) - 1, 1)
         realized_vol_24h = _m.sqrt(var) * _m.sqrt(24)
 
-    # Correlation map for filter - best-effort, optional
+    # Correlation map for the Kelly haircut: {other_symbol: rho(sym, other)}.
+    # This call used to pass a `lookback=` kwarg that correlation_matrix never
+    # accepted, so it raised on every request and the haircut was always 1.0.
     correlations = None
     open_positions: list[str] = []
     try:
         if len(closes) >= 30:
             pair_data = correlation_matrix(
-                {s: list(binance_data.kline_history.get(s, [])) for s in DEFAULT_SYMBOLS},
-                lookback=96,
+                {s: list(binance_data.kline_history.get(s, []))[-96:] for s in DEFAULT_SYMBOLS},
             )
-            correlations = pair_data.get("pairs") if isinstance(pair_data, dict) else None
-    except Exception:  # noqa: BLE001
+            corr_symbols = pair_data.get("symbols") or []
+            if sym in corr_symbols:
+                row = pair_data["matrix"][corr_symbols.index(sym)]
+                correlations = {other: float(row[j]) for j, other in enumerate(corr_symbols) if other != sym}
+    except Exception as exc:  # noqa: BLE001  # reason: the haircut is optional; Kelly runs uncorrelated without it
+        warn_throttled(logger, f"kelly_corr:{sym}", "Kelly correlation map failed for %s: %s", sym, exc)
         correlations = None
 
     out = kelly_sizer.compute(
@@ -2547,9 +2665,6 @@ async def get_var_for_symbol(
 # Fetched on-demand via the existing urllib-with-SSL-fallback helper.
 # ---------------------------------------------------------------------------
 import concurrent.futures as _cf  # noqa: E402
-import json as _json  # noqa: E402
-import ssl as _ssl  # noqa: E402
-import urllib.request as _url  # noqa: E402
 
 _VALID_INTERVALS = {
     "1m",
@@ -2577,22 +2692,13 @@ _KLINES_TTL_SEC = 12.0
 
 
 def _binance_fut_get(path: str, timeout: int = 10):
-    """Blocking Binance USDT-M futures REST call with SSL fallback. Run in thread."""
+    """Blocking Binance USDT-M futures REST call. Run in a thread. The TLS
+    fallback is centralised - and logged - in backend.data.http."""
     url = f"https://fapi.binance.com{path}"
     try:
-        req = _url.Request(url, headers={"User-Agent": "Nexus/0.3"})
-        with _url.urlopen(req, timeout=timeout) as resp:
-            return _json.loads(resp.read())
-    except Exception:  # noqa: BLE001
-        pass
-    try:
-        ctx = _ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = _ssl.CERT_NONE
-        req = _url.Request(url, headers={"User-Agent": "Nexus/0.3"})
-        with _url.urlopen(req, timeout=timeout, context=ctx) as resp:
-            return _json.loads(resp.read())
-    except Exception:  # noqa: BLE001
+        return fetch_json(url, timeout=float(timeout))
+    except Exception as exc:  # noqa: BLE001  # reason: callers treat None as "venue unavailable" and serve cached data
+        warn_throttled(logger, f"fut_get:{path.split('?')[0]}", "Binance REST %s failed: %s", path, exc)
         return None
 
 

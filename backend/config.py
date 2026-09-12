@@ -392,9 +392,14 @@ DEFAULT_SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"]
 DEFAULT_INTERVAL = "15m"
 
 # ---------------------------------------------------------------------------
-# Storage
+# Storage / runtime data
 # ---------------------------------------------------------------------------
-DB_PATH = PROJECT_ROOT / "nexus.db"
+# Everything the app writes at runtime (SQLite, logs, the API token) lives in
+# one relocatable directory so the repository never carries state and the
+# packaged app can keep it under %APPDATA%. Default: <repo>/data.
+NEXUS_DATA_DIR = Path(os.getenv("NEXUS_DATA_DIR") or (PROJECT_ROOT / "data")).expanduser().resolve()
+NEXUS_DATA_DIR.mkdir(parents=True, exist_ok=True)
+DB_PATH = NEXUS_DATA_DIR / "nexus.db"
 
 # ---------------------------------------------------------------------------
 # Cross-asset layer (OpenBB-shaped coverage, keyless)

@@ -7,6 +7,8 @@ const eslintConfig = defineConfig([
   ...nextTs,
   // Override default ignores of eslint-config-next.
   globalIgnores([
+    // Electron main process: CommonJS by necessity, checked with `node --check`.
+    "electron/**",
     // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
