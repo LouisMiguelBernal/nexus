@@ -29,7 +29,13 @@ const FE_SHA = process.env.NEXT_PUBLIC_NEXUS_GIT_SHA ?? "unknown";
  */
 function BuildStamp({ health }: { health: Record<string, unknown> | null }) {
   const beVersion = health?.version ? String(health.version) : null;
-  const beSha = health?.git_sha ? String(health.git_sha) : null;
+  // The backend reports the last commit touching frontend/ (frontend_sha); fall
+  // back to its HEAD sha for older backends.
+  const beSha = health?.frontend_sha
+    ? String(health.frontend_sha)
+    : health?.git_sha
+      ? String(health.git_sha)
+      : null;
   const shaComparable = FE_SHA !== "unknown" && beSha !== null && beSha !== "unknown";
   const mismatch = beVersion !== null && (beVersion !== FE_VERSION || (shaComparable && beSha !== FE_SHA));
   const title = `frontend v${FE_VERSION} ${FE_SHA} · backend ${

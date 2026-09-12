@@ -130,7 +130,8 @@ class VPINResult:
     last_bucket: float  # VPIN of the most recent closed bucket
     buckets_closed: int  # total buckets closed in this tracker's lifetime
     window: int
-    toxic: bool  # running > toxic_threshold (default 0.85)
+    toxic: bool  # running > toxic_threshold (default 0.85) AND warmed up
+    warmed_up: bool  # enough closed buckets for `running` to mean anything
     bucket_target_notional: float
     history: list[dict[str, float]] = field(default_factory=list)
 
@@ -151,6 +152,11 @@ class VPINTracker:
     bvc_lookback : int
         Number of recent bucket returns used to estimate σ for Bulk Volume
         Classification when trade sides are absent.
+    warmup_buckets : int | None
+        Closed buckets required before `toxic` can be True. Default
+        max(5, window // 5). A running average over one or two buckets is
+        noise, and publishing it tripped the circuit breaker (VPIN >= 0.85)
+        seconds after every cold start.
     """
 
     def __init__(
@@ -159,6 +165,7 @@ class VPINTracker:
         window: int = 50,
         toxic_threshold: float = 0.85,
         bvc_lookback: int = 50,
+        warmup_buckets: int | None = None,
     ):
         if bucket_target_notional <= 0:
             raise ValueError("bucket_target_notional must be positive")
@@ -166,6 +173,7 @@ class VPINTracker:
         self.window = int(window)
         self.toxic_threshold = float(toxic_threshold)
         self.bvc_lookback = int(bvc_lookback)
+        self.warmup_buckets = int(warmup_buckets) if warmup_buckets is not None else max(5, self.window // 5)
 
         self._current = _Bucket(target_notional=self.bucket_target_notional)
         self._vpin_hist: deque[float] = deque(maxlen=self.window)
@@ -256,12 +264,14 @@ class VPINTracker:
     def snapshot(self) -> VPINResult:
         running = sum(self._vpin_hist) / len(self._vpin_hist) if self._vpin_hist else 0.0
         last = self._vpin_hist[-1] if self._vpin_hist else 0.0
+        warmed_up = len(self._vpin_hist) >= self.warmup_buckets
         return VPINResult(
             running=round(running, 6),
             last_bucket=round(last, 6),
             buckets_closed=self._total_closed,
             window=self.window,
-            toxic=running >= self.toxic_threshold,
+            toxic=warmed_up and running >= self.toxic_threshold,
+            warmed_up=warmed_up,
             bucket_target_notional=self.bucket_target_notional,
             history=list(self._closed_buckets),
         )
@@ -274,6 +284,8 @@ class VPINTracker:
             "buckets_closed": s.buckets_closed,
             "window": s.window,
             "toxic": s.toxic,
+            "warmed_up": s.warmed_up,
+            "warmup_buckets": self.warmup_buckets,
             "toxic_threshold": self.toxic_threshold,
             "bucket_target_notional": s.bucket_target_notional,
         }

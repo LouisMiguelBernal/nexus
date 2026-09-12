@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 import { config as loadDotenv } from "dotenv";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -21,11 +21,18 @@ const readVersion = (): string => {
     return "0.0.0";
   }
 };
+// The stamp is the last commit that touched frontend/ (not HEAD), so the
+// backend can compare it against the same value and a backend-only commit
+// does not read as a stale bundle. execFileSync: no shell, so cmd.exe cannot
+// mangle the "%h" format string.
 const readGitSha = (): string => {
-  if (process.env.NEXUS_GIT_SHA) return process.env.NEXUS_GIT_SHA.slice(0, 12);
+  if (process.env.NEXUS_FRONTEND_SHA) return process.env.NEXUS_FRONTEND_SHA.slice(0, 12);
   try {
     return (
-      execSync("git rev-parse --short=7 HEAD", { cwd: ROOT, stdio: ["ignore", "pipe", "ignore"] })
+      execFileSync("git", ["log", "-1", "--format=%h", "--abbrev=7", "--", "frontend"], {
+        cwd: ROOT,
+        stdio: ["ignore", "pipe", "ignore"],
+      })
         .toString()
         .trim() || "unknown"
     );

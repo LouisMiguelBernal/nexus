@@ -389,7 +389,10 @@ async def _trade_ingest_loop():
 
                 # Publish VPIN once per tick if any bucket closed - prevents
                 # high-frequency spam while keeping the breaker reactive.
-                if vpin and bucket_closed:
+                # Only publish once the tracker is warmed up: the breaker trips on
+                # VPIN >= 0.85, and an average over one or two buckets hit that
+                # within seconds of every cold start.
+                if vpin and bucket_closed and vpin.snapshot().warmed_up:
                     snap = vpin.snapshot()
                     try:
                         await event_bus.publish(

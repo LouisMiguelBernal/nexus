@@ -47,3 +47,18 @@ def test_bucket_target_resize():
     v = VPINTracker(bucket_target_notional=1_000.0)
     v.update_bucket_target(5_000.0)
     assert v.bucket_target_notional == 5_000.0
+
+
+def test_vpin_is_not_toxic_before_warmup():
+    v = VPINTracker(bucket_target_notional=1_000.0, window=10)  # warmup = max(5, 10 // 5) = 5
+    assert v.warmup_buckets == 5
+    for i in range(15):  # three one-sided buckets of five trades each
+        v.add_trade(price=100.0, qty=2.0, side="buy", ts=float(i))
+    snap = v.snapshot()
+    assert snap.buckets_closed == 3 and snap.running == 1.0
+    assert snap.warmed_up is False and snap.toxic is False, "must not call two buckets toxic"
+    for i in range(15, 25):  # two more buckets -> warmed up
+        v.add_trade(price=100.0, qty=2.0, side="buy", ts=float(i))
+    snap = v.snapshot()
+    assert snap.buckets_closed == 5 and snap.warmed_up is True and snap.toxic is True
+    assert v.as_dict()["warmup_buckets"] == 5

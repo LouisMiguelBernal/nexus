@@ -46,6 +46,28 @@ def git_sha() -> str:
     return sha if proc.returncode == 0 and sha else "unknown"
 
 
+@lru_cache(maxsize=1)
+def frontend_sha() -> str:
+    """Short SHA of the last commit that touched frontend/. The status bar compares
+    the bundle's build stamp against this, so a backend-only commit does not raise
+    a false BUILD MISMATCH. ``NEXUS_FRONTEND_SHA`` overrides (packaged app)."""
+    env = os.getenv("NEXUS_FRONTEND_SHA", "").strip()
+    if env:
+        return env[:12]
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(ROOT), "log", "-1", "--format=%h", "--abbrev=7", "--", "frontend"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
+    sha = proc.stdout.strip()
+    return sha if proc.returncode == 0 and sha else "unknown"
+
+
 def started_at() -> float:
     return _STARTED_AT
 
@@ -58,6 +80,7 @@ def build_info() -> dict[str, Any]:
     return {
         "version": version(),
         "git_sha": git_sha(),
+        "frontend_sha": frontend_sha(),
         "started_at": round(_STARTED_AT, 3),
         "uptime_s": round(uptime_s(), 1),
     }
