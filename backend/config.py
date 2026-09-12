@@ -300,6 +300,12 @@ CIRCUIT_BREAKER = {
     "leverage_reduction_threshold": 0.03,
     "reset_time": "00:00 UTC",
     "override_allowed": False,
+    # Only an outage on a venue we actually depend on may suppress signals.
+    # OKX and MEXC are intermittently blocked by the ISP here; losing them
+    # degrades zone confidence but is not a reason to stop trading. Matched as
+    # a case-insensitive substring of the WSManager stream name, so "binance"
+    # covers "binance_futures".
+    "required_venues": ["binance"],
 }
 
 # ---------------------------------------------------------------------------
