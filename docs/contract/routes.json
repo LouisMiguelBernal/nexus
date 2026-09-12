@@ -1,0 +1,1022 @@
+[
+  {
+    "index": 0,
+    "method": "GET",
+    "path": "/api/journal/trades",
+    "name": "get_journal_trades",
+    "path_params": [],
+    "query_params": [
+      {
+        "name": "force_refresh",
+        "required": false,
+        "default": false
+      }
+    ]
+  },
+  {
+    "index": 1,
+    "method": "GET",
+    "path": "/api/journal/stats",
+    "name": "get_journal_stats",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 2,
+    "method": "POST",
+    "path": "/api/journal/analyze",
+    "name": "analyze_journal",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 3,
+    "method": "GET",
+    "path": "/api/journal/last-analysis",
+    "name": "get_last_analysis",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 4,
+    "method": "POST",
+    "path": "/api/journal/note/{trade_id}",
+    "name": "save_note",
+    "path_params": [
+      {
+        "name": "trade_id",
+        "required": false
+      }
+    ],
+    "query_params": []
+  },
+  {
+    "index": 5,
+    "method": "GET",
+    "path": "/api/journal/note/{trade_id}",
+    "name": "get_note",
+    "path_params": [
+      {
+        "name": "trade_id",
+        "required": false
+      }
+    ],
+    "query_params": []
+  },
+  {
+    "index": 6,
+    "method": "GET",
+    "path": "/api/journal/portfolio",
+    "name": "get_portfolio",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 7,
+    "method": "GET",
+    "path": "/api/journal/diag",
+    "name": "diag",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 8,
+    "method": "POST",
+    "path": "/api/journal/clear-cache",
+    "name": "clear_cache",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 9,
+    "method": "GET",
+    "path": "/api/journal/debug",
+    "name": "debug_env",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 10,
+    "method": "GET",
+    "path": "/api/matrix/{symbol}",
+    "name": "get_matrix",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": []
+  },
+  {
+    "index": 11,
+    "method": "GET",
+    "path": "/api/world/board",
+    "name": "board",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 12,
+    "method": "GET",
+    "path": "/api/world/macro",
+    "name": "macro",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 13,
+    "method": "GET",
+    "path": "/api/world/regime",
+    "name": "regime",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 14,
+    "method": "GET",
+    "path": "/api/world/geo",
+    "name": "geo",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 15,
+    "method": "GET",
+    "path": "/api/world/chart/{symbol}",
+    "name": "chart",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": [
+      {
+        "name": "interval",
+        "required": false
+      },
+      {
+        "name": "range",
+        "required": false,
+        "default": "6mo"
+      }
+    ]
+  },
+  {
+    "index": 16,
+    "method": "GET",
+    "path": "/api/world/fundamentals/{symbol}",
+    "name": "fundamentals",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": []
+  },
+  {
+    "index": 17,
+    "method": "GET",
+    "path": "/api/world/screener",
+    "name": "screener",
+    "path_params": [],
+    "query_params": [
+      {
+        "name": "count",
+        "required": false,
+        "default": 40,
+        "le": 100
+      },
+      {
+        "name": "id",
+        "required": false,
+        "default": "most_actives"
+      }
+    ]
+  },
+  {
+    "index": 18,
+    "method": "GET",
+    "path": "/api/world/options/{symbol}",
+    "name": "options",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": [
+      {
+        "name": "expiry",
+        "required": false
+      }
+    ]
+  },
+  {
+    "index": 19,
+    "method": "GET",
+    "path": "/api/world/search",
+    "name": "search",
+    "path_params": [],
+    "query_params": [
+      {
+        "name": "limit",
+        "required": false,
+        "default": 10,
+        "le": 25
+      },
+      {
+        "name": "q",
+        "required": false
+      }
+    ]
+  },
+  {
+    "index": 20,
+    "method": "GET",
+    "path": "/healthz",
+    "name": "healthz",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 21,
+    "method": "GET",
+    "path": "/api/health",
+    "name": "health",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 22,
+    "method": "GET",
+    "path": "/api/midprice/{symbol}",
+    "name": "get_midprice",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": []
+  },
+  {
+    "index": 23,
+    "method": "GET",
+    "path": "/api/book/merged/{symbol}",
+    "name": "get_merged_book",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": [
+      {
+        "name": "depth",
+        "required": false,
+        "default": 20,
+        "ge": 1,
+        "le": 100
+      }
+    ]
+  },
+  {
+    "index": 24,
+    "method": "GET",
+    "path": "/api/feed/health",
+    "name": "get_feed_health",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 25,
+    "method": "GET",
+    "path": "/api/crypto/strip",
+    "name": "get_crypto_strip",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 26,
+    "method": "GET",
+    "path": "/api/brief/{symbol}",
+    "name": "get_brief",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": []
+  },
+  {
+    "index": 27,
+    "method": "GET",
+    "path": "/api/zones/watchlist",
+    "name": "get_zone_watchlist",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 28,
+    "method": "GET",
+    "path": "/api/zones/{symbol}",
+    "name": "get_zones",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": []
+  },
+  {
+    "index": 29,
+    "method": "POST",
+    "path": "/api/zones/alert",
+    "name": "add_zone_alert",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 30,
+    "method": "GET",
+    "path": "/api/oi/{symbol}",
+    "name": "get_oi",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": []
+  },
+  {
+    "index": 31,
+    "method": "GET",
+    "path": "/api/funding/{symbol}",
+    "name": "get_funding",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": []
+  },
+  {
+    "index": 32,
+    "method": "GET",
+    "path": "/api/derivatives/{symbol}",
+    "name": "get_derivatives_strip",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": [
+      {
+        "name": "interval",
+        "required": false,
+        "default": "1h"
+      },
+      {
+        "name": "limit",
+        "required": false,
+        "default": 500,
+        "ge": 30,
+        "le": 1500
+      }
+    ]
+  },
+  {
+    "index": 33,
+    "method": "GET",
+    "path": "/api/lsratio/{symbol}",
+    "name": "get_ls_ratio",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": []
+  },
+  {
+    "index": 34,
+    "method": "GET",
+    "path": "/api/cvd/{symbol}",
+    "name": "get_cvd",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": []
+  },
+  {
+    "index": 35,
+    "method": "GET",
+    "path": "/api/obi/{symbol}",
+    "name": "get_obi",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": [
+      {
+        "name": "limit",
+        "required": false,
+        "default": 240
+      }
+    ]
+  },
+  {
+    "index": 36,
+    "method": "GET",
+    "path": "/api/backtest/zones/{symbol}",
+    "name": "backtest_zones_endpoint",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": [
+      {
+        "name": "bounce_pct",
+        "required": false,
+        "default": 0.8
+      },
+      {
+        "name": "interval",
+        "required": false,
+        "default": "15m"
+      },
+      {
+        "name": "reaction_bars",
+        "required": false,
+        "default": 6
+      }
+    ]
+  },
+  {
+    "index": 37,
+    "method": "GET",
+    "path": "/api/metrics/history/{symbol}",
+    "name": "get_metric_history",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": [
+      {
+        "name": "limit",
+        "required": false,
+        "default": 2000
+      },
+      {
+        "name": "metric",
+        "required": false
+      },
+      {
+        "name": "minutes",
+        "required": false,
+        "default": 60
+      }
+    ]
+  },
+  {
+    "index": 38,
+    "method": "GET",
+    "path": "/api/correlation",
+    "name": "get_correlation",
+    "path_params": [],
+    "query_params": [
+      {
+        "name": "lookback",
+        "required": false,
+        "default": 96
+      }
+    ]
+  },
+  {
+    "index": 39,
+    "method": "GET",
+    "path": "/api/vol-spread/{symbol}",
+    "name": "get_vol_spread",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": [
+      {
+        "name": "interval",
+        "required": false,
+        "default": "15m"
+      }
+    ]
+  },
+  {
+    "index": 40,
+    "method": "GET",
+    "path": "/api/liquidations/{symbol}",
+    "name": "get_liquidations",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": [
+      {
+        "name": "limit",
+        "required": false,
+        "default": 180
+      }
+    ]
+  },
+  {
+    "index": 41,
+    "method": "GET",
+    "path": "/api/tape/{symbol}",
+    "name": "get_tape",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": [
+      {
+        "name": "limit",
+        "required": false,
+        "default": 180
+      }
+    ]
+  },
+  {
+    "index": 42,
+    "method": "GET",
+    "path": "/api/news",
+    "name": "get_news",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 43,
+    "method": "GET",
+    "path": "/api/sentiment/fng",
+    "name": "get_fng",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 44,
+    "method": "GET",
+    "path": "/api/sentiment/smartmoney",
+    "name": "get_smart_money",
+    "path_params": [],
+    "query_params": [
+      {
+        "name": "symbol",
+        "required": false,
+        "default": "BTCUSDT"
+      }
+    ]
+  },
+  {
+    "index": 45,
+    "method": "GET",
+    "path": "/api/sentiment/sync",
+    "name": "sync_sentiment",
+    "path_params": [],
+    "query_params": [
+      {
+        "name": "symbol",
+        "required": false,
+        "default": "BTCUSDT"
+      }
+    ]
+  },
+  {
+    "index": 46,
+    "method": "POST",
+    "path": "/api/sentiment/brief-save",
+    "name": "save_brief",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 47,
+    "method": "GET",
+    "path": "/api/sentiment/brief-load",
+    "name": "load_brief",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 48,
+    "method": "DELETE",
+    "path": "/api/sentiment/brief-clear",
+    "name": "clear_brief",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 49,
+    "method": "GET",
+    "path": "/api/sentiment/debug",
+    "name": "debug",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 50,
+    "method": "GET",
+    "path": "/api/deribit/options/{currency}",
+    "name": "get_deribit_options",
+    "path_params": [
+      {
+        "name": "currency",
+        "required": false
+      }
+    ],
+    "query_params": []
+  },
+  {
+    "index": 51,
+    "method": "GET",
+    "path": "/api/deribit/trades/{instrument}",
+    "name": "get_deribit_trades",
+    "path_params": [
+      {
+        "name": "instrument",
+        "required": false
+      }
+    ],
+    "query_params": [
+      {
+        "name": "count",
+        "required": false,
+        "default": 100
+      }
+    ]
+  },
+  {
+    "index": 52,
+    "method": "GET",
+    "path": "/api/blofin/balance",
+    "name": "get_blofin_balance",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 53,
+    "method": "GET",
+    "path": "/api/blofin/positions",
+    "name": "get_blofin_positions",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 54,
+    "method": "POST",
+    "path": "/api/blofin/order",
+    "name": "place_blofin_order",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 55,
+    "method": "GET",
+    "path": "/api/blofin/orders",
+    "name": "get_blofin_orders",
+    "path_params": [],
+    "query_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ]
+  },
+  {
+    "index": 56,
+    "method": "POST",
+    "path": "/api/risk/kelly",
+    "name": "compute_kelly",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 57,
+    "method": "GET",
+    "path": "/api/risk/leverage",
+    "name": "get_leverage_status",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 58,
+    "method": "POST",
+    "path": "/api/risk/simulate",
+    "name": "simulate_position",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 59,
+    "method": "GET",
+    "path": "/api/risk/margin",
+    "name": "get_margin_summary",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 60,
+    "method": "GET",
+    "path": "/api/macro/calendar",
+    "name": "get_macro_calendar",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 61,
+    "method": "GET",
+    "path": "/api/macro/status",
+    "name": "get_macro_status",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 62,
+    "method": "POST",
+    "path": "/api/macro/sentinel-update",
+    "name": "sentinel_update",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 63,
+    "method": "GET",
+    "path": "/api/sentiment",
+    "name": "get_market_sentiment",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 64,
+    "method": "GET",
+    "path": "/api/macro/releases",
+    "name": "get_macro_releases",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 65,
+    "method": "POST",
+    "path": "/api/ai/brief",
+    "name": "generate_ai_brief",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 66,
+    "method": "GET",
+    "path": "/api/ai/last-brief",
+    "name": "get_last_ai_brief",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 67,
+    "method": "GET",
+    "path": "/api/alerts",
+    "name": "get_alerts",
+    "path_params": [],
+    "query_params": [
+      {
+        "name": "limit",
+        "required": false,
+        "default": 50
+      }
+    ]
+  },
+  {
+    "index": 68,
+    "method": "POST",
+    "path": "/api/alerts/telegram/test",
+    "name": "test_telegram",
+    "path_params": [],
+    "query_params": []
+  },
+  {
+    "index": 69,
+    "method": "GET",
+    "path": "/api/alpha/{symbol}",
+    "name": "get_alpha",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": []
+  },
+  {
+    "index": 70,
+    "method": "GET",
+    "path": "/api/heatmap/{symbol}",
+    "name": "get_heatmap",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": []
+  },
+  {
+    "index": 71,
+    "method": "GET",
+    "path": "/api/orderflow/{symbol}",
+    "name": "get_orderflow",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": []
+  },
+  {
+    "index": 72,
+    "method": "GET",
+    "path": "/api/risk/kelly/{symbol}",
+    "name": "get_kelly_for_symbol",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": [
+      {
+        "name": "leverage",
+        "required": false,
+        "default": 5,
+        "ge": 1,
+        "le": 125
+      },
+      {
+        "name": "total_collateral",
+        "required": false,
+        "default": 10000.0,
+        "ge": 0
+      }
+    ]
+  },
+  {
+    "index": 73,
+    "method": "GET",
+    "path": "/api/risk/var/{symbol}",
+    "name": "get_var_for_symbol",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": [
+      {
+        "name": "leverage",
+        "required": false,
+        "default": 1.0,
+        "ge": 1.0,
+        "le": 125.0
+      },
+      {
+        "name": "lookback",
+        "required": false,
+        "default": 200,
+        "ge": 30,
+        "le": 1000
+      },
+      {
+        "name": "position_usd",
+        "required": false,
+        "default": 10000.0,
+        "ge": 0
+      }
+    ]
+  },
+  {
+    "index": 74,
+    "method": "GET",
+    "path": "/api/klines/{symbol}",
+    "name": "get_klines",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": [
+      {
+        "name": "interval",
+        "required": false,
+        "default": "1h"
+      },
+      {
+        "name": "limit",
+        "required": false,
+        "default": 500,
+        "ge": 10,
+        "le": 1500
+      }
+    ]
+  },
+  {
+    "index": 75,
+    "method": "GET",
+    "path": "/api/symbols/search",
+    "name": "search_symbols",
+    "path_params": [],
+    "query_params": [
+      {
+        "name": "q",
+        "required": false,
+        "default": ""
+      }
+    ]
+  },
+  {
+    "index": 76,
+    "method": "GET",
+    "path": "/api/ticker/{symbol}",
+    "name": "get_ticker",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": []
+  },
+  {
+    "index": 77,
+    "method": "GET",
+    "path": "/api/indicators/{symbol}",
+    "name": "get_indicators",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": [
+      {
+        "name": "interval",
+        "required": false,
+        "default": "1h"
+      },
+      {
+        "name": "limit",
+        "required": false,
+        "default": 500,
+        "ge": 50,
+        "le": 1500
+      }
+    ]
+  },
+  {
+    "index": 78,
+    "method": "GET",
+    "path": "/api/research/brief/{symbol}",
+    "name": "get_research_brief",
+    "path_params": [
+      {
+        "name": "symbol",
+        "required": false
+      }
+    ],
+    "query_params": [
+      {
+        "name": "interval",
+        "required": false,
+        "default": "1h"
+      }
+    ]
+  }
+]

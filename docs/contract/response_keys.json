@@ -1,0 +1,463 @@
+{
+  "/api/ai/last-brief": [
+    "brief_text",
+    "created_at",
+    "generated_at",
+    "id",
+    "signals_json"
+  ],
+  "/api/alerts": [
+    "alerts"
+  ],
+  "/api/alpha/{symbol}": [
+    "agreement_ratio",
+    "composite_confidence",
+    "composite_direction",
+    "composite_score",
+    "meta",
+    "regime",
+    "signal_count",
+    "signals",
+    "smart_money",
+    "symbol",
+    "timestamp",
+    "weights_used"
+  ],
+  "/api/backtest/zones/{symbol}": [
+    "bounce_pct",
+    "bounces",
+    "breaks",
+    "candles",
+    "hit_rate",
+    "interval",
+    "per_zone",
+    "reaction_bars",
+    "symbol",
+    "touches",
+    "zones"
+  ],
+  "/api/blofin/balance": [
+    "<non-object>"
+  ],
+  "/api/blofin/orders": [
+    "orders"
+  ],
+  "/api/blofin/positions": [
+    "positions"
+  ],
+  "/api/book/merged/{symbol}": [
+    "asks",
+    "best_ask",
+    "best_bid",
+    "bids",
+    "contributors",
+    "depth",
+    "mid",
+    "spread",
+    "spread_bps",
+    "symbol",
+    "timestamp"
+  ],
+  "/api/brief/{symbol}": [
+    "cvd",
+    "funding",
+    "macro_gate",
+    "mark_price",
+    "open_interest",
+    "regime",
+    "squeeze_risk",
+    "symbol",
+    "zones"
+  ],
+  "/api/correlation": [
+    "aligned_by",
+    "generated_at",
+    "lookback",
+    "matrix",
+    "n_bars",
+    "symbols",
+    "top_pairs"
+  ],
+  "/api/crypto/strip": [
+    "count",
+    "quotes",
+    "source",
+    "updated_at"
+  ],
+  "/api/cvd/{symbol}": [
+    "symbol",
+    "timeframes"
+  ],
+  "/api/deribit/options/{currency}": [
+    "max_pain",
+    "perpetual_funding",
+    "put_call_ratio"
+  ],
+  "/api/deribit/trades/{instrument}": [
+    "count",
+    "instrument",
+    "trades"
+  ],
+  "/api/derivatives/{symbol}": [
+    "basis",
+    "funding",
+    "interval",
+    "latest",
+    "oi",
+    "symbol"
+  ],
+  "/api/feed/health": [
+    "active_trade_sources",
+    "per_symbol",
+    "symbols",
+    "timestamp",
+    "venues"
+  ],
+  "/api/funding/{symbol}": [
+    "classification",
+    "leverage_impact",
+    "mean_rate",
+    "rates",
+    "std_rate",
+    "weighted_rate",
+    "weighted_rate_pct",
+    "zscore",
+    "zscore_classification",
+    "zscore_window"
+  ],
+  "/api/health": [
+    "blofin_connected",
+    "circuit_breaker",
+    "circuit_breaker_events",
+    "event_bus_recent",
+    "frontend_sha",
+    "gemma4_model",
+    "git_sha",
+    "llm",
+    "started_at",
+    "status",
+    "symbols",
+    "telegram_configured",
+    "uptime",
+    "uptime_s",
+    "version",
+    "websockets",
+    "ws_gap_report"
+  ],
+  "/api/heatmap/{symbol}": [
+    "ask_intensity",
+    "bid_intensity",
+    "current_price",
+    "depth_profile",
+    "exchange_count",
+    "exchanges",
+    "institutional_depth",
+    "liquidation_clusters",
+    "lookback_minutes",
+    "price_levels",
+    "price_range",
+    "snapshot_count",
+    "time_labels",
+    "voids",
+    "walls"
+  ],
+  "/api/journal/debug": [
+    "BINANCE_API_KEY_set",
+    "BINANCE_API_SECRET_set",
+    "binance_ping_ok",
+    "cache_age_sec",
+    "cached_trades",
+    "env_file_present",
+    "last_error",
+    "ollama_model"
+  ],
+  "/api/journal/diag": [
+    "cache_age_sec",
+    "cached_positions",
+    "journal_start_utc",
+    "now_utc",
+    "per_symbol",
+    "symbols_discovered"
+  ],
+  "/api/journal/last-analysis": [
+    "analysis",
+    "message"
+  ],
+  "/api/journal/portfolio": [
+    "error",
+    "portfolio"
+  ],
+  "/api/journal/stats": [
+    "error",
+    "message",
+    "stats"
+  ],
+  "/api/journal/trades": [
+    "count",
+    "error",
+    "source",
+    "trades"
+  ],
+  "/api/klines/{symbol}": [
+    "candles",
+    "count",
+    "interval",
+    "symbol"
+  ],
+  "/api/liquidations/{symbol}": [
+    "latest",
+    "leverage_stress",
+    "series",
+    "summary",
+    "symbol"
+  ],
+  "/api/lsratio/{symbol}": [
+    "ls_ratio",
+    "symbol",
+    "top_trader_ls_ratio"
+  ],
+  "/api/macro/calendar": [
+    "events"
+  ],
+  "/api/macro/releases": [
+    "releases"
+  ],
+  "/api/macro/status": [
+    "active_event",
+    "active_tier",
+    "confidence_threshold",
+    "geo_band",
+    "geo_score",
+    "geo_tier",
+    "is_restricted",
+    "leverage_cap",
+    "max_position_pct",
+    "minutes_until_clear",
+    "minutes_until_event",
+    "new_positions_allowed",
+    "sources",
+    "status"
+  ],
+  "/api/matrix/{symbol}": [
+    "composite",
+    "flow",
+    "layers",
+    "oi",
+    "regime",
+    "research",
+    "risk",
+    "samples",
+    "symbol",
+    "ts",
+    "venues",
+    "weights_used"
+  ],
+  "/api/metrics/history/{symbol}": [
+    "count",
+    "metric",
+    "rows",
+    "symbol"
+  ],
+  "/api/midprice/{symbol}": [
+    "components",
+    "degradations",
+    "method",
+    "price",
+    "symbol",
+    "timestamp",
+    "weights"
+  ],
+  "/api/news": [
+    "count",
+    "news"
+  ],
+  "/api/obi/{symbol}": [
+    "latest",
+    "series",
+    "summary",
+    "symbol"
+  ],
+  "/api/oi/{symbol}": [
+    "snapshot",
+    "symbol",
+    "trend"
+  ],
+  "/api/orderflow/{symbol}": [
+    "absorption",
+    "cvd",
+    "large_trades",
+    "oi_change_1h",
+    "oi_samples",
+    "source",
+    "symbol",
+    "trade_flow_ratio",
+    "volume_profile"
+  ],
+  "/api/risk/kelly/{symbol}": [
+    "b_source",
+    "kelly_final",
+    "kelly_raw",
+    "position_usd",
+    "realized_stats",
+    "reason",
+    "symbol"
+  ],
+  "/api/risk/leverage": [
+    "circuit_breaker",
+    "margin"
+  ],
+  "/api/risk/margin": [
+    "error",
+    "has_api_key"
+  ],
+  "/api/risk/var/{symbol}": [
+    "ensemble_max",
+    "historical",
+    "inputs",
+    "liquidation_risk",
+    "monte_carlo",
+    "parametric",
+    "samples",
+    "stressed_var",
+    "symbol"
+  ],
+  "/api/sentiment": [
+    "fear_greed",
+    "generated_at",
+    "long_pct_24h",
+    "ls_ratio_avg",
+    "sample_symbols",
+    "short_pct_24h",
+    "top_trader_ls_avg"
+  ],
+  "/api/sentiment/brief-load": [
+    "brief",
+    "news_synthesis",
+    "saved_at"
+  ],
+  "/api/sentiment/debug": [
+    "brief_saved",
+    "brief_saved_at",
+    "fng_cache_age_s",
+    "fng_score",
+    "sm_cache_age_s",
+    "sm_signal"
+  ],
+  "/api/sentiment/fng": [
+    "ai_interpretation",
+    "color",
+    "components",
+    "computed_at",
+    "errors",
+    "inputs",
+    "label",
+    "score"
+  ],
+  "/api/sentiment/smartmoney": [
+    "computed_at",
+    "divergence",
+    "errors",
+    "funding",
+    "history",
+    "oi",
+    "signal",
+    "symbol",
+    "top_trader"
+  ],
+  "/api/sentiment/sync": [
+    "fng",
+    "smartmoney",
+    "synced_at"
+  ],
+  "/api/tape/{symbol}": [
+    "latest",
+    "series",
+    "summary",
+    "symbol"
+  ],
+  "/api/vol-spread/{symbol}": [
+    "currency",
+    "dvol_series",
+    "interval",
+    "iv",
+    "regime",
+    "rv",
+    "sample_size",
+    "spread",
+    "symbol"
+  ],
+  "/api/world/board": [
+    "age_seconds",
+    "groups",
+    "quotes"
+  ],
+  "/api/world/chart/{symbol}": [
+    "asset_class",
+    "candles",
+    "interval",
+    "range",
+    "symbol"
+  ],
+  "/api/world/fundamentals/{symbol}": [
+    "available",
+    "reason",
+    "symbol"
+  ],
+  "/api/world/geo": [
+    "age_seconds",
+    "aviation",
+    "cyber",
+    "disasters",
+    "enrichment",
+    "natural",
+    "risk",
+    "seismic",
+    "space_weather",
+    "ts",
+    "wires"
+  ],
+  "/api/world/macro": [
+    "age_seconds",
+    "curve",
+    "curve_spread",
+    "indicators",
+    "inverted"
+  ],
+  "/api/world/options/{symbol}": [
+    "available",
+    "reason",
+    "symbol"
+  ],
+  "/api/world/regime": [
+    "age_seconds",
+    "proxies",
+    "risk_appetite",
+    "stress"
+  ],
+  "/api/world/screener": [
+    "available",
+    "id",
+    "rows",
+    "screens"
+  ],
+  "/api/world/search": [
+    "q",
+    "results"
+  ],
+  "/api/zones/watchlist": [
+    "watchlist"
+  ],
+  "/api/zones/{symbol}": [
+    "count",
+    "symbol",
+    "zones"
+  ],
+  "/healthz": [
+    "frontend_sha",
+    "git_sha",
+    "started_at",
+    "status",
+    "uptime_s",
+    "version"
+  ]
+}

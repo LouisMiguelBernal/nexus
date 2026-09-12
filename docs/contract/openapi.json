@@ -1,0 +1,2991 @@
+{
+  "components": {
+    "schemas": {
+      "BloFinOrder": {
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "leverage": {
+            "default": 5,
+            "title": "Leverage",
+            "type": "integer"
+          },
+          "order_type": {
+            "default": "limit",
+            "title": "Order Type",
+            "type": "string"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "side": {
+            "title": "Side",
+            "type": "string"
+          },
+          "stop_loss": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Loss"
+          },
+          "symbol": {
+            "default": "BTC/USDT:USDT",
+            "title": "Symbol",
+            "type": "string"
+          },
+          "take_profit": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Take Profit"
+          }
+        },
+        "required": [
+          "side",
+          "amount"
+        ],
+        "title": "BloFinOrder",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "KellyRequest": {
+        "properties": {
+          "allocated_margin": {
+            "default": 0,
+            "title": "Allocated Margin",
+            "type": "number"
+          },
+          "avg_loss": {
+            "title": "Avg Loss",
+            "type": "number"
+          },
+          "avg_win": {
+            "title": "Avg Win",
+            "type": "number"
+          },
+          "leverage": {
+            "default": 5,
+            "title": "Leverage",
+            "type": "integer"
+          },
+          "total_collateral": {
+            "default": 10000,
+            "title": "Total Collateral",
+            "type": "number"
+          },
+          "win_rate": {
+            "title": "Win Rate",
+            "type": "number"
+          },
+          "zone_tier_weight": {
+            "default": 1.0,
+            "title": "Zone Tier Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "win_rate",
+          "avg_win",
+          "avg_loss"
+        ],
+        "title": "KellyRequest",
+        "type": "object"
+      },
+      "NotePayload": {
+        "properties": {
+          "note": {
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "title": "NotePayload",
+        "type": "object"
+      },
+      "SentinelUpdate": {
+        "properties": {
+          "event_name": {
+            "title": "Event Name",
+            "type": "string"
+          },
+          "event_tier": {
+            "title": "Event Tier",
+            "type": "integer"
+          },
+          "market_context": {
+            "default": "",
+            "title": "Market Context",
+            "type": "string"
+          },
+          "minutes_until": {
+            "title": "Minutes Until",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "event_tier",
+          "event_name",
+          "minutes_until"
+        ],
+        "title": "SentinelUpdate",
+        "type": "object"
+      },
+      "SimulateRequest": {
+        "properties": {
+          "entry_price": {
+            "title": "Entry Price",
+            "type": "number"
+          },
+          "leverage": {
+            "default": 5,
+            "title": "Leverage",
+            "type": "integer"
+          },
+          "margin_mode": {
+            "default": "isolated",
+            "title": "Margin Mode",
+            "type": "string"
+          },
+          "side": {
+            "title": "Side",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "side",
+          "entry_price"
+        ],
+        "title": "SimulateRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "WatchlistAdd": {
+        "properties": {
+          "price_center": {
+            "title": "Price Center",
+            "type": "number"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          },
+          "zone_type": {
+            "title": "Zone Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "price_center",
+          "tier",
+          "zone_type"
+        ],
+        "title": "WatchlistAdd",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Institutional-grade crypto derivatives research terminal",
+    "title": "Nexus",
+    "version": "0.3.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/ai/brief": {
+      "post": {
+        "operationId": "generate_ai_brief_api_ai_brief_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Generate Ai Brief"
+      }
+    },
+    "/api/ai/last-brief": {
+      "get": {
+        "operationId": "get_last_ai_brief_api_ai_last_brief_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Last Ai Brief"
+      }
+    },
+    "/api/alerts": {
+      "get": {
+        "operationId": "get_alerts_api_alerts_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Alerts"
+      }
+    },
+    "/api/alerts/telegram/test": {
+      "post": {
+        "operationId": "test_telegram_api_alerts_telegram_test_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Test Telegram"
+      }
+    },
+    "/api/alpha/{symbol}": {
+      "get": {
+        "description": "Response-cached + single-flight - the tab polls this route; cold\ncomputation is expensive, so overlapping polls share one run.",
+        "operationId": "get_alpha_api_alpha__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Alpha"
+      }
+    },
+    "/api/backtest/zones/{symbol}": {
+      "get": {
+        "description": "Replay historical klines against the *current* detected zones and report\ntouch / bounce / break stats. This is a scaffolding endpoint - the hit-rate\ngives a gut-check on whether the live zone map would have caught recent swings.",
+        "operationId": "backtest_zones_endpoint_api_backtest_zones__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "interval",
+            "required": false,
+            "schema": {
+              "default": "15m",
+              "title": "Interval",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "reaction_bars",
+            "required": false,
+            "schema": {
+              "default": 6,
+              "title": "Reaction Bars",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "bounce_pct",
+            "required": false,
+            "schema": {
+              "default": 0.8,
+              "title": "Bounce Pct",
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Backtest Zones Endpoint"
+      }
+    },
+    "/api/blofin/balance": {
+      "get": {
+        "operationId": "get_blofin_balance_api_blofin_balance_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Blofin Balance"
+      }
+    },
+    "/api/blofin/order": {
+      "post": {
+        "operationId": "place_blofin_order_api_blofin_order_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloFinOrder"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Place Blofin Order"
+      }
+    },
+    "/api/blofin/orders": {
+      "get": {
+        "operationId": "get_blofin_orders_api_blofin_orders_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Blofin Orders"
+      }
+    },
+    "/api/blofin/positions": {
+      "get": {
+        "operationId": "get_blofin_positions_api_blofin_positions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Blofin Positions"
+      }
+    },
+    "/api/book/merged/{symbol}": {
+      "get": {
+        "operationId": "get_merged_book_api_book_merged__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "depth",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Depth",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Merged Book"
+      }
+    },
+    "/api/brief/{symbol}": {
+      "get": {
+        "operationId": "get_brief_api_brief__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Brief"
+      }
+    },
+    "/api/correlation": {
+      "get": {
+        "description": "Cross-asset Pearson correlation across DEFAULT_SYMBOLS using the last\n``lookback`` closed klines. Interval matches whatever the regime classifier\nis fed (15m by default).",
+        "operationId": "get_correlation_api_correlation_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "lookback",
+            "required": false,
+            "schema": {
+              "default": 96,
+              "title": "Lookback",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Correlation"
+      }
+    },
+    "/api/crypto/strip": {
+      "get": {
+        "operationId": "get_crypto_strip_api_crypto_strip_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Crypto Strip"
+      }
+    },
+    "/api/cvd/{symbol}": {
+      "get": {
+        "operationId": "get_cvd_api_cvd__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Cvd"
+      }
+    },
+    "/api/deribit/options/{currency}": {
+      "get": {
+        "operationId": "get_deribit_options_api_deribit_options__currency__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "currency",
+            "required": true,
+            "schema": {
+              "title": "Currency",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Deribit Options"
+      }
+    },
+    "/api/deribit/trades/{instrument}": {
+      "get": {
+        "operationId": "get_deribit_trades_api_deribit_trades__instrument__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "instrument",
+            "required": true,
+            "schema": {
+              "title": "Instrument",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "count",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Count",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Deribit Trades"
+      }
+    },
+    "/api/derivatives/{symbol}": {
+      "get": {
+        "description": "Compact time-series for the chart's lower strip:\n  - basis_pct  : (perp_close \u2212 spot_close) / spot_close \u00d7 100, kline-aligned\n  - funding    : in-memory rolling samples from FundingTracker\n  - oi         : in-memory rolling samples from OITracker\nSingle round-trip replaces 3 polls. Cached briefly per (sym, interval, limit).",
+        "operationId": "get_derivatives_strip_api_derivatives__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "interval",
+            "required": false,
+            "schema": {
+              "default": "1h",
+              "title": "Interval",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "maximum": 1500,
+              "minimum": 30,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Derivatives Strip"
+      }
+    },
+    "/api/feed/health": {
+      "get": {
+        "operationId": "get_feed_health_api_feed_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Feed Health"
+      }
+    },
+    "/api/funding/{symbol}": {
+      "get": {
+        "operationId": "get_funding_api_funding__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Funding"
+      }
+    },
+    "/api/health": {
+      "get": {
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    },
+    "/api/heatmap/{symbol}": {
+      "get": {
+        "operationId": "get_heatmap_api_heatmap__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Heatmap"
+      }
+    },
+    "/api/indicators/{symbol}": {
+      "get": {
+        "description": "Compute a full technical-indicator snapshot for any pair. Returns\nlatest values AND series (so the frontend can overlay them on a chart).\n\nAlgorithms match TradingView / Binance conventions (Wilder's smoothing\nfor RSI / ATR / ADX; EMA seeded with SMA; Bollinger uses population\nstdev). NaNs from warm-up are serialized as null so the chart shows a\nclean gap before the indicator is ready.",
+        "operationId": "get_indicators_api_indicators__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "interval",
+            "required": false,
+            "schema": {
+              "default": "1h",
+              "title": "Interval",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "maximum": 1500,
+              "minimum": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Indicators"
+      }
+    },
+    "/api/journal/analyze": {
+      "post": {
+        "operationId": "analyze_journal_api_journal_analyze_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Analyze Journal",
+        "tags": [
+          "journal"
+        ]
+      }
+    },
+    "/api/journal/clear-cache": {
+      "post": {
+        "description": "Force-expire the in-memory cache so the next /trades call re-fetches live.",
+        "operationId": "clear_cache_api_journal_clear_cache_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Clear Cache",
+        "tags": [
+          "journal"
+        ]
+      }
+    },
+    "/api/journal/debug": {
+      "get": {
+        "description": "Diagnostic - checks credentials and connectivity without exposing secrets.",
+        "operationId": "debug_env_api_journal_debug_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Debug Env",
+        "tags": [
+          "journal"
+        ]
+      }
+    },
+    "/api/journal/diag": {
+      "get": {
+        "description": "Per-symbol fill counts + windows scanned. Use to verify the windowing fix.",
+        "operationId": "diag_api_journal_diag_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Diag",
+        "tags": [
+          "journal"
+        ]
+      }
+    },
+    "/api/journal/last-analysis": {
+      "get": {
+        "operationId": "get_last_analysis_api_journal_last_analysis_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Last Analysis",
+        "tags": [
+          "journal"
+        ]
+      }
+    },
+    "/api/journal/note/{trade_id}": {
+      "get": {
+        "operationId": "get_note_api_journal_note__trade_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trade_id",
+            "required": true,
+            "schema": {
+              "title": "Trade Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Note",
+        "tags": [
+          "journal"
+        ]
+      },
+      "post": {
+        "operationId": "save_note_api_journal_note__trade_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trade_id",
+            "required": true,
+            "schema": {
+              "title": "Trade Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Note",
+        "tags": [
+          "journal"
+        ]
+      }
+    },
+    "/api/journal/portfolio": {
+      "get": {
+        "description": "Fetch combined portfolio: Futures wallet + Spot USDT balance + Funding USDT balance.\nFrontend shows total_balance = futures + spot + funding in the top header strip.",
+        "operationId": "get_portfolio_api_journal_portfolio_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Portfolio",
+        "tags": [
+          "journal"
+        ]
+      }
+    },
+    "/api/journal/stats": {
+      "get": {
+        "operationId": "get_journal_stats_api_journal_stats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Journal Stats",
+        "tags": [
+          "journal"
+        ]
+      }
+    },
+    "/api/journal/trades": {
+      "get": {
+        "operationId": "get_journal_trades_api_journal_trades_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "force_refresh",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Force Refresh",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Journal Trades",
+        "tags": [
+          "journal"
+        ]
+      }
+    },
+    "/api/klines/{symbol}": {
+      "get": {
+        "description": "Return OHLCV candles for any Binance USDT-M perpetual pair.\nShort-TTL cached per (symbol, interval) to smooth rapid tab-switching.",
+        "operationId": "get_klines_api_klines__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Binance interval: 1m,5m,15m,1h,4h,1d,...",
+            "in": "query",
+            "name": "interval",
+            "required": false,
+            "schema": {
+              "default": "1h",
+              "description": "Binance interval: 1m,5m,15m,1h,4h,1d,...",
+              "title": "Interval",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "maximum": 1500,
+              "minimum": 10,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Klines"
+      }
+    },
+    "/api/liquidations/{symbol}": {
+      "get": {
+        "description": "Cross-exchange liquidation imbalance with windowed long/short USD flow.\n\nWhen ALL windows (5m / 15m / 1h) have zero flow (genuinely quiet market),\nthe response includes a `leverage_stress` block sourced from L/S ratio +\nTop Trader L/S - same risk dimension (leverage exposure imbalance), so\nthe UI has an institutional-grade related metric to surface instead of\nshowing a permanent QUIET / -.",
+        "operationId": "get_liquidations_api_liquidations__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 180,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Liquidations"
+      }
+    },
+    "/api/lsratio/{symbol}": {
+      "get": {
+        "operationId": "get_ls_ratio_api_lsratio__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Ls Ratio"
+      }
+    },
+    "/api/macro/calendar": {
+      "get": {
+        "operationId": "get_macro_calendar_api_macro_calendar_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Macro Calendar"
+      }
+    },
+    "/api/macro/releases": {
+      "get": {
+        "description": "Next high-impact US macro releases with days-ahead countdown.",
+        "operationId": "get_macro_releases_api_macro_releases_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Macro Releases"
+      }
+    },
+    "/api/macro/sentinel-update": {
+      "post": {
+        "operationId": "sentinel_update_api_macro_sentinel_update_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SentinelUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sentinel Update"
+      }
+    },
+    "/api/macro/status": {
+      "get": {
+        "operationId": "get_macro_status_api_macro_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Macro Status"
+      }
+    },
+    "/api/matrix/{symbol}": {
+      "get": {
+        "operationId": "get_matrix_api_matrix__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Matrix Api Matrix  Symbol  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Matrix",
+        "tags": [
+          "matrix"
+        ]
+      }
+    },
+    "/api/metrics/history/{symbol}": {
+      "get": {
+        "description": "Replay persisted metric snapshots (obi | tape | liq) for the last N minutes.\nUseful for back-testing and post-mortems when the in-memory ring has rolled over.",
+        "operationId": "get_metric_history_api_metrics_history__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "metric",
+            "required": true,
+            "schema": {
+              "title": "Metric",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "minutes",
+            "required": false,
+            "schema": {
+              "default": 60,
+              "title": "Minutes",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 2000,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Metric History"
+      }
+    },
+    "/api/midprice/{symbol}": {
+      "get": {
+        "operationId": "get_midprice_api_midprice__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Midprice"
+      }
+    },
+    "/api/news": {
+      "get": {
+        "description": "Aggregated headlines (RSS + Binance + BloFin + Finnhub). fetch_all()\nre-hits every source (~8-12s), so cache the result for the news cycle and\nsingle-flight concurrent polls - otherwise the Alerts tab blocks on a cold\nfetch every time it mounts.",
+        "operationId": "get_news_api_news_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get News"
+      }
+    },
+    "/api/obi/{symbol}": {
+      "get": {
+        "description": "Order-book imbalance time-series. Samples are appended by the zone loop\nat 100ms cadence (tied to Binance depth@100ms stream).",
+        "operationId": "get_obi_api_obi__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 240,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Obi"
+      }
+    },
+    "/api/oi/{symbol}": {
+      "get": {
+        "operationId": "get_oi_api_oi__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Oi"
+      }
+    },
+    "/api/orderflow/{symbol}": {
+      "get": {
+        "operationId": "get_orderflow_api_orderflow__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Orderflow"
+      }
+    },
+    "/api/research/brief/{symbol}": {
+      "get": {
+        "description": "Structured narrative brief for the Research tab. Combines indicator\nsnapshot + order-book/derivatives brief into five short sections the\nUI renders as collapsible cards.\n\nResponse shape:\n  {\n    \"symbol\", \"interval\", \"generated_at\",\n    \"bias\":    { \"headline\": \"BULLISH\" | \"BEARISH\" | \"NEUTRAL\", \"bullets\": [...] },\n    \"levels\":  { \"bullets\": [...] },\n    \"signals\": { \"bullets\": [...] },\n    \"macro\":   { \"bullets\": [...] },\n    \"risk\":    { \"bullets\": [...] },\n  }",
+        "operationId": "get_research_brief_api_research_brief__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "interval",
+            "required": false,
+            "schema": {
+              "default": "1h",
+              "title": "Interval",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Research Brief"
+      }
+    },
+    "/api/risk/kelly": {
+      "post": {
+        "operationId": "compute_kelly_api_risk_kelly_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KellyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Compute Kelly"
+      }
+    },
+    "/api/risk/kelly/{symbol}": {
+      "get": {
+        "description": "Per-symbol Kelly with **realized** stats - replaces the previous\nsame-for-all stub.\n\nwin_rate / avg_win / avg_loss are derived from the symbol's recent kline\nlog-returns (no journal dependency, works pre-trade). atr_pct and\nrealized_vol_24h come from the same kline_history so the vol-adjusted\nbranch of KellySizer.compute() activates.",
+        "operationId": "get_kelly_for_symbol_api_risk_kelly__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "leverage",
+            "required": false,
+            "schema": {
+              "default": 5,
+              "maximum": 125,
+              "minimum": 1,
+              "title": "Leverage",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "total_collateral",
+            "required": false,
+            "schema": {
+              "default": 10000.0,
+              "minimum": 0,
+              "title": "Total Collateral",
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Kelly For Symbol"
+      }
+    },
+    "/api/risk/leverage": {
+      "get": {
+        "operationId": "get_leverage_status_api_risk_leverage_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Leverage Status"
+      }
+    },
+    "/api/risk/margin": {
+      "get": {
+        "operationId": "get_margin_summary_api_risk_margin_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Margin Summary"
+      }
+    },
+    "/api/risk/simulate": {
+      "post": {
+        "operationId": "simulate_position_api_risk_simulate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Simulate Position"
+      }
+    },
+    "/api/risk/var/{symbol}": {
+      "get": {
+        "description": "Three-method VaR ensemble (historical / parametric-t / Monte Carlo)\non the symbol's recent kline log-returns. ``ensemble_max`` is the\nKelly denominator the position sizer consumes.",
+        "operationId": "get_var_for_symbol_api_risk_var__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "position_usd",
+            "required": false,
+            "schema": {
+              "default": 10000.0,
+              "minimum": 0,
+              "title": "Position Usd",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "leverage",
+            "required": false,
+            "schema": {
+              "default": 1.0,
+              "maximum": 125.0,
+              "minimum": 1.0,
+              "title": "Leverage",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lookback",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 1000,
+              "minimum": 30,
+              "title": "Lookback",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Var For Symbol"
+      }
+    },
+    "/api/sentiment": {
+      "get": {
+        "description": "Aggregate market-wide sentiment: Bitcoin Fear & Greed Index plus the\ncross-symbol average L/S ratio. Used by the header market bar and the\nAlerts tab's sentiment gauge. 60s TTL cache.",
+        "operationId": "get_market_sentiment_api_sentiment_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Market Sentiment"
+      }
+    },
+    "/api/sentiment/brief-clear": {
+      "delete": {
+        "description": "Explicitly clear the server-side brief store. Called when user generates new brief.",
+        "operationId": "clear_brief_api_sentiment_brief_clear_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Clear Brief",
+        "tags": [
+          "sentiment"
+        ]
+      }
+    },
+    "/api/sentiment/brief-load": {
+      "get": {
+        "description": "Return last persisted brief. Returns null fields if nothing saved yet.",
+        "operationId": "load_brief_api_sentiment_brief_load_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Load Brief",
+        "tags": [
+          "sentiment"
+        ]
+      }
+    },
+    "/api/sentiment/brief-save": {
+      "post": {
+        "description": "Persist AI brief server-side.\nONLY overwrites - never auto-clears.\nFrontend Zustand store is the primary persistence layer;\nthis is belt-and-suspenders for hard refreshes.",
+        "operationId": "save_brief_api_sentiment_brief_save_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Brief",
+        "tags": [
+          "sentiment"
+        ]
+      }
+    },
+    "/api/sentiment/debug": {
+      "get": {
+        "description": "Diagnostic endpoint - shows cache ages, no secrets exposed.",
+        "operationId": "debug_api_sentiment_debug_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Debug",
+        "tags": [
+          "sentiment"
+        ]
+      }
+    },
+    "/api/sentiment/fng": {
+      "get": {
+        "description": "Compute Fear & Greed index. Cached 5 min.",
+        "operationId": "get_fng_api_sentiment_fng_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Fng",
+        "tags": [
+          "sentiment"
+        ]
+      }
+    },
+    "/api/sentiment/smartmoney": {
+      "get": {
+        "description": "Smart Money signal engine. Cached 2 min.",
+        "operationId": "get_smart_money_api_sentiment_smartmoney_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": false,
+            "schema": {
+              "default": "BTCUSDT",
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Smart Money",
+        "tags": [
+          "sentiment"
+        ]
+      }
+    },
+    "/api/sentiment/sync": {
+      "get": {
+        "description": "Atomic fetch of FNG + SmartMoney in one call.\nReduces frontend round-trips from 2 to 1.\nBoth results are individually cached per their TTLs.",
+        "operationId": "sync_sentiment_api_sentiment_sync_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": false,
+            "schema": {
+              "default": "BTCUSDT",
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sync Sentiment",
+        "tags": [
+          "sentiment"
+        ]
+      }
+    },
+    "/api/symbols/search": {
+      "get": {
+        "description": "Autocomplete for the global pair search input. Proxies Binance exchangeInfo\nand filters USDT-M PERPETUAL contracts in TRADING status. Cached for 5 minutes.",
+        "operationId": "search_symbols_api_symbols_search_get",
+        "parameters": [
+          {
+            "description": "Partial pair filter, e.g. 'btc'",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "Partial pair filter, e.g. 'btc'",
+              "title": "Q",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search Symbols"
+      }
+    },
+    "/api/tape/{symbol}": {
+      "get": {
+        "description": "Tape-speed (trades/sec) time-series with burst detection.",
+        "operationId": "get_tape_api_tape__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 180,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Tape"
+      }
+    },
+    "/api/ticker/{symbol}": {
+      "get": {
+        "description": "24h ticker stats for any Binance futures symbol - price, 24h change,\nvolume, high/low. Used by the header ticker strip for the active pair.",
+        "operationId": "get_ticker_api_ticker__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Ticker"
+      }
+    },
+    "/api/vol-spread/{symbol}": {
+      "get": {
+        "description": "Realized vs implied vol spread. RV from kline history, IV from Deribit DVOL\n(BTC for *BTC* pairs, ETH for *ETH*). Returns annualized percent.",
+        "operationId": "get_vol_spread_api_vol_spread__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "interval",
+            "required": false,
+            "schema": {
+              "default": "15m",
+              "title": "Interval",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Vol Spread"
+      }
+    },
+    "/api/world/board": {
+      "get": {
+        "description": "Cross-asset quote board, grouped by asset class.",
+        "operationId": "board_api_world_board_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Board",
+        "tags": [
+          "world"
+        ]
+      }
+    },
+    "/api/world/chart/{symbol}": {
+      "get": {
+        "operationId": "chart_api_world_chart__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "range",
+            "required": false,
+            "schema": {
+              "default": "6mo",
+              "title": "Range",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "interval",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Interval"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Chart",
+        "tags": [
+          "world"
+        ]
+      }
+    },
+    "/api/world/fundamentals/{symbol}": {
+      "get": {
+        "operationId": "fundamentals_api_world_fundamentals__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Fundamentals",
+        "tags": [
+          "world"
+        ]
+      }
+    },
+    "/api/world/geo": {
+      "get": {
+        "description": "Global-event snapshot and the composite instability score.",
+        "operationId": "geo_api_world_geo_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Geo",
+        "tags": [
+          "world"
+        ]
+      }
+    },
+    "/api/world/macro": {
+      "get": {
+        "description": "FRED indicator board plus the live Treasury curve.",
+        "operationId": "macro_api_world_macro_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Macro",
+        "tags": [
+          "world"
+        ]
+      }
+    },
+    "/api/world/options/{symbol}": {
+      "get": {
+        "operationId": "options_api_world_options__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "expiry",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Expiry"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Options",
+        "tags": [
+          "world"
+        ]
+      }
+    },
+    "/api/world/regime": {
+      "get": {
+        "description": "Cross-asset risk appetite and macro stress, with component axes.",
+        "operationId": "regime_api_world_regime_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Regime",
+        "tags": [
+          "world"
+        ]
+      }
+    },
+    "/api/world/screener": {
+      "get": {
+        "operationId": "screener_api_world_screener_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "id",
+            "required": false,
+            "schema": {
+              "default": "most_actives",
+              "title": "Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "count",
+            "required": false,
+            "schema": {
+              "default": 40,
+              "maximum": 100,
+              "title": "Count",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Screener",
+        "tags": [
+          "world"
+        ]
+      }
+    },
+    "/api/world/search": {
+      "get": {
+        "operationId": "search_api_world_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 25,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search",
+        "tags": [
+          "world"
+        ]
+      }
+    },
+    "/api/zones/alert": {
+      "post": {
+        "operationId": "add_zone_alert_api_zones_alert_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WatchlistAdd"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Zone Alert"
+      }
+    },
+    "/api/zones/watchlist": {
+      "get": {
+        "operationId": "get_zone_watchlist_api_zones_watchlist_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Zone Watchlist"
+      }
+    },
+    "/api/zones/{symbol}": {
+      "get": {
+        "operationId": "get_zones_api_zones__symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Zones"
+      }
+    },
+    "/healthz": {
+      "get": {
+        "description": "Unauthenticated liveness probe: the event loop answers. Nothing more.",
+        "operationId": "healthz_healthz_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Healthz"
+      }
+    }
+  }
+}

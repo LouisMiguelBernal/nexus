@@ -58,6 +58,15 @@ lint-frontend:
 build-frontend:
     npm --prefix frontend run build
 
+# Record the HTTP contract baseline (route set, params, declaration order).
+contract:
+    uv run python -m backend.ops.contract snapshot
+
+# Check the running app's response shapes against the recorded baseline.
+# --record first, against a healthy instance, or degraded shapes become truth.
+contract-live *ARGS:
+    uv run python -m backend.ops.contract live {{ARGS}}
+
 # Environment doctor: ports, Ollama + model, DB, token, data sources.
 doctor:
     uv run python -m backend.ops.doctor
