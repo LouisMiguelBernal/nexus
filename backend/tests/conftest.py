@@ -1,6 +1,6 @@
 """Pytest bootstrap - add the repo root to sys.path so `backend.*` imports resolve.
 
-Run from `E:/nexus` with:
+Run from the repository root with:
 
     pytest backend/tests/ -q
 """

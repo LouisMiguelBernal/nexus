@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 import { config as loadDotenv } from "dotenv";
 import path from "node:path";
 
-// Single source of truth: repo-root .env at E:/nexus/.env
+// Single source of truth: the repo-root .env (../.env relative to frontend/)
 // We load it explicitly so the frontend and backend read from the same file -
 // the user fills keys once and both sides pick them up. This overrides
 // Next.js's default (which would read frontend/.env.local).

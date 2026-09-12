@@ -4,7 +4,7 @@ Mounts at: /api/journal/...
 
 ROOT CAUSE FIXES vs v1
 -----------------------
-1. Env vars loaded once by backend.config from the canonical E:/nexus/.env.
+1. Env vars loaded once by backend.config from the repo-root .env (see backend.config).
 2. HMAC signing rebuilt correctly.
 3. Symbol discovery via /fapi/v1/income - finds every symbol actually traded.
 4. Pagination fixed - startTime on first page; fromId on subsequent pages.
