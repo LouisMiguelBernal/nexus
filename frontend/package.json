@@ -13,6 +13,7 @@
     "build": "next build",
     "start": "next start --port 3000",
     "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
     "icon": "python electron/build-icon.py",
     "electron:dev": "cross-env NODE_ENV=development electron .",
     "electron:build": "npm run build && electron-builder --win",

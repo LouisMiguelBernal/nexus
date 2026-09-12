@@ -1,0 +1,45 @@
+# Installed by `just setup` (uv run pre-commit install). Revs are pinned by
+# `uv run pre-commit autoupdate`.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+        exclude: ^(docs/design|frontend)/
+      - id: trailing-whitespace
+        exclude: ^(docs/design|frontend)/
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.7
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.0
+    hooks:
+      - id: gitleaks
+
+  - repo: local
+    hooks:
+      - id: forbid-sqlite
+        name: forbid committing SQLite databases
+        entry: SQLite database staged. Runtime data belongs in NEXUS_DATA_DIR, not the repo.
+        language: fail
+        files: '\.(db|db-wal|db-shm|sqlite)$'
+      - id: mypy
+        name: mypy (strict packages)
+        entry: uv run mypy
+        language: system
+        pass_filenames: false
+        files: ^backend/(core|data|ops)/
+      - id: frontend-lint
+        name: eslint (frontend)
+        entry: npm --prefix frontend run lint
+        language: system
+        pass_filenames: false
+        files: ^frontend/src/

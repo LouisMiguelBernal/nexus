@@ -1,0 +1,98 @@
+[project]
+name = "nexus"
+version = "0.3.0"
+description = "Personal, institutional-grade crypto derivatives research and paper-execution terminal"
+readme = "README.md"
+license = "AGPL-3.0-only"
+requires-python = ">=3.12,<3.15"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.34",
+  "pydantic>=2.10",
+  "pydantic-settings>=2.6",
+  "python-dotenv>=1.0",
+  "httpx>=0.28",
+  "websockets>=14.0",
+  "numpy>=2.2",
+  "polars>=1.18",
+  "scipy>=1.14",
+  "ccxt>=4.4",
+  "yfinance>=0.2.50",
+  "aiosqlite>=0.20",
+  "structlog>=24.4",
+  "prometheus-client>=0.21",
+  "apscheduler>=3.10,<4",
+  "certifi>=2024.8",
+]
+
+[project.optional-dependencies]
+# Local AI (FinBERT). Gemma 4 runs inside Ollama and needs nothing here.
+ai = [
+  "torch>=2.5; python_version < '3.14'",
+  "transformers>=4.46",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3",
+  "pytest-asyncio>=0.25",
+  "pytest-cov>=6.0",
+  "ruff>=0.8",
+  "mypy>=1.13",
+  "pre-commit>=4.0",
+]
+
+[tool.uv]
+package = false
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu124", marker = "sys_platform == 'win32'" }]
+
+# ---------------------------------------------------------------------------
+# Lint / format. BLE001 (blind `except Exception`) is deliberate: a blind
+# except must carry `# noqa: BLE001 reason=...` so that silent failure is a
+# choice somebody signed, never the default.
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+extend-exclude = ["frontend", "docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "BLE", "UP"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["backend"]
+
+# Strict typing is enforced on the new packages only; legacy modules come
+# under it as they are decomposed in Phase 1.
+[tool.mypy]
+python_version = "3.12"
+files = ["backend/core", "backend/data", "backend/ops"]
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+addopts = "-q --strict-markers"
+markers = [
+  "slow: long-running tests",
+  "network: needs internet access",
+  "integration: needs live local services (Ollama, exchanges, BloFin demo)",
+]
+
+[tool.coverage.run]
+source = ["backend"]
+omit = ["backend/tests/*"]
+
+[tool.coverage.report]
+skip_covered = true
+show_missing = true
