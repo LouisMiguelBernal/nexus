@@ -51,6 +51,10 @@ scripts/     maintenance scripts
 data/        runtime data (SQLite, logs) - gitignored; set NEXUS_DATA_DIR to relocate
 ```
 
+## Local API security
+
+The backend listens on `127.0.0.1` only. When `data/api_token` exists - the desktop app creates it on first launch; `python -m backend.ops.auth` creates it for development - every `/api/*` request must carry `Authorization: Bearer <token>`. `/healthz` stays open. `just doctor` reports whether auth is enabled. Without a token the backend still runs and logs a warning on every start.
+
 ## Non-negotiables
 
 Single operator. No SaaS, no cloud, no paid APIs. Secrets only in `.env` - never committed, never written by code. `BLOFIN_DEMO=True` and `BINANCE_TESTNET=True` until an explicit, gated promotion. Full statement of intent: [NEXUS_VISION.md](NEXUS_VISION.md).

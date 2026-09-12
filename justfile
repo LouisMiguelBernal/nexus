@@ -53,8 +53,7 @@ lint-frontend:
     npm --prefix frontend run lint
     npm --prefix frontend run typecheck
 
-# Production build. The desktop app serves THIS output; source edits are
-# invisible in the app until you run it.
+# Production build - the desktop app serves this output; source edits are invisible until you run it.
 build-frontend:
     npm --prefix frontend run build
 

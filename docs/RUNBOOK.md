@@ -7,7 +7,7 @@ How to operate Nexus and what to do when it goes red. Entries marked **(today)**
 | Component | Address | Owner |
 |---|---|---|
 | Frontend | `http://localhost:3000` | Electron spawns `next start` (packaged) or `next dev` |
-| Backend | `http://127.0.0.1:8001` (today `0.0.0.0` until Phase 0 lands) | Electron spawns `python -m uvicorn backend.main:app` |
+| Backend | `http://127.0.0.1:8001` | Electron spawns `python -m uvicorn backend.main:app`. A launcher installed before 2026-09-12 still passes `--host 0.0.0.0`; reinstall to get loopback-only. |
 | Ollama | `http://localhost:11434` | Ollama tray app (`ollama app.exe`) owns the server; Electron spawns one only if the port is closed |
 
 ## Start / stop
@@ -18,9 +18,17 @@ How to operate Nexus and what to do when it goes red. Entries marked **(today)**
 
 ## Health
 
-- **(today)** `GET /api/health` — always 200; read `websockets`, `ws_gap_report`, `llm` (live Ollama probe: `server_down | model_missing | ready_cold | ready_warm`), `circuit_breaker`.
-- **(target, Phase 1)** `GET /readyz` → 200 `READY`/`DEGRADED` or 503 `NOT_READY` with `reasons[]`; `GET /healthz` liveness; `GET /metrics` Prometheus text.
-- `just doctor` **(target, Phase 0)** checks env, ports, Ollama + model, DB, token and source reachability.
+- `GET /healthz` — unauthenticated liveness: `status`, `version`, `git_sha`, `uptime_s`. If this answers, the event loop is alive.
+- `GET /api/health` (token required when auth is on) — full diagnostics: `websockets`, `ws_gap_report`, `llm` (live Ollama probe: `server_down | model_missing | ready_cold | ready_warm`), `circuit_breaker`, `version`, `git_sha`. Always HTTP 200 **(today)**.
+- **(target, Phase 1)** `GET /readyz` → 200 `READY`/`DEGRADED` or 503 `NOT_READY` with `reasons[]`; `GET /metrics` Prometheus text.
+- `just doctor` checks the interpreter, build stamp, data dir, SQLite, token, `.env`, both ports, Ollama + model, AI deps, and probes Binance/FRED with strict TLS (`--offline` to skip the network).
+
+## API token
+
+- Lives at `NEXUS_DATA_DIR/api_token` (default `data/api_token`); `NEXUS_API_TOKEN` in the environment overrides it.
+- The desktop app generates it on first launch and hands it to the backend and the renderer. For development: `python -m backend.ops.auth` (or `just dev-backend`).
+- No token → auth is **disabled** and the backend logs `API auth DISABLED` at every start. Delete the file to rotate; restart both backend and app.
+- A 401 from the UI means the renderer and backend disagree on the token: restart the app so both re-read the file.
 
 ## Failure playbooks
 
@@ -28,11 +36,11 @@ How to operate Nexus and what to do when it goes red. Entries marked **(today)**
 1. `curl http://localhost:11434/api/tags` — connection refused means the server is down.
 2. Check whether the tray is alive with a dead server: `Get-Process "*ollama*"`. If `ollama app` exists but nothing listens on 11434, **quit the tray and relaunch it** (`%LOCALAPPDATA%\Programs\Ollama\ollama app.exe`). A fresh launch binds in ~2 s.
    - Known cause: **Ollama auto-upgrades in place** (see `%LOCALAPPDATA%\Ollama\upgrade.log`); the surviving tray instance then logs `ollama server not ready after retries` in `app.log` forever. Observed 2026-09-11 after the 0.33.3 → 0.34.0 upgrade.
-3. First call after > 30 min idle reloads the model (~85 s on this GPU). The backend budgets 300 s per call and keeps the model resident for 30 min (`OLLAMA_CONFIG.keep_alive`).
-4. The UI now surfaces `brief_error`; a blank card with no error means the frontend build is stale (next section).
+3. First call after > 30 min idle reloads the model (~85 s on this GPU). The backend budgets 300 s per call and keeps the model resident for 30 min (`OLLAMA_CONFIG.keep_alive`); it also warms the model ~8 s after startup.
+4. The UI surfaces `brief_error`; a blank card with no error means the frontend build is stale (next section).
 
 ### Frontend edits do not appear in the app
-The packaged app serves a **production build**. Run `just build-frontend`, then relaunch Nexus. **(target, Phase 5)** the status bar shows `BUILD MISMATCH` when source and build diverge.
+The packaged app serves a **production build**. Run `just build-frontend`, then relaunch Nexus. The status bar shows the frontend's `version · sha` and a `BUILD MISMATCH` badge when the backend reports a different one.
 
 ### Backend not responding
 Tray → *Restart Backend*. If port 8001 is held by an orphan: `Get-NetTCPConnection -LocalPort 8001` → `Stop-Process -Id <pid>`. Electron also reclaims 3000/8001 on startup.
@@ -41,21 +49,22 @@ Tray → *Restart Backend*. If port 8001 is held by an orphan: `Get-NetTCPConnec
 `ingestion/rate_guard.py` parses `banned until <epoch-ms>` and suspends every call to that host until expiry (else 60 s → 600 s backoff). Do **not** restart the backend to "fix" it — restarting resets nothing on Binance's side and the pollers would re-hammer. Wait it out; the WebSocket feeds are unaffected.
 
 ### WebSocket gaps
-`/api/health.ws_gap_report` lists per-venue gaps (start, end, duration). Binance re-fetches 100 klines on reconnect. OKX/MEXC are frequently blocked by the ISP (PLDT); their absence degrades zone confidence but is not an outage. **(target, Phase 1)** only a Binance outage can trip the circuit breaker; secondary venues mark `DEGRADED`.
+`/api/health.ws_gap_report` lists per-venue gaps (start, end, duration). Binance re-fetches klines on reconnect into a buffer keyed by `open_time`, so a backfill can no longer duplicate bars. OKX/MEXC are frequently blocked by the ISP (PLDT); their absence degrades zone confidence but is not an outage. **(target, Phase 1)** only a Binance outage can trip the circuit breaker; secondary venues mark `DEGRADED`.
 
 ### Circuit breaker shows `triggered: true`
-**(today)** the breaker latches for the life of the process — any WS gap > 60 s on any venue trips it and only a backend restart clears it. **(target, Phase 1)** event trips auto-clear (feeds healthy 5 min; funding/VPIN/correlation 60 min), loss trips reset at 00:00 UTC, and every trip sends a Telegram message.
+**(today)** the breaker latches for the life of the process — any WS gap > 60 s on any venue, a VPIN ≥ 0.85 print, or |funding z| ≥ 3 trips it and only a backend restart clears it. The funding trigger no longer fires on cold start (the z-score needs ≥ 30 samples spanning ≥ 48 h, seeded from Binance history). **(target, Phase 1)** event trips auto-clear, loss trips reset at 00:00 UTC, and every trip sends a Telegram message.
 
 ### TLS "permissive" mode
-Behind the ISP block, the venue clients fall back from strict to permissive TLS. **(today)** silently. **(target, Phase 0)** `data/http.py` logs `tls_downgrade host=…` once per host and counts it in `/metrics`. Seeing it on a network that should not need it is a red flag.
+Behind the ISP block, venue clients fall back from strict to permissive TLS. This now happens in one place (`backend/data/http.py`), logs `tls_downgrade host=…` at WARNING the first time per host, and is counted (`just doctor` reports it). Seeing it on a network that should not need it is a red flag.
 
 ### Free-tier quotas (CMC, Finnhub, OpenSky)
 **(today)** no accounting; exhaustion shows up as a source silently going stale. **(target, Phase 1)** `data/quota.py` budgets per source and disables a source until reset instead of hammering it; the Sources panel shows the state.
 
 ## Data
 
-- SQLite lives at `NEXUS_DATA_DIR/nexus.db` (**today** `./nexus.db` at the repo root, WAL mode). Back it up by copying `nexus.db`, `nexus.db-wal`, `nexus.db-shm` together while the backend is stopped, or use `sqlite3 nexus.db ".backup out.db"` while running.
-- Logs: **(today)** stdout of the uvicorn process (visible in the Electron console). **(target, Phase 1)** `NEXUS_DATA_DIR/logs/backend.jsonl`, JSON lines, 20 MB × 5.
+- Runtime data lives in `NEXUS_DATA_DIR` (default `./data`, gitignored): `nexus.db` (+ `-wal`/`-shm`), `api_token`. Set the variable to relocate everything, e.g. under `%APPDATA%\Nexus`.
+- Back up SQLite by copying `nexus.db`, `nexus.db-wal`, `nexus.db-shm` together while the backend is stopped, or use `sqlite3 data/nexus.db ".backup out.db"` while running. Never move the `.db` without its `-wal`.
+- Logs: **(today)** stdout of the uvicorn process (visible in the Electron console; warnings are rate-limited per site in hot loops). **(target, Phase 1)** `NEXUS_DATA_DIR/logs/backend.jsonl`, JSON lines, 20 MB × 5.
 - `.env` is never written by the application. Rotate keys by editing the file and restarting the backend.
 
 ## Escalation

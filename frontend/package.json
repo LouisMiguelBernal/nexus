@@ -71,7 +71,11 @@
       "electron/**/*",
       ".next/**/*",
       "public/**/*",
-      "package.json"
+      "package.json",
+      "!.next/cache/**",
+      "!.next/dev/**",
+      "!.next/diagnostics/**",
+      "!.next/trace"
     ],
     "extraResources": [
       {
