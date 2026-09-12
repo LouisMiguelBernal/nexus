@@ -46,7 +46,26 @@ The packaged app serves a **production build**. Run `just build-frontend`, then 
 Tray → *Restart Backend*. If port 8001 is held by an orphan: `Get-NetTCPConnection -LocalPort 8001` → `Stop-Process -Id <pid>`. Electron also reclaims 3000/8001 on startup.
 
 ### Binance REST banned (418 / -1003)
-`ingestion/rate_guard.py` parses `banned until <epoch-ms>` and suspends every call to that host until expiry (else 60 s → 600 s backoff). Do **not** restart the backend to "fix" it — restarting resets nothing on Binance's side and the pollers would re-hammer. Wait it out; the WebSocket feeds are unaffected.
+
+Symptom: `/api/klines`, `/api/ticker`, `/api/symbols/search`, `/api/indicators` and `/api/research/brief` all return **502**, so the Trading tab chart is empty. Everything WebSocket-fed (price, book, tape, CVD) keeps working.
+
+Confirm it in one call — the body names the deadline:
+
+```bash
+curl -s https://fapi.binance.com/fapi/v1/ping
+```
+
+`{"code":-1003,"msg":"Way too many requests; IP(x.x.x.x) banned until <epoch-ms>"}`
+
+**The deadline moves forward on every request you make while banned.** Observed 2026-09-12: two endpoints reporting deadlines two minutes apart during a probe run. So:
+
+- **Do not restart the backend to "fix" it.** `rate_guard` state is per-process, so a restart forgets the deadline and the pollers immediately re-hammer a host that is banning you — extending the ban. Wait it out.
+- **Do not run `just contract-live`** while banned; it is a deliberate burst.
+- `just doctor` reports `source:binance_fapi HTTP 418`, and `backend/data/binance_rest.py` logs `REST suspended for Ns more`.
+
+Since 2026-09-12 the request path honours the guard: one 418 records the deadline and subsequent calls are refused locally instead of extending it. Before that, only the WS kline seed and the OI/funding pollers consulted it, and chart requests hammered straight through a ban.
+
+Steady-state REST pressure worth knowing when tuning: `jobs/agg_trade_rest_poller.py` polls every 2 s per symbol whenever WS trades stall (5 symbols ≈ 150 calls/min), `oi_poll_loop` runs every 30 s across OI and funding, and `/api/crypto/strip` fans out to ten concurrent calls per request.
 
 ### WebSocket gaps
 `/api/health.ws_gap_report` lists per-venue gaps (start, end, duration). Binance re-fetches klines on reconnect into a buffer keyed by `open_time`, so a backfill can no longer duplicate bars. OKX/MEXC are frequently blocked by the ISP (PLDT); their absence degrades zone confidence but is not an outage. **(target, Phase 1)** only a Binance outage can trip the circuit breaker; secondary venues mark `DEGRADED`.

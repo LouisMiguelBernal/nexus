@@ -232,51 +232,70 @@ def _probe(url: str, token: str | None, timeout: float) -> Any:
         return json.loads(response.read())
 
 
+def _sweep(
+    entries: list[dict[str, Any]],
+    base_url: str,
+    symbol: str,
+    token: str | None,
+    delay_s: float,
+) -> tuple[dict[str, list[str]], dict[str, str]]:
+    """One pass over ``entries``. Returns (shapes, failures-by-path)."""
+    observed: dict[str, list[str]] = {}
+    failed: dict[str, str] = {}
+    for entry in entries:
+        url_path = _sample_path(entry["path"], symbol)
+        if url_path is None:
+            continue
+        try:
+            payload = _probe(base_url.rstrip("/") + url_path, token, 60.0)
+        except urllib.error.HTTPError as exc:
+            failed[entry["path"]] = f"HTTP {exc.code}"
+        except (urllib.error.URLError, OSError, ValueError) as exc:
+            failed[entry["path"]] = str(exc)
+        else:
+            observed[entry["path"]] = (
+                sorted(payload.keys()) if isinstance(payload, dict) else ["<non-object>"]
+            )
+        time.sleep(delay_s)
+    return observed, failed
+
+
 def live(
     base_url: str,
     symbol: str,
     token: str | None,
     record: bool,
     *,
-    delay_s: float = 0.75,
-    retry_pause_s: float = 8.0,
+    delay_s: float = 2.0,
+    sweep_pause_s: float = 90.0,
 ) -> int:
+    """Probe every side-effect-free GET, slowly.
+
+    Binance meters by weight per minute and several routes fan out to it, so a
+    fast probe exhausts the budget and then records the degradation it caused -
+    the chart routes are declared last and were the ones that 502'd. Hence the
+    pacing, and a second sweep after the ban window for whatever is still
+    missing.
+    """
     app = load_app()
     entries = [e for e in describe_routes(app) if e["method"] == "GET" and e["path"] not in LIVE_SKIP]
 
-    observed: dict[str, list[str]] = {}
-    failures: list[str] = []
-    retried: list[str] = []
-    for entry in entries:
-        url_path = _sample_path(entry["path"], symbol)
-        if url_path is None:
-            continue
-        url = base_url.rstrip("/") + url_path
-        payload: Any = None
-        try:
-            payload = _probe(url, token, 60.0)
-        except urllib.error.HTTPError as exc:
-            if exc.code not in RETRY_STATUSES:
-                failures.append(f"{entry['path']}: HTTP {exc.code}")
-                continue
-            time.sleep(retry_pause_s)
-            try:
-                payload = _probe(url, token, 60.0)
-                retried.append(entry["path"])
-            except (urllib.error.URLError, OSError, ValueError) as retry_exc:
-                failures.append(f"{entry['path']}: {retry_exc} (after retry)")
-                continue
-        except (urllib.error.URLError, OSError, ValueError) as exc:
-            failures.append(f"{entry['path']}: {exc}")
-            continue
-        observed[entry["path"]] = sorted(payload.keys()) if isinstance(payload, dict) else ["<non-object>"]
-        time.sleep(delay_s)
+    observed, failed = _sweep(entries, base_url, symbol, token, delay_s)
 
-    if retried:
-        print(f"  recovered on retry ({len(retried)}): {', '.join(retried)}")
-    for failure in failures:
-        print(f"  unreachable: {failure}")
-    if failures and record:
+    retryable = [e for e in entries if any(str(c) in failed.get(e["path"], "") for c in RETRY_STATUSES)]
+    if retryable:
+        print(f"  {len(retryable)} route(s) throttled; waiting {sweep_pause_s:.0f}s for the window to clear")
+        time.sleep(sweep_pause_s)
+        recovered, still_failed = _sweep(retryable, base_url, symbol, token, delay_s)
+        if recovered:
+            print(f"  recovered on sweep ({len(recovered)}): {', '.join(sorted(recovered))}")
+        observed.update(recovered)
+        failed = {p: m for p, m in failed.items() if p not in recovered}
+        failed.update(still_failed)
+
+    for path, message in sorted(failed.items()):
+        print(f"  unreachable: {path}: {message}")
+    if failed and record:
         print("  NOTE: unreachable routes are simply absent from the baseline, never recorded as degraded.")
 
     if record:
@@ -319,7 +338,10 @@ def main(argv: list[str] | None = None) -> int:
     live_parser.add_argument("--url", default="http://127.0.0.1:8001")
     live_parser.add_argument("--symbol", default="BTCUSDT")
     live_parser.add_argument("--record", action="store_true")
-    live_parser.add_argument("--delay", type=float, default=0.75, help="seconds between probes")
+    live_parser.add_argument("--delay", type=float, default=2.0, help="seconds between probes")
+    live_parser.add_argument(
+        "--sweep-pause", type=float, default=90.0, help="wait before retrying throttled routes"
+    )
 
     args = parser.parse_args(argv)
     if args.mode == "snapshot":
@@ -330,7 +352,14 @@ def main(argv: list[str] | None = None) -> int:
     from backend.config import NEXUS_DATA_DIR
     from backend.ops.auth import load_token
 
-    return live(args.url, args.symbol, load_token(NEXUS_DATA_DIR), args.record, delay_s=args.delay)
+    return live(
+        args.url,
+        args.symbol,
+        load_token(NEXUS_DATA_DIR),
+        args.record,
+        delay_s=args.delay,
+        sweep_pause_s=args.sweep_pause,
+    )
 
 
 if __name__ == "__main__":

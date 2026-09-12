@@ -198,12 +198,6 @@
     "source",
     "trades"
   ],
-  "/api/klines/{symbol}": [
-    "candles",
-    "count",
-    "interval",
-    "symbol"
-  ],
   "/api/liquidations/{symbol}": [
     "latest",
     "leverage_stress",
