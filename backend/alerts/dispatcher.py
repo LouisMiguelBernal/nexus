@@ -141,7 +141,7 @@ class AlertDispatcher:
                 logger.exception("telegram send failed for %s", alert_type)
                 reason = "telegram_failed"
 
-        alert_id = await self.store.execute(
+        alert_id = await self.store.insert(
             "INSERT INTO alerts (alert_type, symbol, message, data, sent_telegram) VALUES (?, ?, ?, ?, ?)",
             (alert_type, symbol, message, payload_json, 1 if delivered else 0),
         )
@@ -164,11 +164,17 @@ class AlertDispatcher:
         return DispatchResult(delivered, reason, key, 0.0, alert_id)
 
     async def recent(self, limit: int = 50, alert_type: str | None = None) -> list[dict[str, Any]]:
+        # created_at DESC preserves the existing /api/alerts ordering; id DESC
+        # only breaks ties, which created_at's one-second granularity leaves
+        # arbitrary today.
         if alert_type:
             return await self.store.fetch_all(
-                "SELECT * FROM alerts WHERE alert_type = ? ORDER BY id DESC LIMIT ?", (alert_type, limit)
+                "SELECT * FROM alerts WHERE alert_type = ? ORDER BY created_at DESC, id DESC LIMIT ?",
+                (alert_type, limit),
             )
-        return await self.store.fetch_all("SELECT * FROM alerts ORDER BY id DESC LIMIT ?", (limit,))
+        return await self.store.fetch_all(
+            "SELECT * FROM alerts ORDER BY created_at DESC, id DESC LIMIT ?", (limit,)
+        )
 
     async def prune_state(self, older_than_s: float = 7 * 24 * 3600) -> int:
         cutoff = self._clock() - older_than_s

@@ -112,6 +112,11 @@ class Store:
         self._writer: aiosqlite.Connection | None = None
         self._reader: aiosqlite.Connection | None = None
         self._write_lock = asyncio.Lock()
+        # The task currently holding the writer. A plain Lock is not reentrant,
+        # so `await store.execute(...)` inside `async with store.transaction()`
+        # deadlocked with no timeout - the natural way to write a multi-statement
+        # unit, and a trap worth removing before Phase 3 writes orders that way.
+        self._writer_owner: asyncio.Task[Any] | None = None
         self.writes = 0
         self.reads = 0
 
@@ -214,13 +219,48 @@ class Store:
 
     # -- writes --------------------------------------------------------------
 
-    async def execute(self, sql: str, params: Params = ()) -> int:
-        """Run one writing statement. Returns ``lastrowid`` (or ``rowcount`` when 0)."""
+    @asynccontextmanager
+    async def _write(self) -> AsyncIterator[tuple[aiosqlite.Connection, bool]]:
+        """Acquire the writer, reentrantly for the task that already holds it.
+
+        Yields ``(connection, joined)`` where ``joined`` is True when this call
+        is nested inside an open transaction owned by the same task - the
+        caller must then not issue its own BEGIN/COMMIT.
+        """
+        current = asyncio.current_task()
+        if self._writer_owner is not None and self._writer_owner is current:
+            yield self._w(), True
+            return
         async with self._write_lock:
-            cursor = await self._w().execute(sql, params)
+            self._writer_owner = current
+            try:
+                yield self._w(), False
+            finally:
+                self._writer_owner = None
+
+    async def execute(self, sql: str, params: Params = ()) -> int:
+        """Run one writing statement. Returns the number of rows affected.
+
+        Always ``rowcount``, never ``lastrowid``: sqlite3 leaves ``lastrowid``
+        holding the last INSERT's rowid, so a DELETE or UPDATE used to report
+        that stale id instead of the row count - a 3-row DELETE returned 5.
+        Use :meth:`insert` when you want the new row's id.
+        """
+        async with self._write() as (writer, _joined):
+            cursor = await writer.execute(sql, params)
             try:
                 self.writes += 1
-                return int(cursor.lastrowid or cursor.rowcount or 0)
+                return int(cursor.rowcount if cursor.rowcount is not None and cursor.rowcount >= 0 else 0)
+            finally:
+                await cursor.close()
+
+    async def insert(self, sql: str, params: Params = ()) -> int:
+        """Run an INSERT and return the new ``lastrowid``."""
+        async with self._write() as (writer, _joined):
+            cursor = await writer.execute(sql, params)
+            try:
+                self.writes += 1
+                return int(cursor.lastrowid or 0)
             finally:
                 await cursor.close()
 
@@ -229,15 +269,17 @@ class Store:
         payload = list(rows)
         if not payload:
             return 0
-        async with self._write_lock:
-            writer = self._w()
-            await writer.execute("BEGIN")
+        async with self._write() as (writer, joined):
+            if not joined:
+                await writer.execute("BEGIN")
             try:
                 await writer.executemany(sql, payload)
-                await writer.execute("COMMIT")
+                if not joined:
+                    await writer.execute("COMMIT")
             except Exception:
-                with contextlib.suppress(sqlite3.Error):
-                    await writer.execute("ROLLBACK")
+                if not joined:
+                    with contextlib.suppress(sqlite3.Error):
+                        await writer.execute("ROLLBACK")
                 raise
             self.writes += len(payload)
             return len(payload)
@@ -246,10 +288,14 @@ class Store:
     async def transaction(self) -> AsyncIterator[aiosqlite.Connection]:
         """Hold the writer for several statements, committed or rolled back together.
 
-        Phase 3 needs this: an order and its state transition must land atomically.
+        Reentrant: ``execute``/``executemany`` called inside the block join this
+        transaction instead of deadlocking on the writer lock. Phase 3 needs
+        this - an order and its state transition must land atomically.
         """
-        async with self._write_lock:
-            writer = self._w()
+        async with self._write() as (writer, joined):
+            if joined:
+                yield writer  # already inside an outer transaction
+                return
             await writer.execute("BEGIN")
             try:
                 yield writer

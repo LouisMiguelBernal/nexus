@@ -117,3 +117,42 @@ async def test_stats_and_unsubscribe():
     bus.unsubscribe(sub)
     assert bus.publish("t", 2) == 0
     await bus.stop()
+
+
+async def test_publishing_to_a_topic_with_no_subscriber_is_reported():
+    """Moving producers into services one commit at a time makes it easy to
+    leave a topic unwired; publish() returning 0 is otherwise silent."""
+    import logging
+
+    bus = EventBus()
+    await bus.start()
+    logger = logging.getLogger("nexus.bus")
+    records: list[logging.LogRecord] = []
+    handler = logging.Handler()
+    handler.emit = records.append  # type: ignore[method-assign]
+    logger.addHandler(handler)
+    try:
+        assert bus.publish("alert", {"a": 1}) == 0
+        assert bus.publish("alert", {"a": 2}) == 0
+        assert bus.publish("other", {}) == 0
+    finally:
+        logger.removeHandler(handler)
+
+    assert bus.stats()["unconsumed_topics"] == {"alert": 2, "other": 1}
+    warned = [r for r in records if r.levelno == logging.WARNING and "no subscriber" in r.getMessage()]
+    assert len(warned) == 2, "warn once per topic, not once per event"
+    await bus.stop()
+
+
+async def test_a_subscribed_topic_is_never_reported_unconsumed():
+    bus = EventBus()
+
+    async def handler(topic: str, payload: object) -> None:
+        pass
+
+    bus.subscribe("market.*", handler)
+    await bus.start()
+    assert bus.publish("market.trade", {}) == 1
+    await bus.drain()
+    assert bus.stats()["unconsumed_topics"] == {}
+    await bus.stop()

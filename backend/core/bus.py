@@ -93,6 +93,12 @@ class EventBus:
         self._recent: deque[dict[str, Any]] = deque(maxlen=recent_size)
         self._started = False
         self._published = 0
+        # Publishing to a topic nobody consumes is silent by design - publish()
+        # just returns 0. That is right for optional telemetry and wrong for a
+        # producer whose consumer has not been wired yet, which is easy to do
+        # while moving loops into services one commit at a time. Counted, and
+        # warned about the first time per topic.
+        self._unconsumed: dict[str, int] = {}
 
     # -- registration --------------------------------------------------------
 
@@ -158,6 +164,13 @@ class EventBus:
                     sub.dropped += 1
                     continue
             queued += 1
+        if queued == 0:
+            seen = self._unconsumed.get(topic, 0)
+            self._unconsumed[topic] = seen + 1
+            if seen == 0:
+                logger.warning(
+                    "bus topic %r has no subscriber - this event is being dropped on the floor", topic
+                )
         return queued
 
     # -- lifecycle -----------------------------------------------------------
@@ -216,6 +229,7 @@ class EventBus:
             "started": self._started,
             "subscriptions": [sub.snapshot() for sub in self._subs],
             "dropped_total": sum(sub.dropped for sub in self._subs),
+            "unconsumed_topics": dict(self._unconsumed),
         }
 
     @property

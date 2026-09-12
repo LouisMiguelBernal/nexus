@@ -34,9 +34,15 @@ State = Literal["idle", "running", "restarting", "stopped", "finished", "crashed
 class Service:
     """Base class. Subclass and override ``run_once`` (interval) or ``run``."""
 
-    def __init__(self, name: str, interval_s: float | None = None) -> None:
+    def __init__(self, name: str, interval_s: float | None = None, *, fixed_rate: bool = False) -> None:
         self.name = name
         self.interval_s = interval_s
+        # The loops this replaces are fixed-DELAY (`work; await sleep(n)`), so
+        # that is the default: a slow tick pushes the next one out and there is
+        # always a real gap. fixed_rate keeps the cadence instead, but still
+        # yields a minimum gap - `sleep(max(0, interval - elapsed))` alone
+        # becomes a continuous loop the moment run_once overruns the interval.
+        self.fixed_rate = fixed_rate
         self.errors = 0
         self.last_error: str | None = None
         self.last_error_at: float | None = None
@@ -46,8 +52,14 @@ class Service:
     async def run_once(self) -> None:
         raise NotImplementedError(f"{type(self).__name__} must implement run_once() or run()")
 
+    MIN_GAP_FRACTION = 0.1
+
     async def run(self) -> None:
-        """Default loop: ``run_once`` every ``interval_s`` (fixed rate, drift-corrected)."""
+        """Default loop: ``run_once`` every ``interval_s``.
+
+        Fixed-delay by default (the behaviour of the loops being replaced);
+        fixed-rate with a guaranteed minimum gap when ``fixed_rate`` is set.
+        """
         if self.interval_s is None:
             raise ValueError(f"service {self.name}: interval_s required for the default run() loop")
         while True:
@@ -64,8 +76,11 @@ class Service:
                     logger.warning("service %s run_once failed (error #%d): %s", self.name, self.errors, exc)
             self.runs += 1
             self.last_run_at = time.time()
-            elapsed = time.monotonic() - started
-            await asyncio.sleep(max(0.0, self.interval_s - elapsed))
+            if self.fixed_rate:
+                elapsed = time.monotonic() - started
+                await asyncio.sleep(max(self.interval_s * self.MIN_GAP_FRACTION, self.interval_s - elapsed))
+            else:
+                await asyncio.sleep(self.interval_s)
 
     async def on_start(self) -> None:
         pass

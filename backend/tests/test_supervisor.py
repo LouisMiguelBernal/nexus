@@ -151,3 +151,59 @@ async def test_duplicate_name_rejected():
         pass
     else:
         raise AssertionError("duplicate service name must be rejected")
+
+
+class Overrunning(Service):
+    """run_once takes four times the interval."""
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__("overrun", interval_s=0.05, **kwargs)
+        self.n = 0
+
+    async def run_once(self) -> None:
+        self.n += 1
+        await asyncio.sleep(0.20)
+
+
+async def test_default_is_fixed_delay_so_an_overrunning_tick_still_leaves_a_gap():
+    """The loops being replaced are `work; await sleep(n)`. Fixed-rate with
+    `sleep(max(0, interval - elapsed))` collapses to a continuous loop the
+    moment run_once overruns."""
+    sup = Supervisor()
+    svc = Overrunning()
+    sup.add(svc)
+    await sup.start_all()
+    await asyncio.sleep(1.0)
+    await sup.stop_all()
+    # fixed-delay: each cycle is 0.20 work + 0.05 gap = 0.25s -> ~4 runs.
+    assert svc.n <= 4, f"expected a real gap between ticks, got {svc.n} runs in 1s"
+
+
+async def test_fixed_rate_keeps_cadence_but_still_yields_a_minimum_gap():
+    sup = Supervisor()
+    svc = Overrunning(fixed_rate=True)
+    sup.add(svc)
+    await sup.start_all()
+    await asyncio.sleep(1.0)
+    await sup.stop_all()
+    # 0.20 work + max(0.005 floor, 0.05-0.20) = 0.205s -> ~4-5 runs, never a spin.
+    assert 3 <= svc.n <= 5, svc.n
+
+
+async def test_fixed_rate_catches_up_when_the_tick_is_fast():
+    class Fast(Service):
+        def __init__(self) -> None:
+            super().__init__("fast", interval_s=0.05, fixed_rate=True)
+            self.n = 0
+
+        async def run_once(self) -> None:
+            self.n += 1
+            await asyncio.sleep(0.01)
+
+    sup = Supervisor()
+    svc = Fast()
+    sup.add(svc)
+    await sup.start_all()
+    await asyncio.sleep(0.5)
+    await sup.stop_all()
+    assert svc.n >= 7, "a fast tick should hold the 0.05s cadence, not 0.06s"

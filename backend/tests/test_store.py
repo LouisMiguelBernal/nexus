@@ -95,8 +95,8 @@ async def test_failed_migration_rolls_back_and_does_not_record(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-async def test_execute_returns_lastrowid_and_reads_see_it(store):
-    rowid = await store.execute(
+async def test_insert_returns_lastrowid_and_reads_see_it(store):
+    rowid = await store.insert(
         "INSERT INTO alerts (alert_type, symbol, message) VALUES (?, ?, ?)",
         ("zone_approach", "BTCUSDT", "near"),
     )
@@ -165,3 +165,79 @@ async def test_stats_reports_version_and_counters(store):
     stats = await store.stats()
     assert stats["connected"] and stats["writes"] >= 1 and stats["size_bytes"] > 0
     assert stats["schema_version"] >= 1 and stats["write_lock_held"] is False
+
+
+# ---------------------------------------------------------------------------
+# rowcount vs lastrowid, and writer reentrancy
+# ---------------------------------------------------------------------------
+
+
+async def test_execute_reports_rows_affected_not_a_stale_lastrowid(store):
+    """sqlite3 leaves lastrowid holding the last INSERT's id, so a DELETE used
+    to report that id as its result - a 3-row DELETE returned 5."""
+    for i in range(5):
+        await store.insert("INSERT INTO alerts (alert_type, message) VALUES (?, ?)", (f"t{i}", "m"))
+
+    deleted = await store.execute("DELETE FROM alerts WHERE alert_type IN ('t0','t1','t2')")
+    assert deleted == 3, "DELETE must report rows affected"
+    assert await store.fetch_value("SELECT COUNT(*) FROM alerts") == 2
+
+    updated = await store.execute("UPDATE alerts SET message = 'x'")
+    assert updated == 2
+
+    assert await store.execute("DELETE FROM alerts WHERE alert_type = 'nothing-matches'") == 0
+
+
+async def test_prune_style_delete_counts_correctly(store):
+    await store.executemany(
+        "INSERT INTO metric_snapshots (symbol, metric, t, value) VALUES (?, ?, ?, ?)",
+        [("BTCUSDT", "obi", float(t), 1.0) for t in range(100)],
+    )
+    assert await store.execute("DELETE FROM metric_snapshots WHERE t < ?", (40,)) == 40
+
+
+async def test_nested_write_joins_the_open_transaction_instead_of_deadlocking(store):
+    """`await store.execute(...)` inside `async with store.transaction()` is the
+    natural way to write a multi-statement unit; a plain Lock deadlocked there
+    with no timeout."""
+    async with store.transaction():
+        await asyncio.wait_for(
+            store.execute("INSERT INTO alerts (alert_type, message) VALUES ('a', 'b')"), timeout=2.0
+        )
+        await asyncio.wait_for(
+            store.executemany(
+                "INSERT INTO alerts (alert_type, message) VALUES (?, ?)", [("c", "d"), ("e", "f")]
+            ),
+            timeout=2.0,
+        )
+    assert await store.fetch_value("SELECT COUNT(*) FROM alerts") == 3
+
+
+async def test_nested_writes_roll_back_with_the_outer_transaction(store):
+    with pytest.raises(RuntimeError):
+        async with store.transaction():
+            await store.execute("INSERT INTO alerts (alert_type, message) VALUES ('a', 'b')")
+            raise RuntimeError("caller failed after a nested write")
+    assert await store.fetch_value("SELECT COUNT(*) FROM alerts") == 0
+
+
+async def test_a_second_task_still_waits_for_the_writer(store):
+    """Reentrancy is per-task; it must not let another task interleave."""
+    order: list[str] = []
+    released = asyncio.Event()
+
+    async def holder() -> None:
+        async with store.transaction():
+            order.append("holder-in")
+            await released.wait()
+            order.append("holder-out")
+
+    async def other() -> None:
+        await asyncio.sleep(0.02)
+        order.append("other-wants-write")
+        released.set()
+        await store.execute("INSERT INTO alerts (alert_type, message) VALUES ('x', 'y')")
+        order.append("other-wrote")
+
+    await asyncio.gather(holder(), other())
+    assert order == ["holder-in", "other-wants-write", "holder-out", "other-wrote"]

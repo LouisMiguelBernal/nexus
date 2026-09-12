@@ -14,6 +14,18 @@ All notable changes to Nexus are documented here. Format: [Keep a Changelog](htt
 ### Removed
 - `scripts/health_check.py` (imported a removed config key; dead since the paid-API purge), `scripts/setup.sh` (wrong port), `notebooks/` (API liveness smoke test, superseded by `just doctor`), orphaned `nexus_root.db`.
 
+### Added (Phase 1, in progress)
+- `backend/core/`: bounded event bus (per-subscriber queues, drop-oldest/coalesce, synchronous non-blocking publish, unconsumed-topic reporting), service supervisor (retained handles, backoff restart, cancel-with-deadline), Clock seam, typed events, SymbolRegistry with eviction and per-field views, TTLCache + SingleFlight.
+- `backend/data/store.py`: async SQLite - one writer behind a reentrant guard, WAL reader, numbered atomic migrations (0001 initial, 0002 alert_state).
+- `backend/ops/logging.py`: structlog under the existing stdlib call sites, JSON file sink, request correlation. `scripts/lint_excepts.py` enforces that a caught failure is never logged below the configured level (wired into `just lint`, CI and pre-commit).
+- `backend/alerts/dispatcher.py` + a cooldown/bucket policy in `alert_types.py`.
+- `docs/PHASE1_EXTRACTION.md`: the verified plan for decomposing `main.py`, with all 51 findings from the adversarial review.
+
+### Fixed (Phase 1)
+- Circuit breaker: any venue could trip it (including ISP-blocked OKX/MEXC), nothing ever cleared a trip, and `update()` would have wiped event trips once an equity feed existed.
+- 15 more invisible failures outside `main.py` (matrix layers, Yahoo cookie mint, CISA KEV, OpenSky, geo sources, worldmonitor, BloFin research, absorption sampler, aggTrade REST) promoted to throttled warnings.
+- Four defects in this phase's own new code, found by the adversarial review and confirmed by test before fixing: `Store.execute()` returned a stale `lastrowid` instead of rows affected (a 3-row DELETE reported 5, so both pruners were wrong); `Store`'s writer lock was not reentrant, so a write inside `transaction()` deadlocked with no timeout; `SymbolRegistry` had no `__getitem__`, no `.strip()`/blank guard and no per-field views, so replacing the engine dicts would have aborted startup and silently stopped OI/funding/absorption refresh; `Service.run()` was fixed-rate with no floor, removing the gap between ticks whenever `run_once` overran its interval.
+
 ### Fixed
 - Platinum zone tier was unreachable (required a CoinGlass flag no caller passed); it now means 3+ venues, persisted >= 30 min, top decile of the cycle.
 - Squeeze meter's liquidation-proximity term (25 of 100 points) was structurally zero; it is now fed from recent liquidation clusters.
