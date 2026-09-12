@@ -41,6 +41,7 @@ from backend.config import (
     WORLDMONITOR_SANDBOX_BASE,
     WORLDMONITOR_UA,
 )
+from backend.ops.logutil import warn_throttled
 
 logger = logging.getLogger("nexus.geo.worldmonitor")
 
@@ -202,7 +203,7 @@ async def fetch_instability() -> dict:
         return result
 
     except Exception as e:  # noqa: BLE001
-        logger.debug("worldmonitor enrichment failed: %s", e)
+        warn_throttled(logger, "worldmonitor", "worldmonitor enrichment failed: %s", e)
 
     _COOLDOWN_UNTIL = now + _COOLDOWN
     logger.info("worldmonitor unreachable; using local instability score only")

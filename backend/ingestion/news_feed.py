@@ -20,6 +20,7 @@ from backend.config import (
     FINNHUB_BASE,
     RSS_FEEDS,
 )
+from backend.ops.logutil import warn_throttled
 
 logger = logging.getLogger("nexus.news_feed")
 
@@ -126,7 +127,7 @@ class NewsFeed:
                         for item in items[:limit]
                     ]
         except Exception as e:  # noqa: BLE001
-            logger.debug(f"BloFin research: {e}")
+            warn_throttled(logger, "blofin_research", "BloFin research feed failed: %s", e)
         return []
 
     async def fetch_finnhub(self, category: str = "crypto") -> list[dict]:

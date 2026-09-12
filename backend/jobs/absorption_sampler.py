@@ -18,6 +18,7 @@ import time
 from collections.abc import Mapping
 
 from backend.computation.absorption import AbsorptionDetector
+from backend.ops.logutil import warn_throttled
 
 logger = logging.getLogger("nexus.absorption_sampler")
 
@@ -64,7 +65,9 @@ async def absorption_sample_loop(
                         window_seconds=int(interval_s),
                     )
                 except Exception as exc:  # noqa: BLE001
-                    logger.debug("absorption %s analyze_window: %s", sym, exc)
+                    warn_throttled(
+                        logger, f"absorption:{sym}", "absorption analyze_window failed for %s: %s", sym, exc
+                    )
                     continue
                 # Cache last result + ts on detector for /api/matrix consumers.
                 det._last_result = result  # type: ignore[attr-defined]

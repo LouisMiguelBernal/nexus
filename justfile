@@ -33,6 +33,7 @@ check: lint typecheck test lint-frontend build-frontend
 lint:
     uv run ruff check backend
     uv run ruff format --check backend
+    uv run python scripts/lint_excepts.py
 
 # Apply auto-fixes and formatting.
 fix:

@@ -28,6 +28,7 @@ import httpx
 
 from backend.config import GEO_RSS, GEO_SOURCES
 from backend.geo import domains
+from backend.ops.logutil import warn_throttled
 
 logger = logging.getLogger("nexus.geo.sources")
 
@@ -42,7 +43,7 @@ async def _get(client: httpx.AsyncClient, url: str) -> httpx.Response | None:
             return None
         return resp
     except Exception as e:  # noqa: BLE001
-        logger.debug("geo source %s failed: %s", url, e)
+        warn_throttled(logger, f"geo_source:{url}", "geo source %s failed: %s", url, e)
         return None
 
 

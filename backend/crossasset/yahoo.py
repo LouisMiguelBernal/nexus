@@ -25,6 +25,7 @@ import httpx
 
 from backend.config import YAHOO_CHART_BASE, YAHOO_GATED_BASE, YAHOO_UA
 from backend.ingestion import rate_guard
+from backend.ops.logutil import warn_throttled
 
 logger = logging.getLogger("nexus.crossasset.yahoo")
 
@@ -55,7 +56,7 @@ async def _mint_credentials(client: httpx.AsyncClient) -> tuple[str, str]:
         parts = [v.split(";")[0] for k, v in seed.headers.multi_items() if k.lower() == "set-cookie"]
         cookie = "; ".join(p for p in parts if p)
     except Exception as e:  # network, TLS, DNS - all non-fatal  # noqa: BLE001
-        logger.debug("yahoo cookie seed failed: %s", e)
+        warn_throttled(logger, "yahoo_cookie", "yahoo cookie seed failed: %s", e)
 
     if not cookie:
         raise RuntimeError("yahoo: no session cookie issued")

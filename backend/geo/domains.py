@@ -27,6 +27,7 @@ from datetime import UTC, datetime, timedelta
 import httpx
 
 from backend.config import AVIATION_REGIONS, AVIATION_STATES_URL, CYBER_KEV_URL
+from backend.ops.logutil import warn_throttled
 
 logger = logging.getLogger("nexus.geo.domains")
 
@@ -53,7 +54,7 @@ async def fetch_cyber(client: httpx.AsyncClient) -> dict:
             raise RuntimeError(f"HTTP {resp.status_code}")
         body = resp.json() or {}
     except Exception as e:  # noqa: BLE001
-        logger.debug("CISA KEV failed: %s", e)
+        warn_throttled(logger, "cisa_kev", "CISA KEV fetch failed: %s", e)
         return cached if cached else {"available": False}  # type: ignore[return-value]
 
     vulns = body.get("vulnerabilities") or []
@@ -145,7 +146,7 @@ async def fetch_aviation(client: httpx.AsyncClient) -> dict:
                 raise RuntimeError(f"HTTP {resp.status_code}")
             states = (resp.json() or {}).get("states") or []
         except Exception as e:  # noqa: BLE001
-            logger.debug("OpenSky %s failed: %s", name, e)
+            warn_throttled(logger, f"opensky:{name}", "OpenSky %s failed: %s", name, e)
             regions.append({"region": name, "available": False})
             continue
 

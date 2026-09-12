@@ -32,6 +32,7 @@ from backend.computation.fallbacks import (
     infer_gex_proxy,
 )
 from backend.computation.hurst import hurst_exponent, hurst_score
+from backend.ops.logutil import warn_throttled
 from backend.risk.expected_shortfall import ESCalculator
 
 logger = logging.getLogger("nexus.api.matrix")
@@ -173,7 +174,7 @@ def make_router(*, state) -> APIRouter:
                 regime_label = rd.get("regime", "unknown")
                 regime_conf = float(rd.get("confidence", 0.0) or 0.0)
         except Exception as exc:  # noqa: BLE001
-            logger.debug("regime classify %s: %s", sym, exc)
+            warn_throttled(logger, f"matrix_regime:{sym}", "regime classify %s: %s", sym, exc)
 
         H = hurst_exponent(returns) if len(returns) >= 48 else None
         H_score = hurst_score(H)
@@ -308,7 +309,7 @@ def make_router(*, state) -> APIRouter:
                             same = sum(1 for s in nz if s == nz[0])
                             funding_persistence = (same / len(nz)) * 2 - 1.0
         except Exception as exc:  # noqa: BLE001
-            logger.debug("funding %s: %s", sym, exc)
+            warn_throttled(logger, f"matrix_funding:{sym}", "funding layer failed for %s: %s", sym, exc)
 
         # ------------------------------------------------------------------
         # Basis: perp mark vs index. Cross-venue dispersion = stdev of
@@ -354,7 +355,7 @@ def make_router(*, state) -> APIRouter:
                     var = sum((x - mu) ** 2 for x in devs_pct) / max(len(devs_pct) - 1, 1)
                     basis_dispersion = math.sqrt(var)
         except Exception as exc:  # noqa: BLE001
-            logger.debug("basis_dispersion %s: %s", sym, exc)
+            warn_throttled(logger, f"matrix_basis:{sym}", "basis_dispersion failed for %s: %s", sym, exc)
 
         # ------------------------------------------------------------------
         # Volatility - pull from /api/indicators latest path (we recompute
@@ -390,7 +391,7 @@ def make_router(*, state) -> APIRouter:
                     rv_avg = (sum(r * r for r in returns) / len(returns)) ** 0.5
                     atr_avg = rv_avg * 100
         except Exception as exc:  # noqa: BLE001
-            logger.debug("vol calc %s: %s", sym, exc)
+            warn_throttled(logger, f"matrix_vol:{sym}", "vol calc failed for %s: %s", sym, exc)
 
         # ------------------------------------------------------------------
         # Liquidations
@@ -427,7 +428,7 @@ def make_router(*, state) -> APIRouter:
                 if gx.source != "none":
                     gex_proxy_val = gx.value
         except Exception as exc:  # noqa: BLE001
-            logger.debug("deribit proxy %s: %s", sym, exc)
+            warn_throttled(logger, f"matrix_deribit:{sym}", "deribit proxy failed for %s: %s", sym, exc)
 
         # Funding term-structure skew (P1-1): front 1h annualized vs back 8h
         # realized 7d mean. Available only when ≥10 history samples - the
@@ -441,7 +442,7 @@ def make_router(*, state) -> APIRouter:
                 if skew.get("available"):
                     funding_skew_val = skew.get("skew_pct")
         except Exception as exc:  # noqa: BLE001
-            logger.debug("funding_skew %s: %s", sym, exc)
+            warn_throttled(logger, f"matrix_skew:{sym}", "funding_skew failed for %s: %s", sym, exc)
 
         # ------------------------------------------------------------------
         # Build layers
@@ -532,7 +533,7 @@ def make_router(*, state) -> APIRouter:
                 es_ens = (es_out.get("ensemble_max") or {}).get("es_95") or {}
                 risk_block["es_95"] = es_ens.get("return_pct")
             except Exception as exc:  # noqa: BLE001
-                logger.debug("risk %s: %s", sym, exc)
+                warn_throttled(logger, f"matrix_risk:{sym}", "risk layer failed for %s: %s", sym, exc)
 
         # ------------------------------------------------------------------
         # Venue health from ws_manager.gap_report

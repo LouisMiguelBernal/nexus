@@ -41,6 +41,7 @@ from backend.ingestion.rate_guard import (
     record_success,
     should_skip,
 )
+from backend.ops.logutil import warn_throttled
 
 logger = logging.getLogger("nexus.agg_trade_rest_poller")
 
@@ -92,7 +93,7 @@ def _fetch_sync(url: str) -> list | None:
         note_http_error(BINANCE_FUTURES_HOST, http_err.code, body)
         return None
     except Exception as exc:  # noqa: BLE001
-        logger.debug("aggTrades REST fetch failed: %s", exc)
+        warn_throttled(logger, "aggtrade_rest", "aggTrades REST fetch failed: %s", exc)
         return None
 
 
