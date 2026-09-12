@@ -59,6 +59,7 @@ from backend.computation.tape_speed import TapeSpeedTracker
 from backend.computation.vol_spread import compute_spread as compute_vol_spread
 from backend.computation.vpin import VPINTracker
 from backend.config import DEFAULT_INTERVAL, DEFAULT_SYMBOLS, INSTITUTIONAL_DEPTH, NEXUS_DATA_DIR
+from backend.data import binance_rest
 from backend.data.http import fetch_json
 from backend.ingestion.binance_ws import binance_data, create_binance_connection
 from backend.ingestion.blofin_client import BloFinClient
@@ -2694,26 +2695,13 @@ _klines_cache: dict = {}  # {(symbol,interval): (ts, data)}
 _KLINES_TTL_SEC = 12.0
 
 
-def _binance_fut_get(path: str, timeout: int = 10):
-    """Blocking Binance USDT-M futures REST call. Run in a thread. The TLS
-    fallback is centralised - and logged - in backend.data.http."""
-    url = f"https://fapi.binance.com{path}"
-    try:
-        return fetch_json(url, timeout=float(timeout))
-    except Exception as exc:  # noqa: BLE001  # reason: callers treat None as "venue unavailable" and serve cached data
-        warn_throttled(logger, f"fut_get:{path.split('?')[0]}", "Binance REST %s failed: %s", path, exc)
-        return None
+# Moved to backend/data/binance_rest.py, which honours ingestion/rate_guard:
+# the request path used to call Binance straight through an active ban, which
+# is how a short ban becomes a long one. Aliased so no call site changes.
+_binance_fut_get = binance_rest.futures_get
 
 
-# Shared executor for all Binance REST proxying - avoids spinning up (and tearing
-# down) a fresh ThreadPoolExecutor on every call, which mattered once the crypto
-# strip started issuing 10 concurrent _afetch() calls per refresh.
-_binance_pool = _cf.ThreadPoolExecutor(max_workers=16, thread_name_prefix="binance-rest")
-
-
-async def _afetch(path: str, timeout: int = 10):
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(_binance_pool, lambda: _binance_fut_get(path, timeout))
+_afetch = binance_rest.afetch
 
 
 @app.get("/api/klines/{symbol}")
