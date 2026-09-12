@@ -130,6 +130,7 @@ Assume all secrets are **inaccessible**
 ## Nexus - Ground-Truth Invariants (post-P0, 2026-04-24)
 
 Source of truth for code state. Update when code changes; never let docs drift.
+Revamp status, target architecture and decisions: `docs/ARCHITECTURE.md`, `docs/adr/`, `CHANGELOG.md`.
 
 ### Risk engines
 
@@ -146,12 +147,12 @@ Source of truth for code state. Update when code changes; never let docs drift.
   * Half-Kelly default; caps: `max_position_pct`, `max_leverage`, `margin_buffer`.
   * Backward-compatible: vol/corr args optional.
 * `backend/risk/correlation.py` - **wired** into Kelly (was orphaned pre-P0).
-* `backend/risk/circuit_breaker.py` - threshold-only today; event triggers (VaR breach, Δρ, WS outage, funding spike) are P2.
+* `backend/risk/circuit_breaker.py` - event triggers exist (`on_var_breach`, `on_correlation_snapshot`, `on_ws_gap_report`, `on_funding_zscore`, `on_vpin`) and are subscribed via `wire_circuit_breaker`; the threshold path (`update(equity)`, `daily_reset()`) has **no caller yet**, and a trip latches for the process lifetime. Phase 1 of the revamp feeds equity, scopes WS trips to Binance, and adds auto-clear + Telegram.
 
 ### Alpha engine
 
 * `backend/computation/alpha_engine.py` - **regime-conditional weights**:
-  * `WEIGHTS_BY_REGIME` = 5 regimes × 8 signals (each row sums to 1.0).
+  * `WEIGHTS_BY_REGIME` = 5 regimes × 12 signals (the 8 legacy factors + `tsmom`, `oi_momentum`, `funding_carry`, `squeeze`; each row sums to 1.0). Weights are asserted, not fitted - Phase 2 replaces them with a fitted artifact (`docs/adr/0006-promotion-gate.md`).
   * `generate_composite(..., klines=...)` classifies via `RegimeClassifier` and selects the row.
   * Result includes `regime` + `weights_used`.
   * Legacy `SIGNAL_WEIGHTS` kept as the `insufficient_data` fallback.
@@ -263,15 +264,18 @@ Source of truth for code state. Update when code changes; never let docs drift.
   silently never answers is worse than none - the score renormalises around it
   and nothing looks broken.
 
-### Still-drift / not-yet-built (P1/P2)
+### Still-drift / known gaps (revamp phases in parentheses)
 
-* `funding.py` - snapshot only; term structure pending (P1-1).
-* `obi_tracker.py` - qty-based; notional + VPIN-clock pending (P1-6).
-* `oi_analysis.py` - trend only; cross-sectional ROC z-score pending (P1-5).
-* `squeeze_risk.py` - linear, regime-blind.
-* New files pending: `computation/vpin.py`, `computation/factors/{tsmom,xs_funding}.py`.
-* New dirs pending: `backend/{validation,execution,monitoring}/`.
-
+* `funding.py` - snapshot only; term structure pending. Rolling z-score window fills only from the 30 s poller, so cold starts over-trip |z|>3 (Phase 0 seeds it from funding history).
+* `obi_tracker.py` - qty-based; notional + VPIN-clock pending.
+* `oi_analysis.py` - trend only; cross-sectional ROC z-score pending.
+* `squeeze_risk.py` - linear, regime-blind; its liquidation-distance term is never fed by `main.py`, so 25 % of the score is structurally 0 (Phase 0).
+* `golden_zone.py` - `platinum` tier unreachable: `_classify_tier` requires a CoinGlass flag the call site never passes (Phase 0).
+* `vpin.py`, `factors/{tsmom,xs_funding}.py` - **exist**. VPIN bucket size is a single $2M constant for every symbol (Phase 0 makes it per-symbol from 24 h volume). TSMOM is fed 15 m closes but annualises as 1 h bars (Phase 0).
+* `validation/`, `execution/`, `monitoring/` - **exist** but are imported by nothing except tests (Phase 1 wires monitoring; Phase 2 wires validation into the research pipeline; Phase 2-3 build the execution engine).
+* `backtesting/` - empty package; the only reachable backtest (`computation/backtest.py`) models no fees, funding, slippage or liquidation (Phase 2 replaces it).
+* `monitoring/event_bus.py` - documents bounded queues but awaits handlers inline; no backpressure exists (Phase 1).
+* `main.py` - 3,395-line monolith; five hand-rolled loops with unretained task handles; blocking SQLite and blocking ccxt on the event loop (Phase 1).
 ### Non-negotiables (see `NEXUS_VISION.md`)
 
 * Read-only frontend; Kelly/VaR outputs are **advisory** until Phase 6.

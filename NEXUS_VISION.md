@@ -32,8 +32,11 @@ but for one trader, free, and focused on USDT-M perpetual futures.
 ## The Pillars (never remove these)
 
 1. **Golden Zone Engine** - cross-exchange liquidity zone detection
-   (bronze/silver/golden/platinum tiers across Binance, Bybit, OKX, Gate)
-2. **Alpha Engine** - 8-factor composite signal:
+   (bronze/silver/golden/platinum tiers across Binance, OKX and MEXC;
+   Deribit supplies options context)
+2. **Alpha Engine** - 12-signal composite whose weights are selected by a
+   5-regime classifier (trending bull / trending bear / ranging / volatile /
+   low-liquidity):
    - Order Flow Imbalance (OFI)
    - VWAP Deviation
    - Funding Arbitrage
@@ -42,6 +45,14 @@ but for one trader, free, and focused on USDT-M perpetual futures.
    - Delta Divergence
    - Smart Money Flow
    - Volatility Regime Shift
+   - Time-Series Momentum (TSMOM)
+   - Open-Interest Momentum
+   - Funding Carry
+   - Squeeze Risk
+
+   Weights are being moved from *asserted* to *fitted and gated*; every
+   signal carries a validation status (`docs/adr/0006-promotion-gate.md`,
+   `docs/RESEARCH_LOG.md`).
 3. **Liquidity Heatmap** - 2D price × time order book visualization with
    wall/void/absorption detection
 4. **Smart Money Tracker** - whale detection, iceberg orders,
@@ -85,7 +96,7 @@ ALT+0  WORLD           - cross-asset board, FRED macro, Treasury curve,
 | Database    | SQLite (local, no cloud)                         |
 | AI          | Ollama + Gemma 4 (LOCAL inference, no OpenAI)    |
 | Sentiment   | FinBERT (local CUDA inference)                   |
-| Exchanges   | Binance, Bybit, OKX, Gate (ingestion)            |
+| Exchanges   | Binance, OKX, MEXC (ingestion); Deribit (options context) |
 | Trading     | BloFin via CCXT (paper first - Phase 6 for live) |
 | Alerts      | Telegram bot                                     |
 | Macro data  | FRED (keyless CSV), Fear & Greed, Yahoo (all free) |
@@ -95,41 +106,60 @@ ALT+0  WORLD           - cross-asset board, FRED macro, Treasury curve,
 
 ## Non-Negotiable Design Rules
 
-- **Bloomberg-style dark UI** - data-dense 10-12px, amber accent `#f0a500`,
-  CSS variables for theming. No modal-heavy UX. No empty white space.
+- **Bloomberg-style dark UI** - data-dense 10-12px, silver accent `#c6c6c7`
+  (institutional choice - not amber), tonal layering instead of 1px borders
+  per `docs/design/nexus_institutional/DESIGN.md`, CSS variables for theming.
+  No modal-heavy UX. No empty white space.
 - **Local-first** - no mandatory cloud services. Runs on the user's machine.
 - **Zero paid APIs** - CoinGlass removed, Whale Alert removed, CryptoPanic
   removed. Replaced with RSS, FRED, CMC free tier, Finnhub free tier.
 - **Read-only until Phase 6** - paper trading only until the user explicitly
   promotes to live. `BINANCE_TESTNET=True` and `BLOFIN_DEMO=True` are defaults.
-- **Philippines/PLDT-compatible** - ISP blocks Binance/Bybit/OKX. SSL
-  auto-fallback + DNS workarounds (urllib sync in thread) are required.
+- **Philippines/PLDT-compatible** - the ISP intermittently blocks
+  Binance/OKX/MEXC. SSL auto-fallback + DNS workarounds are required, and every
+  fallback is logged.
 - **Secrets only in .env** - NEVER hardcoded. NEVER committed. NEVER
   programmatically modified by agents.
 
 ## File Structure (canonical)
 
+The repository can live anywhere; nothing in the code hard-codes its path.
+
 ```
-E:\nexus\
+<repo root>\
 ├── backend\                  Python FastAPI
-│   ├── main.py               app + lifespan + endpoints
+│   ├── main.py               app + lifespan + endpoints (being decomposed - see docs/ARCHITECTURE.md)
 │   ├── config.py             endpoints, thresholds, symbols
-│   ├── computation\          alpha_engine, liquidity_heatmap, smart_money,
-│   │                         cvd, regime, cross_regime, squeeze, absorption
+│   ├── ai\                   gemma4 (Ollama client), finbert, brief_generator
+│   ├── alerts\               telegram, alert types, scheduler
+│   ├── api\                  matrix, world routers
+│   ├── computation\          alpha_engine, golden_zone, liquidity_heatmap, smart_money,
+│   │                         cvd, vpin, regime, cross_regime, squeeze_risk, absorption, factors\
 │   ├── crossasset\           yahoo, fred, equity  (context, never tradable)
-│   ├── geo\                  sources, worldmonitor, instability
-│   ├── ingestion\            binance_ws, bybit_ws, okx_ws, gate_ws, ws_manager
-│   ├── intelligence\         gemma4, finbert, news, macro
-│   ├── trading\              blofin (paper), risk engine, kelly
-│   └── storage\              sqlite db, zones table, alerts table
+│   ├── execution\            cost_model, slippage_estimator (engine + adapters arrive in Phase 2-3)
+│   ├── geo\                  sources, worldmonitor, instability, domains
+│   ├── ingestion\            binance_ws, okx_ws, mexc_ws, deribit_feed, ws_manager, rate_guard,
+│   │                         news_feed, macro_feed, blofin_client
+│   ├── jobs\                 background pollers
+│   ├── macro\                calendar, gate, sentinel_bridge
+│   ├── monitoring\           event_bus, latency_slo, staleness, risk_attribution
+│   ├── risk\                 var, kelly, correlation, circuit_breaker, expected_shortfall,
+│   │                         liquidation, portfolio_margin
+│   ├── storage\              sqlite db + tables
+│   ├── validation\           walk_forward, CPCV, deflated_sharpe, regime_stratified,
+│   │                         cost_sensitivity, replay
+│   ├── core\ data\ ops\      infrastructure packages introduced by the revamp
+│   └── tests\
 ├── frontend\                 Next.js + React + Electron
-│   ├── src\app\              Next.js app router
-│   ├── src\components\       Header, TabBar, StatusBar, tabs\*
-│   ├── electron\             main.js - self-contained launcher + tray
-│   └── package.json
-├── Nexus.bat                 One-click batch launcher
-├── Nexus.vbs                 VBS wrapper (hides console)
+│   ├── src\app\              app router (single route)
+│   ├── src\components\       Header, TabBar, Sidebar (status bar), tabs\*, matrix\*, world\*
+│   ├── src\lib\              stores, hooks, formatters
+│   └── electron\             main.js launcher + tray, preload.js
+├── docs\                     ARCHITECTURE, RUNBOOK, DATA_SOURCES, RESEARCH_LOG, RELEASE, adr\, design\
+├── data\                     runtime data (SQLite, logs) - gitignored; NEXUS_DATA_DIR relocates it
 ├── .env                      SECRETS - never committed
+├── VERSION                   the one place the version number lives
+├── justfile · pyproject.toml · uv.lock
 └── NEXUS_VISION.md           THIS FILE
 ```
 
@@ -138,9 +168,10 @@ E:\nexus\
 > Probably a Copilot hallucination spun up from generic "security monitoring
 > terminal" patterns in its training data. **Reject it.** This project is
 > Nexus. If the suggestion involves renaming, restructuring into microservices,
-> adding auth/multi-user, adding a cloud backend, or replacing the local
+> adding multi-user accounts, adding a cloud backend, or replacing the local
 > FastAPI with something "scalable" - the AI is off-track. Redirect it to
-> this file.
+> this file. (A local API token so the backend is not exposed to the LAN is
+> not "auth/multi-user"; it is basic hygiene and is part of the design.)
 
 ## Phase Roadmap (locked)
 
@@ -148,9 +179,12 @@ E:\nexus\
 - **Phase 2** ✅ Alerts + Telegram + news
 - **Phase 3** ✅ Alpha Engine + Liquidity Heatmap + Smart Money + Bloomberg UI
 - **Phase 4** ✅ Electron standalone shell + one-click launch
-- **Phase 5** 🚧 Backtest engine + paper trading validation on BloFin
-- **Phase 6** 🔒 Live trading (requires explicit user promotion)
+- **Phase 5** 🚧 Backtest engine + paper trading validation on BloFin - in
+  progress through the revamp plan (`docs/ARCHITECTURE.md`; promotion gate in
+  `docs/adr/0006-promotion-gate.md`)
+- **Phase 6** 🔒 Live trading (requires explicit user promotion and the
+  three-key `LiveGuard` gate)
 
 ---
 
-*Last updated: 2026-09-09 - v0.3.0 (World layer added)*
+*Last updated: 2026-09-12 - v0.3.0 (synced to code: 12 signals, real venues, silver accent, repository layout)*
