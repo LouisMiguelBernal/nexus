@@ -19,11 +19,11 @@ from backend.ingestion.ws_manager import WSConnection, WSManager
 def test_gap_log_capped_and_records_entries():
     conn = WSConnection(name="test", url="wss://example.test")
     # Simulate repeated gap close events.
-    for i in range(100):
+    for i in range(100):  # noqa: B007
         entry = {"start": time.time() - 10, "end": time.time(), "duration_s": 10.0}
         conn._gap_log.append(entry)
         if len(conn._gap_log) > conn._gap_log_cap:
-            conn._gap_log = conn._gap_log[-conn._gap_log_cap:]
+            conn._gap_log = conn._gap_log[-conn._gap_log_cap :]
     assert len(conn._gap_log) == conn._gap_log_cap == 64
 
 
@@ -33,7 +33,7 @@ def test_gap_report_schema_for_wsmanager():
     mgr.add(WSConnection(name="beta", url="wss://b.test"))
     rpt = mgr.gap_report()
     assert set(rpt.keys()) == {"alpha", "beta"}
-    for name, bundle in rpt.items():
+    for name, bundle in rpt.items():  # noqa: B007
         assert {"connected", "last_event_time", "seconds_since_last_event", "gap_log"} <= bundle.keys()
 
 
@@ -60,10 +60,12 @@ def test_gap_log_entry_duration_recorded():
     gap_end = time.time()
     if conn._disconnect_started_at and conn._last_event_time and gap_end - conn._last_event_time > 1:
         gap_start = conn._last_event_time
-        conn._gap_log.append({
-            "start": gap_start,
-            "end": gap_end,
-            "duration_s": round(gap_end - gap_start, 3),
-        })
+        conn._gap_log.append(
+            {
+                "start": gap_start,
+                "end": gap_end,
+                "duration_s": round(gap_end - gap_start, 3),
+            }
+        )
     assert conn.gap_log
     assert conn.gap_log[-1]["duration_s"] >= 10.0

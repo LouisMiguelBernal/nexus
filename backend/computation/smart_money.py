@@ -9,7 +9,6 @@ import math
 import statistics
 import time
 from collections import defaultdict, deque
-from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger("nexus.smart_money")
 
@@ -37,6 +36,7 @@ WHALE_THRESHOLD_USD = 50_000
 # ---------------------------------------------------------------------------
 # SmartMoneyTracker
 # ---------------------------------------------------------------------------
+
 
 class SmartMoneyTracker:
     """
@@ -70,7 +70,8 @@ class SmartMoneyTracker:
 
         logger.info(
             "SmartMoneyTracker initialised for %s (whale_threshold=$%s)",
-            self.symbol, f"{whale_threshold_usd:,.0f}",
+            self.symbol,
+            f"{whale_threshold_usd:,.0f}",
         )
 
     # ------------------------------------------------------------------
@@ -159,7 +160,7 @@ class SmartMoneyTracker:
 
         # Group trades by approximate quantity using a bucketing approach
         # Key: (rounded_qty, side) -> list of trades
-        qty_buckets: Dict[Tuple[int, str], list[dict]] = defaultdict(list)
+        qty_buckets: dict[tuple[int, str], list[dict]] = defaultdict(list)
 
         for t in trades_list:
             # Round qty to reduce floating point noise
@@ -170,7 +171,7 @@ class SmartMoneyTracker:
                 key = (int(bucket_qty * 1e8), t["side"])  # int key for hashing
                 qty_buckets[key].append(t)
 
-        for (bucket_key, side), fills in qty_buckets.items():
+        for (bucket_key, side), fills in qty_buckets.items():  # noqa: B007
             if len(fills) < ICEBERG_MIN_FILLS:
                 continue
 
@@ -203,23 +204,26 @@ class SmartMoneyTracker:
 
                             # Confidence based on fill count, consistency, and size
                             conf = min(
-                                0.3 + 0.1 * len(cluster)
+                                0.3
+                                + 0.1 * len(cluster)
                                 + 0.3 * (1.0 - max_dev / ICEBERG_QTY_TOLERANCE)
                                 + 0.2 * min(total_usd / 100_000, 1.0),
                                 1.0,
                             )
 
-                            candidates.append({
-                                "qty_pattern": round(avg_qty, 6),
-                                "fill_count": len(cluster),
-                                "side": side,
-                                "price_range": [min(prices), max(prices)],
-                                "total_usd": round(total_usd, 2),
-                                "duration_ms": duration,
-                                "confidence": round(conf, 3),
-                                "timestamp_start": cluster[0]["ts"],
-                                "timestamp_end": cluster[-1]["ts"],
-                            })
+                            candidates.append(
+                                {
+                                    "qty_pattern": round(avg_qty, 6),
+                                    "fill_count": len(cluster),
+                                    "side": side,
+                                    "price_range": [min(prices), max(prices)],
+                                    "total_usd": round(total_usd, 2),
+                                    "duration_ms": duration,
+                                    "confidence": round(conf, 3),
+                                    "timestamp_start": cluster[0]["ts"],
+                                    "timestamp_end": cluster[-1]["ts"],
+                                }
+                            )
 
                 i = j
 
@@ -273,7 +277,7 @@ class SmartMoneyTracker:
         first_half = orders[:mid]
         second_half = orders[mid:]
 
-        def _calc_flow(trades: list[dict]) -> Tuple[float, float]:
+        def _calc_flow(trades: list[dict]) -> tuple[float, float]:
             buy = sum(t["usd"] for t in trades if t["side"] == "buy")
             sell = sum(t["usd"] for t in trades if t["side"] == "sell")
             return buy, sell
@@ -327,7 +331,8 @@ class SmartMoneyTracker:
 
         # Confidence
         confidence = min(
-            0.2 + 0.3 * min(len(orders) / 50, 1.0)
+            0.2
+            + 0.3 * min(len(orders) / 50, 1.0)
             + 0.2 * abs(bias)
             + 0.15 * (1.0 if divergence else 0.0)
             + 0.15 * min(total_flow / 500_000, 1.0),
@@ -504,15 +509,17 @@ class SmartMoneyTracker:
             else:
                 size_rank = "large"
 
-            result.append({
-                "price": o["price"],
-                "qty": o["qty"],
-                "usd_value": round(o["usd"], 2),
-                "side": o["side"],
-                "timestamp": o["ts"],
-                "time_ago": time_ago,
-                "size_rank": size_rank,
-            })
+            result.append(
+                {
+                    "price": o["price"],
+                    "qty": o["qty"],
+                    "usd_value": round(o["usd"], 2),
+                    "side": o["side"],
+                    "timestamp": o["ts"],
+                    "time_ago": time_ago,
+                    "size_rank": size_rank,
+                }
+            )
 
         return result
 
@@ -585,7 +592,7 @@ class SmartMoneyTracker:
         prices = [t["price"] for t in trades]
         usd_values = [t["usd"] for t in trades]
         # VWAP of the cluster
-        vwap = sum(p * u for p, u in zip(prices, usd_values)) / total if total > 0 else 0
+        vwap = sum(p * u for p, u in zip(prices, usd_values)) / total if total > 0 else 0  # noqa: B905
 
         return {
             "start_ts": trades[0]["ts"],

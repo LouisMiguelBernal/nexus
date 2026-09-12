@@ -6,10 +6,9 @@ Delivered via Telegram at 08:00 daily.
 
 import logging
 import time
-from typing import Dict, Optional
 
-from backend.ai.gemma4 import Gemma4
 from backend.ai.finbert import FinBERTScorer
+from backend.ai.gemma4 import Gemma4
 
 logger = logging.getLogger("nexus.brief_generator")
 
@@ -20,7 +19,7 @@ class BriefGenerator:
     def __init__(self):
         self.gemma = Gemma4()
         self.finbert = FinBERTScorer()
-        self._last_brief: Optional[Dict] = None
+        self._last_brief: dict | None = None
         self._last_brief_time: float = 0
 
     async def generate_brief(
@@ -30,9 +29,9 @@ class BriefGenerator:
         oi_data: dict,
         squeeze_data: dict,
         macro_status: dict,
-        margin_data: Optional[dict] = None,
-        news_headlines: Optional[list] = None,
-    ) -> Dict:
+        margin_data: dict | None = None,
+        news_headlines: list | None = None,
+    ) -> dict:
         """
         Generate a full morning brief.
         Collects all signal data, scores news, sends to Gemma 4.
@@ -45,10 +44,7 @@ class BriefGenerator:
 
         # Build signal context for Gemma 4
         signals = {
-            "golden_zones": [
-                z.to_dict() if hasattr(z, "to_dict") else z
-                for z in (golden_zones or [])[:10]
-            ],
+            "golden_zones": [z.to_dict() if hasattr(z, "to_dict") else z for z in (golden_zones or [])[:10]],
             "funding": funding_data or {},
             "open_interest": oi_data or {},
             "squeeze_risk": squeeze_data or {},
@@ -70,17 +66,18 @@ class BriefGenerator:
         # News synthesis paragraph: an explicit 2nd LLM call dedicated to
         # distilling the headlines into a narrative paragraph.
         news_synthesis = ""
-        news_error: Optional[str] = None
-        news_model: Optional[str] = None
+        news_error: str | None = None
+        news_model: str | None = None
         if news_headlines:
             news_synthesis = await self.gemma.synthesize_news(
-                news_headlines[:15], sentiment=sentiment,
+                news_headlines[:15],
+                sentiment=sentiment,
             )
             news_error = self.gemma.last_error
             news_model = self.gemma.last_model_used
 
         # Map opaque error keys to a user-facing message.
-        def _explain(err: Optional[str]) -> Optional[str]:
+        def _explain(err: str | None) -> str | None:
             if not err:
                 return None
             if err == "oom" or err == "all_models_failed":
@@ -113,5 +110,5 @@ class BriefGenerator:
         return result
 
     @property
-    def last_brief(self) -> Optional[Dict]:
+    def last_brief(self) -> dict | None:
         return self._last_brief

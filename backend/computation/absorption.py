@@ -3,10 +3,9 @@ Nexus - Order Absorption Detection
 Detects large orders being filled without moving price (smart money accumulation).
 """
 
-import time
 import logging
+import time
 from collections import deque
-from typing import Dict, List, Optional
 
 logger = logging.getLogger("nexus.absorption")
 
@@ -24,7 +23,7 @@ class AbsorptionDetector:
         price_start: float,
         price_end: float,
         window_seconds: int = 5,
-    ) -> Optional[Dict]:
+    ) -> dict | None:
         """
         Analyze a time window for absorption.
         Absorption = high volume + minimal price movement.
@@ -35,7 +34,8 @@ class AbsorptionDetector:
         total_volume = sum(t.get("usd", t.get("qty", 0) * t.get("price", 0)) for t in trades)
         buy_volume = sum(
             t.get("usd", t.get("qty", 0) * t.get("price", 0))
-            for t in trades if not t.get("is_buyer_maker", True)
+            for t in trades
+            if not t.get("is_buyer_maker", True)
         )
         sell_volume = total_volume - buy_volume
         price_change_pct = abs(price_end - price_start) / price_start * 100

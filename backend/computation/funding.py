@@ -19,16 +19,15 @@ Annualization convention: perp funding settles every 8h → 3 payments/day
 
 import logging
 import time
-from typing import Dict, List, Optional
 
 import httpx
 
 from backend.config import (
     BINANCE_FUTURES_BASE,
     BINANCE_FUTURES_ENDPOINTS,
-    OKX_BASE,
     EXCHANGE_WEIGHTS,
     FUNDING_THRESHOLDS,
+    OKX_BASE,
 )
 from backend.ingestion.rate_guard import (
     BINANCE_FUTURES_HOST,
@@ -49,13 +48,13 @@ class FundingTracker:
 
     def __init__(self, symbol: str = "BTCUSDT"):
         self.symbol = symbol
-        self._rates: Dict[str, float] = {}
+        self._rates: dict[str, float] = {}
         # Predicted *next* funding rate per exchange (populated by fetch_* if
         # the venue exposes it). Falls back to spot when unavailable.
-        self._predicted: Dict[str, float] = {}
+        self._predicted: dict[str, float] = {}
         self._history: list = []
 
-    async def fetch_binance(self) -> Optional[float]:
+    async def fetch_binance(self) -> float | None:
         if should_skip(BINANCE_FUTURES_HOST):
             return None
         try:
@@ -73,11 +72,11 @@ class FundingTracker:
                 # as a best-available predictor.
                 self._predicted["binance"] = rate
                 return rate
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Binance funding error: {e}")
             return None
 
-    async def fetch_okx(self) -> Optional[float]:
+    async def fetch_okx(self) -> float | None:
         try:
             inst_id = self.symbol.replace("USDT", "-USDT-SWAP")
             url = f"{OKX_BASE}/api/v5/public/funding-rate"
@@ -96,13 +95,14 @@ class FundingTracker:
                     except (TypeError, ValueError):
                         self._predicted["okx"] = rate
                     return rate
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"OKX funding error: {e}")
         return None
 
-    async def fetch_all(self) -> Dict:
+    async def fetch_all(self) -> dict:
         """Fetch funding rates from all exchanges."""
         import asyncio
+
         await asyncio.gather(
             self.fetch_binance(),
             self.fetch_okx(),
@@ -110,7 +110,7 @@ class FundingTracker:
         )
         return self.get_weighted_rate()
 
-    def get_weighted_rate(self) -> Dict:
+    def get_weighted_rate(self) -> dict:
         """Compute OI-weighted average funding rate."""
         if not self._rates:
             return {"weighted_rate": 0, "classification": "no_data", "rates": {}}
@@ -136,11 +136,13 @@ class FundingTracker:
                 break
 
         # Record history
-        self._history.append({
-            "timestamp": time.time(),
-            "weighted_rate": weighted_rate,
-            "rates": dict(self._rates),
-        })
+        self._history.append(
+            {
+                "timestamp": time.time(),
+                "weighted_rate": weighted_rate,
+                "rates": dict(self._rates),
+            }
+        )
         if len(self._history) > 1000:
             self._history = self._history[-500:]
 
@@ -151,7 +153,9 @@ class FundingTracker:
             "weighted_rate_pct": round(rate_pct, 4),
             "classification": classification,
             "rates": {k: round(v, 6) for k, v in self._rates.items()},
-            "leverage_impact": f"At 10x: {round(rate_pct * 10 * 3, 4)}% daily drag" if rate_pct > 0 else "Shorts paying longs",
+            "leverage_impact": f"At 10x: {round(rate_pct * 10 * 3, 4)}% daily drag"
+            if rate_pct > 0
+            else "Shorts paying longs",
             "zscore": zscore["zscore"],
             "zscore_window": zscore["window"],
             "zscore_classification": zscore["classification"],
@@ -159,7 +163,7 @@ class FundingTracker:
             "std_rate": zscore["std"],
         }
 
-    def _compute_zscore(self, current: float) -> Dict:
+    def _compute_zscore(self, current: float) -> dict:
         """Rolling z-score of the current weighted funding rate against the
         last N historical samples. Uses population std, guards against zero
         variance so the result is always finite.
@@ -171,12 +175,18 @@ class FundingTracker:
         """
         window = min(len(self._history), 240)  # ~ last 240 samples
         if window < 10:
-            return {"zscore": 0.0, "window": window, "mean": 0.0, "std": 0.0, "classification": "insufficient_data"}
+            return {
+                "zscore": 0.0,
+                "window": window,
+                "mean": 0.0,
+                "std": 0.0,
+                "classification": "insufficient_data",
+            }
 
         samples = [h["weighted_rate"] for h in self._history[-window:]]
         mean = sum(samples) / window
         var = sum((x - mean) ** 2 for x in samples) / window
-        std = var ** 0.5
+        std = var**0.5
         if std <= 1e-12:
             return {"zscore": 0.0, "window": window, "mean": mean, "std": std, "classification": "flat"}
 
@@ -216,11 +226,11 @@ class FundingTracker:
             total_w += w
         return acc / total_w if total_w > 0 else 0.0
 
-    def _rolling_samples(self, window_s: float = _SEVEN_DAYS_S) -> List[float]:
+    def _rolling_samples(self, window_s: float = _SEVEN_DAYS_S) -> list[float]:
         cutoff = time.time() - window_s
         return [h["weighted_rate"] for h in self._history if h["timestamp"] >= cutoff]
 
-    def term_structure(self) -> Dict:
+    def term_structure(self) -> dict:
         """Forward curve of funding for `self.symbol`.
 
         Returns
@@ -259,7 +269,7 @@ class FundingTracker:
             "predicted_sources": dict(self._predicted),
         }
 
-    def term_structure_skew(self) -> Dict:
+    def term_structure_skew(self) -> dict:
         """Front-end (1h annualized) vs back-end (8h realized 7d mean) skew.
 
         The 8h realized rate is the trailing 7d mean of the per-settle funding
@@ -302,7 +312,7 @@ class FundingTracker:
             "interpretation": interpretation,
         }
 
-    def funding_zscore_rolling(self, window_hours: float = 168.0) -> Dict:
+    def funding_zscore_rolling(self, window_hours: float = 168.0) -> dict:
         """Wall-clock-windowed z-score of weighted funding rate.
 
         Distinct from `_compute_zscore` (which uses sample-count). Used by
@@ -326,7 +336,7 @@ class FundingTracker:
         current = samples[-1]
         mean = sum(samples) / n
         var = sum((x - mean) ** 2 for x in samples) / n
-        std = var ** 0.5
+        std = var**0.5
         z = 0.0 if std <= 1e-12 else (current - mean) / std
         absz = abs(z)
         if absz >= 2.5:
@@ -345,7 +355,7 @@ class FundingTracker:
             "classification": cls,
         }
 
-    def carry_signal(self) -> Dict:
+    def carry_signal(self) -> dict:
         """Bounded funding-carry score in [-1, +1] for alpha composite use.
 
         Maps annualized carry to a saturating tanh-like score:
@@ -385,8 +395,10 @@ class FundingTracker:
             "slope_8h": ts["slope_8h"],
             "zscore": z,
             "interpretation": (
-                "long_crowded_short_bias" if score < -0.3
-                else "short_crowded_long_bias" if score > 0.3
+                "long_crowded_short_bias"
+                if score < -0.3
+                else "short_crowded_long_bias"
+                if score > 0.3
                 else "neutral"
             ),
         }

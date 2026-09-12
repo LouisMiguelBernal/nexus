@@ -6,7 +6,6 @@ Runs on RTX 4050 (~400MB VRAM). Target: <50ms per headline.
 
 import logging
 import time
-from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger("nexus.finbert")
 
@@ -40,7 +39,7 @@ def _load_model():
             batch_size=FINBERT_CONFIG["batch_size"],
         )
         logger.info(f"FinBERT loaded on {device_str}")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.error(f"FinBERT load failed: {e}")
         _pipeline = None
 
@@ -51,7 +50,7 @@ class FinBERTScorer:
     def __init__(self):
         self.threshold = 0.75  # Only use if confidence > 75%
 
-    def score_headline(self, text: str) -> Dict:
+    def score_headline(self, text: str) -> dict:
         """
         Score a single headline.
         Returns label (positive/negative/neutral) and confidence.
@@ -75,11 +74,11 @@ class FinBERTScorer:
                 "inference_ms": round(elapsed_ms, 1),
                 "text": text[:100],
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"FinBERT inference error: {e}")
             return {"label": "neutral", "score": 0.0, "usable": False, "error": str(e)}
 
-    def score_batch(self, headlines: List[str]) -> List[Dict]:
+    def score_batch(self, headlines: list[str]) -> list[dict]:
         """Score a batch of headlines efficiently."""
         _load_model()
         if _pipeline is None:
@@ -93,20 +92,22 @@ class FinBERTScorer:
 
             scored = []
             for i, result in enumerate(results):
-                scored.append({
-                    "label": result["label"],
-                    "score": round(result["score"], 4),
-                    "usable": result["score"] >= self.threshold,
-                    "text": headlines[i][:100],
-                })
+                scored.append(
+                    {
+                        "label": result["label"],
+                        "score": round(result["score"], 4),
+                        "usable": result["score"] >= self.threshold,
+                        "text": headlines[i][:100],
+                    }
+                )
 
             logger.info(f"FinBERT batch: {len(headlines)} headlines in {elapsed_ms:.0f}ms")
             return scored
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"FinBERT batch error: {e}")
             return [{"label": "neutral", "score": 0.0, "usable": False} for _ in headlines]
 
-    def aggregate_sentiment(self, scored: List[Dict]) -> Dict:
+    def aggregate_sentiment(self, scored: list[dict]) -> dict:
         """Aggregate scored headlines into a market sentiment summary."""
         usable = [s for s in scored if s.get("usable")]
         if not usable:

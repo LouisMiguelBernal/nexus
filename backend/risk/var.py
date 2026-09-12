@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Dict, Iterable, List, Mapping, Optional, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 
 import numpy as np
 
@@ -44,11 +44,12 @@ logger = logging.getLogger("nexus.var")
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _ewma_sigma(returns: np.ndarray, lam: float = 0.94) -> float:
     """EWMA volatility (RiskMetrics). Newest observation gets highest weight."""
     if returns.size == 0:
         return 0.0
-    r2 = returns ** 2
+    r2 = returns**2
     # Weights w_i = (1-lam) * lam^(n-1-i) for i=0..n-1  (oldest..newest)
     n = r2.size
     weights = (1.0 - lam) * lam ** np.arange(n - 1, -1, -1)
@@ -69,16 +70,16 @@ def _fit_student_t_df(returns: np.ndarray, max_df: float = 30.0) -> float:
     try:
         mu = float(returns.mean())
         centered = returns - mu
-        var = float((centered ** 2).mean())
+        var = float((centered**2).mean())
         if var <= 0:
             return 4.0
-        m4 = float((centered ** 4).mean())
-        excess_k = m4 / (var ** 2) - 3.0
+        m4 = float((centered**4).mean())
+        excess_k = m4 / (var**2) - 3.0
         if excess_k <= 0:
             return max_df  # near-normal tails
         df_est = 6.0 / excess_k + 4.0
         return float(max(2.5, min(df_est, max_df)))
-    except Exception:
+    except Exception:  # noqa: BLE001
         return 4.0
 
 
@@ -90,19 +91,36 @@ def _student_t_quantile(alpha: float, df: float) -> float:
     """
     try:
         from scipy.stats import t as _t  # type: ignore
+
         return float(_t.ppf(alpha, df))
-    except Exception:
+    except Exception:  # noqa: BLE001
         # Cornish-Fisher expansion around normal quantile - adequate for
         # alpha in [0.005, 0.10] and df ≥ 3.
         # Normal inverse via rational approximation (Acklam).
-        a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02,
-             1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00]
-        b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02,
-             6.680131188771972e+01, -1.328068155288572e+01]
-        c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00,
-             -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00]
-        d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00,
-             3.754408661907416e+00]
+        a = [
+            -3.969683028665376e01,
+            2.209460984245205e02,
+            -2.759285104469687e02,
+            1.383577518672690e02,
+            -3.066479806614716e01,
+            2.506628277459239e00,
+        ]
+        b = [
+            -5.447609879822406e01,
+            1.615858368580409e02,
+            -1.556989798598866e02,
+            6.680131188771972e01,
+            -1.328068155288572e01,
+        ]
+        c = [
+            -7.784894002430293e-03,
+            -3.223964580411365e-01,
+            -2.400758277161838e00,
+            -2.549732539343734e00,
+            4.374664141464968e00,
+            2.938163982698783e00,
+        ]
+        d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e00, 3.754408661907416e00]
         p = alpha
         if p <= 0:
             return -float("inf")
@@ -112,17 +130,22 @@ def _student_t_quantile(alpha: float, df: float) -> float:
         p_high = 1 - p_low
         if p < p_low:
             q = math.sqrt(-2 * math.log(p))
-            z = (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / \
-                ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1)
+            z = (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / (
+                (((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1
+            )
         elif p <= p_high:
             q = p - 0.5
             r = q * q
-            z = (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q / \
-                (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1)
+            z = (
+                (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5])
+                * q
+                / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1)
+            )
         else:
             q = math.sqrt(-2 * math.log(1 - p))
-            z = -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / \
-                 ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1)
+            z = -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / (
+                (((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1
+            )
         # Kurtosis inflation to move normal quantile toward t_{df}.
         if df > 4:
             scale = math.sqrt(df / (df - 2))
@@ -142,6 +165,7 @@ def _sample_student_t(df: float, size: int, rng: np.random.Generator) -> np.ndar
 # VaRCalculator
 # ---------------------------------------------------------------------------
 
+
 class VaRCalculator:
     """Leverage-aware multi-method VaR: historical + MC + parametric + ensemble."""
 
@@ -151,7 +175,7 @@ class VaRCalculator:
         mc_paths: int = 500,
         mc_horizon_steps: int = 1,
         ewma_lambda: float = 0.94,
-        seed: Optional[int] = None,
+        seed: int | None = None,
     ) -> None:
         self.mc_paths = int(mc_paths)
         self.mc_horizon_steps = int(mc_horizon_steps)
@@ -166,37 +190,37 @@ class VaRCalculator:
         self,
         returns: np.ndarray,
         confidence_levels: Sequence[float],
-    ) -> Dict[str, float]:
-        out: Dict[str, float] = {}
+    ) -> dict[str, float]:
+        out: dict[str, float] = {}
         for cl in confidence_levels:
             pct = (1 - cl) * 100
-            out[f"{int(cl*100)}"] = float(np.percentile(returns, pct))
+            out[f"{int(cl * 100)}"] = float(np.percentile(returns, pct))
         return out
 
     def parametric_t(
         self,
         returns: np.ndarray,
         confidence_levels: Sequence[float],
-        df: Optional[float] = None,
-    ) -> Dict[str, float]:
+        df: float | None = None,
+    ) -> dict[str, float]:
         if df is None:
             df = _fit_student_t_df(returns)
         mu = float(returns.mean())
         sigma = _ewma_sigma(returns, self.ewma_lambda)
-        out: Dict[str, float] = {"_df": df, "_mu": mu, "_sigma": sigma}
+        out: dict[str, float] = {"_df": df, "_mu": mu, "_sigma": sigma}
         for cl in confidence_levels:
             alpha = 1.0 - cl
             q = _student_t_quantile(alpha, df)
             # Scale-shift: t quantile * σ + μ (standard parametric VaR).
-            out[f"{int(cl*100)}"] = mu + sigma * q
+            out[f"{int(cl * 100)}"] = mu + sigma * q
         return out
 
     def monte_carlo(
         self,
         returns: np.ndarray,
         confidence_levels: Sequence[float],
-        df: Optional[float] = None,
-    ) -> Dict[str, float]:
+        df: float | None = None,
+    ) -> dict[str, float]:
         """Simulate *mc_paths* 1-step returns from Student-t(df, μ, σ_ewma)."""
         if df is None:
             df = _fit_student_t_df(returns)
@@ -211,12 +235,15 @@ class VaRCalculator:
             steps = steps.reshape(self.mc_paths, self.mc_horizon_steps) * sigma + mu
             samples = steps.sum(axis=1)
 
-        out: Dict[str, float] = {
-            "_df": df, "_mu": mu, "_sigma": sigma, "_n_paths": float(self.mc_paths),
+        out: dict[str, float] = {
+            "_df": df,
+            "_mu": mu,
+            "_sigma": sigma,
+            "_n_paths": float(self.mc_paths),
         }
         for cl in confidence_levels:
             pct = (1 - cl) * 100
-            out[f"{int(cl*100)}"] = float(np.percentile(samples, pct))
+            out[f"{int(cl * 100)}"] = float(np.percentile(samples, pct))
         return out
 
     # ------------------------------------------------------------------
@@ -225,11 +252,11 @@ class VaRCalculator:
 
     def compute(
         self,
-        returns: List[float],
+        returns: list[float],
         position_usd: float,
         leverage: float = 1.0,
         confidence_levels: Sequence[float] = (0.95, 0.99),
-    ) -> Dict:
+    ) -> dict:
         """Compute VaR via three methods + ensemble.
 
         Returns a dict with top-level *historical*, *monte_carlo*, *parametric*,
@@ -241,7 +268,10 @@ class VaRCalculator:
         if len(returns) < 30:
             return {
                 "error": "Insufficient data (need 30+ returns)",
-                "historical": {}, "monte_carlo": {}, "parametric": {}, "ensemble_max": {},
+                "historical": {},
+                "monte_carlo": {},
+                "parametric": {},
+                "ensemble_max": {},
             }
 
         returns_arr = np.asarray(returns, dtype=float)
@@ -250,10 +280,10 @@ class VaRCalculator:
         mc = self.monte_carlo(returns_arr, confidence_levels)
         para = self.parametric_t(returns_arr, confidence_levels)
 
-        def _pack(raw: Dict[str, float]) -> Dict:
-            packed: Dict[str, Dict] = {}
+        def _pack(raw: dict[str, float]) -> dict:
+            packed: dict[str, dict] = {}
             for cl in confidence_levels:
-                key = f"{int(cl*100)}"
+                key = f"{int(cl * 100)}"
                 var_unlev = raw.get(key)
                 if var_unlev is None:
                     continue
@@ -274,13 +304,13 @@ class VaRCalculator:
         para_packed = _pack(para)
 
         # Ensemble: take the most negative (worst loss) per confidence level.
-        ensemble: Dict[str, Dict] = {}
+        ensemble: dict[str, dict] = {}
         for cl in confidence_levels:
-            key = f"var_{int(cl*100)}"
+            key = f"var_{int(cl * 100)}"
             candidates = [
-                (hist.get(f"{int(cl*100)}"), "historical"),
-                (mc.get(f"{int(cl*100)}"), "monte_carlo"),
-                (para.get(f"{int(cl*100)}"), "parametric"),
+                (hist.get(f"{int(cl * 100)}"), "historical"),
+                (mc.get(f"{int(cl * 100)}"), "monte_carlo"),
+                (para.get(f"{int(cl * 100)}"), "parametric"),
             ]
             candidates = [(v, name) for v, name in candidates if v is not None]
             if not candidates:
@@ -337,7 +367,7 @@ class VaRCalculator:
         returns_by_symbol: Mapping[str, Iterable[float]],
         confidence: float = 0.95,
         leverage: float = 1.0,
-    ) -> Dict:
+    ) -> dict:
         """Return marginal + component VaR per symbol (Euler allocation).
 
         marginal_i = ∂VaR_p / ∂w_i      (sensitivity of portfolio VaR to weight_i)
@@ -356,8 +386,8 @@ class VaRCalculator:
         if len(symbols) < 1:
             return {"error": "No non-zero positions"}
 
-        aligned: List[np.ndarray] = []
-        keep_symbols: List[str] = []
+        aligned: list[np.ndarray] = []
+        keep_symbols: list[str] = []
         min_len = None
         for s in symbols:
             r = np.asarray(list(returns_by_symbol.get(s, []) or []), dtype=float)
@@ -386,7 +416,7 @@ class VaRCalculator:
         z_alpha = abs(_student_t_quantile(1 - confidence, 30.0))  # ~normal
         var_p = z_alpha * sigma_p * leverage
 
-        contributions: Dict[str, Dict] = {}
+        contributions: dict[str, dict] = {}
         for i, s in enumerate(keep_symbols):
             sigma_i = float(np.std(R[i], ddof=1))
             rho_i = float(np.corrcoef(R[i], r_p)[0, 1]) if sigma_i > 0 else 0.0

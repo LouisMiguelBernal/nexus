@@ -20,7 +20,7 @@ Usage
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Sequence
+from collections.abc import Sequence
 
 
 def _sharpe(returns: Sequence[float], annualization: float = math.sqrt(365)) -> float:
@@ -38,11 +38,11 @@ def apply_costs(
     turnover: Sequence[float],
     fee_bps: float,
     slip_bps: float,
-) -> List[float]:
+) -> list[float]:
     """Deduct fee+slippage proportional to bar-level turnover (∈ [0, 1+])."""
     cost_per_unit_turnover = (fee_bps + slip_bps) / 10_000.0
-    out: List[float] = []
-    for r, tov in zip(returns, turnover):
+    out: list[float] = []
+    for r, tov in zip(returns, turnover):  # noqa: B905
         out.append(r - cost_per_unit_turnover * max(0.0, float(tov)))
     return out
 
@@ -55,22 +55,24 @@ def sweep_costs(
     slip_grid_bps: Sequence[float] = (0, 1, 5),
     annualization: float = math.sqrt(365),
     min_acceptable_sharpe: float = 0.8,
-) -> Dict:
+) -> dict:
     if len(returns) != len(turnover):
         raise ValueError("returns and turnover length mismatch")
 
-    grid: List[Dict] = []
+    grid: list[dict] = []
     for fee in fee_grid_bps:
         for slip in slip_grid_bps:
             net = apply_costs(returns, turnover, fee, slip)
             sr = _sharpe(net, annualization)
-            grid.append({
-                "fee_bps": fee,
-                "slippage_bps": slip,
-                "sharpe": round(sr, 4),
-                "mean_return": round(sum(net) / len(net), 8) if net else 0.0,
-                "passes_threshold": sr >= min_acceptable_sharpe,
-            })
+            grid.append(
+                {
+                    "fee_bps": fee,
+                    "slippage_bps": slip,
+                    "sharpe": round(sr, 4),
+                    "mean_return": round(sum(net) / len(net), 8) if net else 0.0,
+                    "passes_threshold": sr >= min_acceptable_sharpe,
+                }
+            )
 
     passes = [g for g in grid if g["passes_threshold"]]
     worst = min(grid, key=lambda g: g["sharpe"]) if grid else None

@@ -16,13 +16,13 @@ numbers with a defensible meaning, not a firehose.
             means anything, and that baseline is built in memory over the
             session, so an early reading is honestly labelled as warming up.
 """
+
 from __future__ import annotations
 
 import logging
 import time
 from collections import deque
-from datetime import datetime, timedelta, timezone
-from typing import Deque, Dict, List, Optional
+from datetime import UTC, datetime, timedelta
 
 import httpx
 
@@ -37,11 +37,11 @@ _UA = "nexus-terminal/1.0 (local research client)"
 # Cyber - CISA KEV
 # ---------------------------------------------------------------------------
 
-_KEV_CACHE: Dict[str, object] = {"data": None, "ts": 0.0}
+_KEV_CACHE: dict[str, object] = {"data": None, "ts": 0.0}
 _KEV_TTL = 6 * 3600.0  # the catalogue updates on business days at most
 
 
-async def fetch_cyber(client: httpx.AsyncClient) -> Dict:
+async def fetch_cyber(client: httpx.AsyncClient) -> dict:
     now = time.time()
     cached = _KEV_CACHE.get("data")
     if cached and (now - float(_KEV_CACHE.get("ts") or 0.0)) < _KEV_TTL:
@@ -52,17 +52,17 @@ async def fetch_cyber(client: httpx.AsyncClient) -> Dict:
         if resp.status_code != 200:
             raise RuntimeError(f"HTTP {resp.status_code}")
         body = resp.json() or {}
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.debug("CISA KEV failed: %s", e)
         return cached if cached else {"available": False}  # type: ignore[return-value]
 
     vulns = body.get("vulnerabilities") or []
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     cutoff_7 = today - timedelta(days=7)
     cutoff_30 = today - timedelta(days=30)
 
     added_7 = added_30 = ransomware_7 = 0
-    recent: List[Dict] = []
+    recent: list[dict] = []
     for v in vulns:
         raw = v.get("dateAdded")
         if not isinstance(raw, str):
@@ -79,14 +79,16 @@ async def fetch_cyber(client: httpx.AsyncClient) -> Dict:
             added_7 += 1
             if known_ransomware:
                 ransomware_7 += 1
-            recent.append({
-                "cve": v.get("cveID"),
-                "vendor": v.get("vendorProject"),
-                "product": v.get("product"),
-                "name": v.get("vulnerabilityName"),
-                "date_added": raw,
-                "ransomware": known_ransomware,
-            })
+            recent.append(
+                {
+                    "cve": v.get("cveID"),
+                    "vendor": v.get("vendorProject"),
+                    "product": v.get("product"),
+                    "name": v.get("vulnerabilityName"),
+                    "date_added": raw,
+                    "ransomware": known_ransomware,
+                }
+            )
 
     recent.sort(key=lambda r: r["date_added"] or "", reverse=True)
     result = {
@@ -109,14 +111,14 @@ async def fetch_cyber(client: httpx.AsyncClient) -> Dict:
 # Rolling per-region counts, newest last. In memory only: OpenSky's anonymous
 # tier will not support backfilling a real history, so the baseline is whatever
 # this session has observed.
-_BASELINE: Dict[str, Deque[int]] = {name: deque(maxlen=24) for name, *_ in AVIATION_REGIONS}
+_BASELINE: dict[str, deque[int]] = {name: deque(maxlen=24) for name, *_ in AVIATION_REGIONS}
 _MIN_SAMPLES = 6
 
-_AV_CACHE: Dict[str, object] = {"data": None, "ts": 0.0}
+_AV_CACHE: dict[str, object] = {"data": None, "ts": 0.0}
 _AV_TTL = 600.0
 
 
-async def fetch_aviation(client: httpx.AsyncClient) -> Dict:
+async def fetch_aviation(client: httpx.AsyncClient) -> dict:
     """
     Tracked aircraft per watch region, with a deviation from the session
     baseline once enough samples exist.
@@ -130,7 +132,7 @@ async def fetch_aviation(client: httpx.AsyncClient) -> Dict:
     if cached and (now - float(_AV_CACHE.get("ts") or 0.0)) < _AV_TTL:
         return cached  # type: ignore[return-value]
 
-    regions: List[Dict] = []
+    regions: list[dict] = []
     for name, lamin, lomin, lamax, lomax in AVIATION_REGIONS:
         try:
             resp = await client.get(
@@ -142,7 +144,7 @@ async def fetch_aviation(client: httpx.AsyncClient) -> Dict:
             if resp.status_code != 200:
                 raise RuntimeError(f"HTTP {resp.status_code}")
             states = (resp.json() or {}).get("states") or []
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.debug("OpenSky %s failed: %s", name, e)
             regions.append({"region": name, "available": False})
             continue
@@ -151,7 +153,7 @@ async def fetch_aviation(client: httpx.AsyncClient) -> Dict:
         history = _BASELINE[name]
         # Deviation is measured against the baseline BEFORE this sample, so a
         # collapse is not partly averaged into its own reference.
-        deviation: Optional[float] = None
+        deviation: float | None = None
         warming = len(history) < _MIN_SAMPLES
         if not warming:
             mean = sum(history) / len(history)
@@ -159,14 +161,16 @@ async def fetch_aviation(client: httpx.AsyncClient) -> Dict:
                 deviation = (count - mean) / mean * 100.0
         history.append(count)
 
-        regions.append({
-            "region": name,
-            "available": True,
-            "aircraft": count,
-            "baseline_samples": len(history),
-            "warming_up": warming,
-            "deviation_pct": round(deviation, 1) if deviation is not None else None,
-        })
+        regions.append(
+            {
+                "region": name,
+                "available": True,
+                "aircraft": count,
+                "baseline_samples": len(history),
+                "warming_up": warming,
+                "deviation_pct": round(deviation, 1) if deviation is not None else None,
+            }
+        )
 
     live = [r for r in regions if r.get("available")]
     result = {

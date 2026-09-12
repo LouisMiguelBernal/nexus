@@ -27,21 +27,21 @@ moving conflict/policy news matters most to a crypto book, physical disasters
 and cyber exploitation tempo matter less, space weather matters only at the
 extremes. Validating them against realised vol is the obvious next step.
 """
+
 from __future__ import annotations
 
 import logging
 import time
-from typing import Dict, List, Optional
 
 logger = logging.getLogger("nexus.geo.instability")
 
 WEIGHTS = {
-    "conflict": 0.36,      # wire keyword pressure - the fastest macro transmitter
-    "disasters": 0.18,     # GDACS red/orange alerts
-    "instability": 0.18,   # worldmonitor CII when present, else redistributed
-    "seismic": 0.10,       # large quakes: supply-chain / energy relevance
-    "cyber": 0.10,         # actively-exploited CVEs (CISA KEV additions)
-    "space_weather": 0.08, # only bites at G3+
+    "conflict": 0.36,  # wire keyword pressure - the fastest macro transmitter
+    "disasters": 0.18,  # GDACS red/orange alerts
+    "instability": 0.18,  # worldmonitor CII when present, else redistributed
+    "seismic": 0.10,  # large quakes: supply-chain / energy relevance
+    "cyber": 0.10,  # actively-exploited CVEs (CISA KEV additions)
+    "space_weather": 0.08,  # only bites at G3+
 }
 
 # Terms that historically precede a risk-off session. Weighted by how directly
@@ -51,17 +51,38 @@ WEIGHTS = {
 # headline corpus: bare "strikes" catches "strikes a deal" and bare "default"
 # catches "default settings", and both would quietly inflate the score.
 CONFLICT_LEXICON = {
-    "nuclear": 5.0, "strait of hormuz": 5.0, "invasion": 4.0, "invade": 4.0,
-    "missile": 3.0, "airstrike": 3.0, "air strike": 3.0, "air strikes": 2.0,
-    "sanctions": 3.0, "embargo": 3.0, "blockade": 3.0, "export ban": 3.0,
-    "escalation": 2.5, "escalate": 2.5, "retaliation": 2.5, "retaliate": 2.5,
-    "ceasefire": -1.5, "peace deal": -2.0, "de-escalation": -2.0,
-    "oil supply": 2.0, "pipeline": 1.5, "opec": 1.5, "tariff": 2.0,
-    "coup": 4.0, "martial law": 3.5, "state of emergency": 3.0,
-    "cyberattack": 2.0, "grid failure": 2.0, "sovereign default": 2.5,
+    "nuclear": 5.0,
+    "strait of hormuz": 5.0,
+    "invasion": 4.0,
+    "invade": 4.0,
+    "missile": 3.0,
+    "airstrike": 3.0,
+    "air strike": 3.0,
+    "air strikes": 2.0,
+    "sanctions": 3.0,
+    "embargo": 3.0,
+    "blockade": 3.0,
+    "export ban": 3.0,
+    "escalation": 2.5,
+    "escalate": 2.5,
+    "retaliation": 2.5,
+    "retaliate": 2.5,
+    "ceasefire": -1.5,
+    "peace deal": -2.0,
+    "de-escalation": -2.0,
+    "oil supply": 2.0,
+    "pipeline": 1.5,
+    "opec": 1.5,
+    "tariff": 2.0,
+    "coup": 4.0,
+    "martial law": 3.5,
+    "state of emergency": 3.0,
+    "cyberattack": 2.0,
+    "grid failure": 2.0,
+    "sovereign default": 2.5,
 }
 
-_STATE: Dict[str, float] = {"score": 0.0, "ts": 0.0}
+_STATE: dict[str, float] = {"score": 0.0, "ts": 0.0}
 # Decay half-life on the way down. Risk that took a headline to create should
 # take a few polls to clear.
 _DECAY_LAMBDA = 0.75
@@ -71,10 +92,10 @@ def _clamp(v: float, lo: float = 0.0, hi: float = 100.0) -> float:
     return max(lo, min(hi, v))
 
 
-def _seismic_component(block: Dict) -> Optional[float]:
+def _seismic_component(block: dict) -> float | None:
     if not block.get("available"):
         return None
-    events: List[Dict] = block.get("events") or []
+    events: list[dict] = block.get("events") or []
     if not events:
         return 0.0
 
@@ -86,17 +107,17 @@ def _seismic_component(block: Dict) -> Optional[float]:
     return score
 
 
-def _disaster_component(block: Dict) -> Optional[float]:
+def _disaster_component(block: dict) -> float | None:
     if not block.get("available"):
         return None
-    events: List[Dict] = block.get("events") or []
+    events: list[dict] = block.get("events") or []
     reds = sum(1 for e in events if e.get("level") == "red")
     oranges = sum(1 for e in events if e.get("level") == "orange")
     # Three simultaneous red alerts is a genuinely bad day; call that 100.
     return _clamp((reds * 33.0) + (oranges * 8.0))
 
 
-def _cyber_component(block: Dict) -> Optional[float]:
+def _cyber_component(block: dict) -> float | None:
     """
     Exploitation tempo from CISA KEV additions, measured against its own base
     rate rather than an absolute constant.
@@ -127,7 +148,7 @@ def _cyber_component(block: Dict) -> Optional[float]:
     return _clamp((ratio - 1.0) / 2.0 * 100.0)
 
 
-def _space_weather_component(block: Dict) -> Optional[float]:
+def _space_weather_component(block: dict) -> float | None:
     if not block.get("available"):
         return None
     peak = max(
@@ -139,15 +160,15 @@ def _space_weather_component(block: Dict) -> Optional[float]:
     return _clamp(((peak / 5.0) ** 2) * 100.0)
 
 
-def _conflict_component(block: Dict) -> Optional[float]:
+def _conflict_component(block: dict) -> float | None:
     if not block.get("available"):
         return None
-    items: List[Dict] = block.get("items") or []
+    items: list[dict] = block.get("items") or []
     if not items:
         return 0.0
 
     pressure = 0.0
-    hits: Dict[str, int] = {}
+    hits: dict[str, int] = {}
     for item in items:
         blob = f"{item.get('title', '')} {item.get('summary', '')}".lower()
         for term, weight in CONFLICT_LEXICON.items():
@@ -160,7 +181,7 @@ def _conflict_component(block: Dict) -> Optional[float]:
     return _clamp(pressure / 25.0 * 100.0)
 
 
-def _instability_component(enrichment: Dict) -> Optional[float]:
+def _instability_component(enrichment: dict) -> float | None:
     if not enrichment.get("available"):
         return None
     # Sandbox fixtures are schema-valid samples, not observations. Scoring them
@@ -187,7 +208,7 @@ def _band(score: float) -> str:
     return "normal"
 
 
-def compute(snapshot: Dict, enrichment: Optional[Dict] = None, smooth: bool = True) -> Dict:
+def compute(snapshot: dict, enrichment: dict | None = None, smooth: bool = True) -> dict:
     """
     Collapse a ``geo.sources.fetch_all()`` snapshot (plus optional worldmonitor
     enrichment) into a single score.

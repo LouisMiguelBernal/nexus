@@ -10,29 +10,32 @@ Scope note - this is research context for the perp book (is COIN/MSTR leading
 BTC? is the equity tape risk-on?), not an equity trading surface. Nothing here
 produces an order.
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from backend.config import YAHOO_SCREENS
 from backend.crossasset.yahoo import fetch_gated
 
 logger = logging.getLogger("nexus.crossasset.equity")
 
-_MODULES = ",".join([
-    "assetProfile",
-    "summaryDetail",
-    "defaultKeyStatistics",
-    "financialData",
-    "price",
-    "calendarEvents",
-    "incomeStatementHistory",
-    "topHoldings",
-])
+_MODULES = ",".join(
+    [
+        "assetProfile",
+        "summaryDetail",
+        "defaultKeyStatistics",
+        "financialData",
+        "price",
+        "calendarEvents",
+        "incomeStatementHistory",
+        "topHoldings",
+    ]
+)
 
 
-def _val(v: Any) -> Optional[float]:
+def _val(v: Any) -> float | None:
     """Yahoo wraps numerics as {raw, fmt}; some modules return bare floats."""
     if isinstance(v, bool):
         return None
@@ -47,10 +50,11 @@ def _val(v: Any) -> Optional[float]:
 # Fundamentals
 # ---------------------------------------------------------------------------
 
-async def fetch_fundamentals(symbol: str) -> Dict:
+
+async def fetch_fundamentals(symbol: str) -> dict:
     try:
         data = await fetch_gated(f"/v10/finance/quoteSummary/{symbol}", {"modules": _MODULES})
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return {"symbol": symbol, "available": False, "reason": str(e)}
 
     results = ((data or {}).get("quoteSummary") or {}).get("result") or []
@@ -69,15 +73,17 @@ async def fetch_fundamentals(symbol: str) -> Dict:
     for row in rows[:4]:
         revenue = _val(row.get("totalRevenue"))
         net = _val(row.get("netIncome"))
-        income.append({
-            "end_date": _val(row.get("endDate")),
-            "revenue": revenue,
-            "net_income": net,
-            # Yahoo stopped populating grossProfit / operatingIncome on this
-            # module - they come back 0 and null for every issuer. Report the
-            # margin the two live fields imply instead of a wall of zeroes.
-            "net_margin": (net / revenue * 100.0) if revenue and net is not None else None,
-        })
+        income.append(
+            {
+                "end_date": _val(row.get("endDate")),
+                "revenue": revenue,
+                "net_income": net,
+                # Yahoo stopped populating grossProfit / operatingIncome on this
+                # module - they come back 0 and null for every issuer. Report the
+                # margin the two live fields imply instead of a wall of zeroes.
+                "net_margin": (net / revenue * 100.0) if revenue and net is not None else None,
+            }
+        )
 
     holdings = [
         {
@@ -133,13 +139,13 @@ async def fetch_fundamentals(symbol: str) -> Dict:
 SCREEN_IDS = {s[0] for s in YAHOO_SCREENS}
 
 
-async def fetch_screen(screen_id: str, count: int = 40) -> Dict:
+async def fetch_screen(screen_id: str, count: int = 40) -> dict:
     if screen_id not in SCREEN_IDS:
         return {
             "id": screen_id,
             "available": False,
             "reason": "unknown screen",
-            "screens": [{"id": i, "label": l} for i, l in YAHOO_SCREENS],
+            "screens": [{"id": i, "label": l} for i, l in YAHOO_SCREENS],  # noqa: E741
             "rows": [],
         }
 
@@ -148,12 +154,12 @@ async def fetch_screen(screen_id: str, count: int = 40) -> Dict:
             "/v1/finance/screener/predefined/saved",
             {"scrIds": screen_id, "count": str(min(count, 100)), "start": "0"},
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return {
             "id": screen_id,
             "available": False,
             "reason": str(e),
-            "screens": [{"id": i, "label": l} for i, l in YAHOO_SCREENS],
+            "screens": [{"id": i, "label": l} for i, l in YAHOO_SCREENS],  # noqa: E741
             "rows": [],
         }
 
@@ -163,7 +169,7 @@ async def fetch_screen(screen_id: str, count: int = 40) -> Dict:
     return {
         "id": screen_id,
         "available": True,
-        "screens": [{"id": i, "label": l} for i, l in YAHOO_SCREENS],
+        "screens": [{"id": i, "label": l} for i, l in YAHOO_SCREENS],  # noqa: E741
         "rows": [
             {
                 "symbol": q.get("symbol") or "",
@@ -188,7 +194,8 @@ async def fetch_screen(screen_id: str, count: int = 40) -> Dict:
 # Options
 # ---------------------------------------------------------------------------
 
-def _leg(rows: List[Dict]) -> List[Dict]:
+
+def _leg(rows: list[dict]) -> list[dict]:
     return [
         {
             "strike": _val(c.get("strike")) or 0.0,
@@ -222,7 +229,7 @@ def _open_interest_is_credible(total_oi: float, total_volume: float) -> bool:
     return total_oi >= total_volume
 
 
-def max_pain(calls: List[Dict], puts: List[Dict]) -> Optional[float]:
+def max_pain(calls: list[dict], puts: list[dict]) -> float | None:
     """
     The strike where the total intrinsic value of all open contracts is
     smallest - i.e. where the most option premium expires worthless.
@@ -255,11 +262,11 @@ def max_pain(calls: List[Dict], puts: List[Dict]) -> Optional[float]:
     return best_strike
 
 
-async def fetch_chain(symbol: str, expiry: Optional[int] = None) -> Dict:
+async def fetch_chain(symbol: str, expiry: int | None = None) -> dict:
     params = {"date": str(expiry)} if expiry else {}
     try:
         data = await fetch_gated(f"/v7/finance/options/{symbol}", params)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return {"symbol": symbol, "available": False, "reason": str(e)}
 
     results = ((data or {}).get("optionChain") or {}).get("result") or []

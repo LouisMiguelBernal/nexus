@@ -7,9 +7,10 @@ Three matched methods to mirror VaRCalculator's API. ES is the more coherent
 tail-risk measure (sub-additive); the institutional convention is to surface
 both VaR and ES side by side. Used in the Risk panel under VaR.
 """
+
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -29,27 +30,27 @@ class ESCalculator:
         *,
         mc_paths: int = 500,
         ewma_lambda: float = 0.94,
-        seed: Optional[int] = None,
+        seed: int | None = None,
     ) -> None:
         self.mc_paths = int(mc_paths)
         self.ewma_lambda = float(ewma_lambda)
         self._rng = np.random.default_rng(seed)
 
-    def historical(self, returns: np.ndarray, cls: Sequence[float]) -> Dict[str, float]:
-        out: Dict[str, float] = {}
+    def historical(self, returns: np.ndarray, cls: Sequence[float]) -> dict[str, float]:
+        out: dict[str, float] = {}
         for cl in cls:
             pct = (1 - cl) * 100
             cutoff = float(np.percentile(returns, pct))
             tail = returns[returns <= cutoff]
-            out[f"{int(cl*100)}"] = float(tail.mean()) if tail.size else cutoff
+            out[f"{int(cl * 100)}"] = float(tail.mean()) if tail.size else cutoff
         return out
 
     def parametric_t(
         self,
         returns: np.ndarray,
         cls: Sequence[float],
-        df: Optional[float] = None,
-    ) -> Dict[str, float]:
+        df: float | None = None,
+    ) -> dict[str, float]:
         # Closed-form ES for Student-t:
         #   ES_α = -μ + σ · ( f(t_α) / (1-α) ) · ( (df + t_α²) / (df - 1) )
         # where t_α = quantile of standardized t at alpha=1-cl, and f is the
@@ -58,50 +59,47 @@ class ESCalculator:
             df = _fit_student_t_df(returns)
         mu = float(returns.mean())
         sigma = _ewma_sigma(returns, self.ewma_lambda)
-        out: Dict[str, float] = {"_df": df, "_mu": mu, "_sigma": sigma}
+        out: dict[str, float] = {"_df": df, "_mu": mu, "_sigma": sigma}
         for cl in cls:
             alpha = 1.0 - cl
             t_a = _student_t_quantile(alpha, df)
             # Student-t pdf at t_a (normalising constant via lgamma).
-            from math import lgamma, log, exp, pi, sqrt
-            log_const = (
-                lgamma((df + 1) / 2)
-                - lgamma(df / 2)
-                - 0.5 * log(df * pi)
-            )
+            from math import exp, lgamma, log, pi
+
+            log_const = lgamma((df + 1) / 2) - lgamma(df / 2) - 0.5 * log(df * pi)
             log_kernel = -((df + 1) / 2) * log(1 + (t_a * t_a) / df)
             f_t = exp(log_const + log_kernel)
             # ES expressed as a *return* (negative number for losses).
             es = mu - sigma * (f_t / max(alpha, 1e-9)) * ((df + t_a * t_a) / max(df - 1, 1e-6))
-            out[f"{int(cl*100)}"] = float(es)
+            out[f"{int(cl * 100)}"] = float(es)
         return out
 
     def monte_carlo(
         self,
         returns: np.ndarray,
         cls: Sequence[float],
-        df: Optional[float] = None,
-    ) -> Dict[str, float]:
+        df: float | None = None,
+    ) -> dict[str, float]:
         if df is None:
             df = _fit_student_t_df(returns)
         mu = float(returns.mean())
         sigma = _ewma_sigma(returns, self.ewma_lambda)
         samples = _sample_student_t(df, self.mc_paths, self._rng) * sigma + mu
-        out: Dict[str, float] = {"_df": df, "_mu": mu, "_sigma": sigma}
+        out: dict[str, float] = {"_df": df, "_mu": mu, "_sigma": sigma}
         for cl in cls:
             pct = (1 - cl) * 100
             cutoff = float(np.percentile(samples, pct))
             tail = samples[samples <= cutoff]
-            out[f"{int(cl*100)}"] = float(tail.mean()) if tail.size else cutoff
+            out[f"{int(cl * 100)}"] = float(tail.mean()) if tail.size else cutoff
         return out
 
     def compute(
         self,
-        returns: List[float],
+        returns: list[float],
         position_usd: float,
         leverage: float = 1.0,
         confidence_levels: Sequence[float] = (0.95, 0.99),
-    ) -> Dict:
+    ) -> dict:
         if len(returns) < 30:
             return {"error": "Insufficient data (need 30+ returns)", "ensemble_max": {}}
 
@@ -110,10 +108,10 @@ class ESCalculator:
         mc = self.monte_carlo(arr, confidence_levels)
         para = self.parametric_t(arr, confidence_levels)
 
-        def _pack(raw: Dict[str, float]) -> Dict:
-            packed: Dict[str, Dict] = {}
+        def _pack(raw: dict[str, float]) -> dict:
+            packed: dict[str, dict] = {}
             for cl in confidence_levels:
-                key = f"{int(cl*100)}"
+                key = f"{int(cl * 100)}"
                 v = raw.get(key)
                 if v is None:
                     continue
@@ -126,9 +124,9 @@ class ESCalculator:
                 }
             return packed
 
-        ensemble: Dict[str, Dict] = {}
+        ensemble: dict[str, dict] = {}
         for cl in confidence_levels:
-            key = f"{int(cl*100)}"
+            key = f"{int(cl * 100)}"
             cands = [
                 (hist.get(key), "historical"),
                 (mc.get(key), "monte_carlo"),

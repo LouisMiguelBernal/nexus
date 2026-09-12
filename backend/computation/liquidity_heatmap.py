@@ -10,7 +10,6 @@ import math
 import statistics
 import time
 from collections import deque
-from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger("nexus.liquidity_heatmap")
 
@@ -18,6 +17,7 @@ logger = logging.getLogger("nexus.liquidity_heatmap")
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _lerp_index(value: float, lo: float, hi: float, num_bins: int) -> int:
     """Map a continuous value into a discrete bin index."""
@@ -31,6 +31,7 @@ def _lerp_index(value: float, lo: float, hi: float, num_bins: int) -> int:
 # ---------------------------------------------------------------------------
 # LiquidityHeatmap
 # ---------------------------------------------------------------------------
+
 
 class LiquidityHeatmap:
     """
@@ -54,16 +55,18 @@ class LiquidityHeatmap:
         self.snapshots: deque[dict] = deque(maxlen=max_snapshots)
 
         # Liquidity wall / void detection thresholds
-        self._wall_multiplier = 3.0   # size > 3x average = wall
-        self._void_fraction = 0.15    # total liquidity in band < 15% of average = void
+        self._wall_multiplier = 3.0  # size > 3x average = wall
+        self._void_fraction = 0.15  # total liquidity in band < 15% of average = void
 
         # Most recent per-exchange order books (set by add_aggregated_snapshot)
         # Used by detect_aggregated_walls() to attribute walls to venues.
-        self._latest_books_by_exchange: Dict[str, dict] = {}
+        self._latest_books_by_exchange: dict[str, dict] = {}
 
         logger.info(
             "LiquidityHeatmap initialised for %s (price_bins=%d, time_bins=%d)",
-            self.symbol, price_bins, time_bins,
+            self.symbol,
+            price_bins,
+            time_bins,
         )
 
     # ------------------------------------------------------------------
@@ -88,15 +91,17 @@ class LiquidityHeatmap:
         if not bids and not asks:
             return
 
-        self.snapshots.append({
-            "bids": bids,
-            "asks": asks,
-            "ts": timestamp,
-        })
+        self.snapshots.append(
+            {
+                "bids": bids,
+                "asks": asks,
+                "ts": timestamp,
+            }
+        )
 
     def add_aggregated_snapshot(
         self,
-        books_by_exchange: Dict[str, dict],
+        books_by_exchange: dict[str, dict],
         timestamp: float,
     ) -> None:
         """
@@ -139,8 +144,8 @@ class LiquidityHeatmap:
         mid = (max(all_prices) + min(all_prices)) / 2.0
         tick = max(mid * 0.0005, 0.01)  # 0.05% of mid
 
-        bid_acc: Dict[float, float] = {}
-        ask_acc: Dict[float, float] = {}
+        bid_acc: dict[float, float] = {}
+        ask_acc: dict[float, float] = {}
         for book in self._latest_books_by_exchange.values():
             for p, q in book["bids"]:
                 if p <= 0 or q <= 0:
@@ -159,11 +164,13 @@ class LiquidityHeatmap:
         if not bids and not asks:
             return
 
-        self.snapshots.append({
-            "bids": [[p, q] for p, q in bids],
-            "asks": [[p, q] for p, q in asks],
-            "ts": timestamp,
-        })
+        self.snapshots.append(
+            {
+                "bids": [[p, q] for p, q in bids],
+                "asks": [[p, q] for p, q in asks],
+                "ts": timestamp,
+            }
+        )
 
     # ------------------------------------------------------------------
     # Heatmap generation
@@ -320,8 +327,12 @@ class LiquidityHeatmap:
         """
         if not self.snapshots:
             return {
-                "bids": [], "asks": [], "mid_price": 0,
-                "total_bid_depth": 0, "total_ask_depth": 0, "imbalance": 0,
+                "bids": [],
+                "asks": [],
+                "mid_price": 0,
+                "total_bid_depth": 0,
+                "total_ask_depth": 0,
+                "imbalance": 0,
             }
 
         latest = self.snapshots[-1]
@@ -385,9 +396,14 @@ class LiquidityHeatmap:
         """
         if not self.snapshots or bin_usd <= 0:
             return {
-                "bids": [], "asks": [], "mid_price": 0.0,
-                "total_bid_usd": 0.0, "total_ask_usd": 0.0, "imbalance": 0.0,
-                "bin_usd": bin_usd, "min_usd_per_level": min_usd_per_level,
+                "bids": [],
+                "asks": [],
+                "mid_price": 0.0,
+                "total_bid_usd": 0.0,
+                "total_ask_usd": 0.0,
+                "imbalance": 0.0,
+                "bin_usd": bin_usd,
+                "min_usd_per_level": min_usd_per_level,
             }
 
         latest = self.snapshots[-1]
@@ -403,15 +419,20 @@ class LiquidityHeatmap:
             mid = asks_raw[0][0]
         if mid <= 0:
             return {
-                "bids": [], "asks": [], "mid_price": 0.0,
-                "total_bid_usd": 0.0, "total_ask_usd": 0.0, "imbalance": 0.0,
-                "bin_usd": bin_usd, "min_usd_per_level": min_usd_per_level,
+                "bids": [],
+                "asks": [],
+                "mid_price": 0.0,
+                "total_bid_usd": 0.0,
+                "total_ask_usd": 0.0,
+                "imbalance": 0.0,
+                "bin_usd": bin_usd,
+                "min_usd_per_level": min_usd_per_level,
             }
 
         near_band = mid * near_pct
 
         def _bin_side(levels, is_bid: bool):
-            buckets: Dict[float, float] = {}
+            buckets: dict[float, float] = {}
             for p, q in levels:
                 if p <= 0 or q <= 0:
                     continue
@@ -429,12 +450,14 @@ class LiquidityHeatmap:
                 usd = qty * px
                 if usd < min_usd_per_level:
                     continue
-                out.append({
-                    "price": round(px, 2),
-                    "qty": round(qty, 6),
-                    "usd_value": round(usd, 0),
-                    "contributors": self._wall_contributors(px, "bid" if is_bid else "ask"),
-                })
+                out.append(
+                    {
+                        "price": round(px, 2),
+                        "qty": round(qty, 6),
+                        "usd_value": round(usd, 0),
+                        "contributors": self._wall_contributors(px, "bid" if is_bid else "ask"),
+                    }
+                )
             # Nearest-to-mid first, then size as tiebreaker
             out.sort(key=lambda lv: (abs(lv["price"] - mid), -lv["usd_value"]))
             return out[:max_levels_each_side]
@@ -499,8 +522,9 @@ class LiquidityHeatmap:
         bids = latest["bids"]
         asks = latest["asks"]
 
-        all_sizes = [level[1] for level in bids if level[1] > 0] + \
-                    [level[1] for level in asks if level[1] > 0]
+        all_sizes = [level[1] for level in bids if level[1] > 0] + [
+            level[1] for level in asks if level[1] > 0
+        ]
         if not all_sizes:
             return []
 
@@ -519,27 +543,31 @@ class LiquidityHeatmap:
             usd = price * qty
             ratio = qty / median_size
             if ratio >= self._wall_multiplier or usd >= ABSOLUTE_USD_FLOOR:
-                walls.append({
-                    "price": price,
-                    "total_size": qty,
-                    "side": "bid",
-                    "usd_value": round(usd, 2),
-                    "persistence": 1.0,
-                    "significance": round(ratio, 2),
-                })
+                walls.append(
+                    {
+                        "price": price,
+                        "total_size": qty,
+                        "side": "bid",
+                        "usd_value": round(usd, 2),
+                        "persistence": 1.0,
+                        "significance": round(ratio, 2),
+                    }
+                )
 
         for price, qty in asks:
             usd = price * qty
             ratio = qty / median_size
             if ratio >= self._wall_multiplier or usd >= ABSOLUTE_USD_FLOOR:
-                walls.append({
-                    "price": price,
-                    "total_size": qty,
-                    "side": "ask",
-                    "usd_value": round(usd, 2),
-                    "persistence": 1.0,
-                    "significance": round(ratio, 2),
-                })
+                walls.append(
+                    {
+                        "price": price,
+                        "total_size": qty,
+                        "side": "ask",
+                        "usd_value": round(usd, 2),
+                        "persistence": 1.0,
+                        "significance": round(ratio, 2),
+                    }
+                )
 
         walls.sort(key=lambda w: w["significance"], reverse=True)
 
@@ -551,7 +579,7 @@ class LiquidityHeatmap:
 
         return walls
 
-    def _wall_contributors(self, price: float, side: str) -> List[Dict]:
+    def _wall_contributors(self, price: float, side: str) -> list[dict]:
         """
         Find which exchanges have orders at (or fuzzily near) `price` on
         `side` ("bid" | "ask"), and how much each contributes.
@@ -560,18 +588,20 @@ class LiquidityHeatmap:
             return []
         tol = max(price * 0.0005, 0.01)  # 0.05%
         side_key = "bids" if side == "bid" else "asks"
-        out: List[Dict] = []
+        out: list[dict] = []
         for ex, book in self._latest_books_by_exchange.items():
             qty = 0.0
             for p, q in book.get(side_key, []):
                 if abs(p - price) <= tol:
                     qty += q
             if qty > 0:
-                out.append({
-                    "exchange": ex,
-                    "qty": round(qty, 6),
-                    "usd_value": round(qty * price, 2),
-                })
+                out.append(
+                    {
+                        "exchange": ex,
+                        "qty": round(qty, 6),
+                        "usd_value": round(qty * price, 2),
+                    }
+                )
         out.sort(key=lambda c: -c["usd_value"])
         return out
 
@@ -613,19 +643,21 @@ class LiquidityHeatmap:
             # Sliding window of 3 levels
             window = 3
             for i in range(len(levels) - window + 1):
-                window_levels = levels[i: i + window]
+                window_levels = levels[i : i + window]
                 window_qty = sum(lv[1] for lv in window_levels)
                 window_avg = window_qty / window
 
                 if window_avg < avg_size * self._void_fraction:
-                    voids.append({
-                        "price_start": window_levels[0][0],
-                        "price_end": window_levels[-1][0],
-                        "side": side_label,
-                        "total_qty": round(window_qty, 6),
-                        "avg_qty": round(window_avg, 6),
-                        "void_score": round(window_avg / avg_size, 4) if avg_size > 0 else 0,
-                    })
+                    voids.append(
+                        {
+                            "price_start": window_levels[0][0],
+                            "price_end": window_levels[-1][0],
+                            "side": side_label,
+                            "total_qty": round(window_qty, 6),
+                            "avg_qty": round(window_avg, 6),
+                            "void_score": round(window_avg / avg_size, 4) if avg_size > 0 else 0,
+                        }
+                    )
 
         voids.sort(key=lambda v: v["void_score"])
         return voids
@@ -701,12 +733,14 @@ class LiquidityHeatmap:
             persistence = high_count / max(num_time, 1)
             if persistence > 0.3 and total_size > avg_val * num_time * 1.5:
                 side = "bid" if bid_total > ask_total else "ask"
-                clusters.append({
-                    "price": price_levels[p],
-                    "size": round(total_size, 4),
-                    "side": side,
-                    "persistence": round(persistence, 3),
-                })
+                clusters.append(
+                    {
+                        "price": price_levels[p],
+                        "size": round(total_size, 4),
+                        "side": side,
+                        "persistence": round(persistence, 3),
+                    }
+                )
 
         clusters.sort(key=lambda c: c["size"], reverse=True)
         return clusters[:20]  # top 20 clusters

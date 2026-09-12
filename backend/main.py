@@ -8,11 +8,12 @@ import logging
 import os
 import time
 from contextlib import asynccontextmanager
-from typing import Any, Dict, Optional
+from typing import Any
 
 # Fix SSL certificate verification on Windows (Python 3.14+)
 try:
     import certifi
+
     os.environ.setdefault("SSL_CERT_FILE", certifi.where())
 except ImportError:
     pass
@@ -21,50 +22,15 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from backend.config import DEFAULT_SYMBOLS, DEFAULT_INTERVAL, INSTITUTIONAL_DEPTH
+from backend.ai.brief_generator import BriefGenerator
+from backend.ai.finbert import FinBERTScorer
 
-# --- Ingestion ---
-from backend.ingestion.ws_manager import WSManager
-from backend.ingestion.binance_ws import create_binance_connection, binance_data
-from backend.ingestion.okx_ws import create_okx_connection, okx_data
-from backend.ingestion.mexc_ws import create_mexc_connection, mexc_data
-from backend.ingestion.news_feed import NewsFeed
-from backend.ingestion.deribit_feed import DeribitFeed
-from backend.ingestion.macro_feed import MacroFeed
-from backend.ingestion.blofin_client import BloFinClient
-from backend.ingestion.consolidated_book import merge_books
-from backend.ingestion.weighted_mid import compute_weighted_mid
-from backend.ingestion.feed_validator import feed_health_summary
-from backend.ingestion.trade_router import fetch_new_trades, active_sources
+# --- AI ---
+from backend.ai.gemma4 import Gemma4
+from backend.alerts.scheduler import AlertScheduler
 
-# --- Computation ---
-from backend.computation.golden_zone import GoldenZoneEngine
-from backend.computation.cvd import CVDComputer
-from backend.computation.oi_analysis import OITracker
-from backend.computation.funding import FundingTracker
-from backend.computation.squeeze_risk import SqueezeRiskMeter
-from backend.computation.regime import RegimeClassifier
-from backend.computation.alpha_engine import AlphaEngine
-from backend.computation.liquidity_heatmap import LiquidityHeatmap
-from backend.computation.smart_money import SmartMoneyTracker
-from backend.computation.obi_tracker import OBITracker
-from backend.computation.tape_speed import TapeSpeedTracker
-from backend.computation.liquidation_imbalance import LiquidationAggregator
-from backend.computation.vol_spread import compute_spread as compute_vol_spread
-from backend.computation.correlation import correlation_matrix, pairwise_sorted
-from backend.computation.vpin import VPINTracker
-from backend.computation.absorption import AbsorptionDetector
-
-# --- Risk ---
-from backend.risk.kelly import KellySizer
-from backend.risk.var import VaRCalculator
-from backend.risk.circuit_breaker import CircuitBreaker
-
-# --- Background jobs ---
-from backend.jobs.oi_poller import oi_poll_loop
-from backend.jobs.absorption_sampler import absorption_sample_loop
-from backend.jobs.agg_trade_rest_poller import agg_trade_rest_loop
-from backend.jobs import world_poller
+# --- Alerts ---
+from backend.alerts.telegram import TelegramBot
 
 # --- Unified Matrix API ---
 from backend.api.matrix import make_router as make_matrix_router
@@ -73,36 +39,80 @@ from backend.api.matrix import make_router as make_matrix_router
 from backend.api.world import make_router as make_world_router
 from backend.computation import cross_regime
 from backend.computation import regime as regime_module
+from backend.computation.absorption import AbsorptionDetector
+from backend.computation.alpha_engine import AlphaEngine
+from backend.computation.backtest import ZoneBand, backtest_zones
+from backend.computation.correlation import correlation_matrix, pairwise_sorted
+from backend.computation.cvd import CVDComputer
+from backend.computation.funding import FundingTracker
 
-# --- Monitoring / event bus ---
-from backend.monitoring.event_bus import bus as event_bus, wire_circuit_breaker
-from backend.risk.liquidation import estimate_liquidation_price
-from backend.risk.portfolio_margin import PortfolioMarginClient
+# --- Computation ---
+from backend.computation.golden_zone import GoldenZoneEngine
+from backend.computation.liquidation_imbalance import LiquidationAggregator
+from backend.computation.liquidity_heatmap import LiquidityHeatmap
+from backend.computation.obi_tracker import OBITracker
+from backend.computation.oi_analysis import OITracker
+from backend.computation.regime import RegimeClassifier
+from backend.computation.smart_money import SmartMoneyTracker
+from backend.computation.squeeze_risk import SqueezeRiskMeter
+from backend.computation.tape_speed import TapeSpeedTracker
+from backend.computation.vol_spread import compute_spread as compute_vol_spread
+from backend.computation.vpin import VPINTracker
+from backend.config import DEFAULT_INTERVAL, DEFAULT_SYMBOLS, INSTITUTIONAL_DEPTH
+from backend.ingestion.binance_ws import binance_data, create_binance_connection
+from backend.ingestion.blofin_client import BloFinClient
+from backend.ingestion.consolidated_book import merge_books
+from backend.ingestion.deribit_feed import DeribitFeed
+from backend.ingestion.feed_validator import feed_health_summary
+from backend.ingestion.macro_feed import MacroFeed
+from backend.ingestion.mexc_ws import create_mexc_connection, mexc_data
+from backend.ingestion.news_feed import NewsFeed
+from backend.ingestion.okx_ws import create_okx_connection, okx_data
+from backend.ingestion.trade_router import active_sources, fetch_new_trades
+from backend.ingestion.weighted_mid import compute_weighted_mid
+
+# --- Ingestion ---
+from backend.ingestion.ws_manager import WSManager
+from backend.jobs import world_poller
+from backend.jobs.absorption_sampler import absorption_sample_loop
+from backend.jobs.agg_trade_rest_poller import agg_trade_rest_loop
+
+# --- Background jobs ---
+from backend.jobs.oi_poller import oi_poll_loop
+
+# ---Journal---
+from backend.journal_router import router as journal_router
 
 # --- Macro ---
 from backend.macro.calendar import EconomicCalendar
 from backend.macro.gate import MacroGate
 from backend.macro.sentinel_bridge import SentinelBridge
 
-# --- AI ---
-from backend.ai.gemma4 import Gemma4
-from backend.ai.finbert import FinBERTScorer
-from backend.ai.brief_generator import BriefGenerator
+# --- Monitoring / event bus ---
+from backend.monitoring.event_bus import bus as event_bus
+from backend.monitoring.event_bus import wire_circuit_breaker
+from backend.risk.circuit_breaker import CircuitBreaker
 
-# --- Alerts ---
-from backend.alerts.telegram import TelegramBot
-from backend.alerts.scheduler import AlertScheduler
+# --- Risk ---
+from backend.risk.kelly import KellySizer
+from backend.risk.liquidation import estimate_liquidation_price
+from backend.risk.portfolio_margin import PortfolioMarginClient
+from backend.risk.var import VaRCalculator
 
 # --- Storage ---
 from backend.storage import db as storage_db
-from backend.storage.zones import get_watchlist, add_to_watchlist
 from backend.storage.alerts import get_recent_alerts, save_alert
 from backend.storage.briefs import get_last_brief, save_brief
-from backend.storage.metrics import save_snapshots as save_metric_snapshots, prune_old as prune_metric_snapshots, fetch_range as fetch_metric_range
-from backend.computation.backtest import backtest_zones, ZoneBand
-
-# ---Journal---
-from backend.journal_router import router as journal_router
+from backend.storage.metrics import (
+    fetch_range as fetch_metric_range,
+)
+from backend.storage.metrics import (
+    prune_old as prune_metric_snapshots,
+)
+from backend.storage.metrics import (
+    save_snapshots as save_metric_snapshots,
+)
+from backend.storage.zones import add_to_watchlist, get_watchlist
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -177,7 +187,8 @@ def _book_mid(book: dict | None) -> float | None:
     if not bids or not asks:
         return None
     try:
-        bb = float(bids[0][0]); ba = float(asks[0][0])
+        bb = float(bids[0][0])
+        ba = float(asks[0][0])
     except (TypeError, ValueError, IndexError):
         return None
     if bb <= 0 or ba <= 0 or ba <= bb:
@@ -319,7 +330,8 @@ async def _trade_ingest_loop():
                         cvd.ingest_trade(price, qty, is_buyer_maker, ts_ms)
                     if smt:
                         smt.process_trade(
-                            price=price, qty=qty,
+                            price=price,
+                            qty=qty,
                             is_buyer_maker=is_buyer_maker,
                             timestamp=ts_ms / 1000,
                         )
@@ -338,28 +350,38 @@ async def _trade_ingest_loop():
                 if vpin and bucket_closed:
                     snap = vpin.snapshot()
                     try:
-                        await event_bus.publish("vpin.update", {
-                            "stream": sym,
-                            "vpin": snap.running,
-                            "toxic": snap.toxic,
-                        })
-                    except Exception as e:
+                        await event_bus.publish(
+                            "vpin.update",
+                            {
+                                "stream": sym,
+                                "vpin": snap.running,
+                                "toxic": snap.toxic,
+                            },
+                        )
+                    except Exception as e:  # noqa: BLE001
                         logger.debug(f"vpin publish error {sym}: {e}")
                 # Sample tape speed once per tick for this symbol
                 if tape:
                     sample = tape.sample()
                     if sample:
                         try:
-                            save_metric_snapshots(sym, "tape", [(
-                                sample["time"], sample["tps"],
-                                {"count": sample["count"], "window": sample["window"]},
-                            )])
-                        except Exception as e:
+                            save_metric_snapshots(
+                                sym,
+                                "tape",
+                                [
+                                    (
+                                        sample["time"],
+                                        sample["tps"],
+                                        {"count": sample["count"], "window": sample["window"]},
+                                    )
+                                ],
+                            )
+                        except Exception as e:  # noqa: BLE001
                             logger.debug(f"tape persist error {sym}: {e}")
                 # Cursor is owned by trade_router now; keep _last_trade_cursor
                 # for backwards-compat read-only consumers (UI status panels).
                 _last_trade_cursor[sym] = int(new_trades[-1].get("time", _last_trade_cursor.get(sym, 0)))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"trade_ingest_loop error: {e}")
         await asyncio.sleep(2)
 
@@ -392,18 +414,24 @@ async def _liquidation_loop():
 
                 # Persist one row per tick
                 try:
-                    save_metric_snapshots(sym, "liq", [(
-                        snap["time"],
-                        snap["imbalance"],
-                        {
-                            "long_usd": snap["long_usd"],
-                            "short_usd": snap["short_usd"],
-                            "total_usd": snap["total_usd"],
-                            "bias": summary.get("bias"),
-                            "cascade": summary.get("cascade"),
-                        },
-                    )])
-                except Exception as e:
+                    save_metric_snapshots(
+                        sym,
+                        "liq",
+                        [
+                            (
+                                snap["time"],
+                                snap["imbalance"],
+                                {
+                                    "long_usd": snap["long_usd"],
+                                    "short_usd": snap["short_usd"],
+                                    "total_usd": snap["total_usd"],
+                                    "bias": summary.get("bias"),
+                                    "cascade": summary.get("cascade"),
+                                },
+                            )
+                        ],
+                    )
+                except Exception as e:  # noqa: BLE001
                     logger.debug(f"liq persist error {sym}: {e}")
 
                 # Rising-edge cascade alert
@@ -419,18 +447,26 @@ async def _liquidation_loop():
                     )
                     logger.warning(msg)
                     try:
-                        save_alert("liquidation_cascade", msg, symbol=sym, data={
-                            "imbalance": imb, "long_usd": snap["long_usd"],
-                            "short_usd": snap["short_usd"], "total_usd": total, "bias": bias,
-                        })
-                    except Exception as e:
+                        save_alert(
+                            "liquidation_cascade",
+                            msg,
+                            symbol=sym,
+                            data={
+                                "imbalance": imb,
+                                "long_usd": snap["long_usd"],
+                                "short_usd": snap["short_usd"],
+                                "total_usd": total,
+                                "bias": bias,
+                            },
+                        )
+                    except Exception as e:  # noqa: BLE001
                         logger.debug(f"save_alert error: {e}")
                     try:
                         await telegram.send_message(msg)
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001
                         logger.debug(f"telegram cascade send error: {e}")
                 _liq_cascade_state[sym] = is_now
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"liquidation_loop error: {e}")
         await asyncio.sleep(5)
 
@@ -456,7 +492,7 @@ async def _circuit_breaker_loop():
                 report = ws_manager.gap_report()
                 if report:
                     await event_bus.publish("ws.gap", {"gap_report": report})
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 logger.debug(f"cb_loop ws.gap publish error: {e}")
 
             # 2) Correlation snapshot → correlation.snapshot
@@ -472,11 +508,14 @@ async def _circuit_breaker_loop():
                     pairs = pairwise_sorted(matrix, limit=50)
                     if pairs:
                         avg_rho = sum(abs(p.get("corr", 0.0)) for p in pairs) / len(pairs)
-                        await event_bus.publish("correlation.snapshot", {
-                            "avg_rho": avg_rho,
-                            "ts": time.time(),
-                        })
-            except Exception as e:
+                        await event_bus.publish(
+                            "correlation.snapshot",
+                            {
+                                "avg_rho": avg_rho,
+                                "ts": time.time(),
+                            },
+                        )
+            except Exception as e:  # noqa: BLE001
                 logger.debug(f"cb_loop correlation publish error: {e}")
 
             # 3) Funding z-score per symbol → funding.zscore
@@ -484,13 +523,16 @@ async def _circuit_breaker_loop():
                 try:
                     z = tracker.funding_zscore_rolling(window_hours=168.0)
                     if z.get("classification") != "insufficient_data":
-                        await event_bus.publish("funding.zscore", {
-                            "stream": sym,
-                            "zscore": float(z.get("zscore", 0.0)),
-                        })
-                except Exception as e:
+                        await event_bus.publish(
+                            "funding.zscore",
+                            {
+                                "stream": sym,
+                                "zscore": float(z.get("zscore", 0.0)),
+                            },
+                        )
+                except Exception as e:  # noqa: BLE001
                     logger.debug(f"cb_loop funding publish error {sym}: {e}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"circuit_breaker_loop error: {e}")
         await asyncio.sleep(30)
 
@@ -504,7 +546,7 @@ async def _metrics_pruner():
             deleted = prune_metric_snapshots()
             if deleted:
                 logger.info(f"metrics pruner: deleted {deleted} old rows")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"metrics pruner error: {e}")
         await asyncio.sleep(3600)
 
@@ -537,12 +579,21 @@ async def _zone_check_loop():
                 obi_sample = obi.update(ob)
                 if obi_sample:
                     try:
-                        save_metric_snapshots(sym, "obi", [(
-                            obi_sample.get("time", time.time()),
-                            obi_sample.get("obi"),
-                            {"bid_vol": obi_sample.get("bid_vol"), "ask_vol": obi_sample.get("ask_vol")},
-                        )])
-                    except Exception as e:
+                        save_metric_snapshots(
+                            sym,
+                            "obi",
+                            [
+                                (
+                                    obi_sample.get("time", time.time()),
+                                    obi_sample.get("obi"),
+                                    {
+                                        "bid_vol": obi_sample.get("bid_vol"),
+                                        "ask_vol": obi_sample.get("ask_vol"),
+                                    },
+                                )
+                            ],
+                        )
+                    except Exception as e:  # noqa: BLE001
                         logger.debug(f"obi persist error {sym}: {e}")
 
         # Feed heatmap with an AGGREGATED snapshot across all exchanges.
@@ -578,25 +629,29 @@ async def _zone_check_loop():
         for zone in golden_plus:
             distance_pct = abs(mark - zone.price_center) / mark * 100
             if distance_pct <= 0.5:
-                alerts.append({
-                    "type": "zone_approach",
-                    "symbol": sym,
-                    "price": mark,
-                    "tier": zone.tier,
-                    "zone_type": zone.zone_type,
-                    "exchange_count": zone.exchange_count,
-                    "distance_pct": distance_pct,
-                })
+                alerts.append(
+                    {
+                        "type": "zone_approach",
+                        "symbol": sym,
+                        "price": mark,
+                        "tier": zone.tier,
+                        "zone_type": zone.zone_type,
+                        "exchange_count": zone.exchange_count,
+                        "distance_pct": distance_pct,
+                    }
+                )
 
     gate_status = macro_gate.evaluate()
     if gate_status.is_restricted:
-        alerts.append({
-            "type": "macro_danger",
-            "event_name": gate_status.active_event,
-            "minutes_until": gate_status.minutes_until_event,
-            "confidence_threshold": gate_status.confidence_threshold,
-            "max_position_pct": gate_status.max_position_pct * 100,
-        })
+        alerts.append(
+            {
+                "type": "macro_danger",
+                "event_name": gate_status.active_event,
+                "minutes_until": gate_status.minutes_until_event,
+                "confidence_threshold": gate_status.confidence_threshold,
+                "max_position_pct": gate_status.max_position_pct * 100,
+            }
+        )
 
     return alerts
 
@@ -622,16 +677,16 @@ async def lifespan(app: FastAPI):
         gap_s = gap_end - gap_start
         if gap_s < 1.0:
             return
-        logger.warning(
-            "[%s] WS gap %.1fs detected - backfilling klines via REST", name, gap_s
-        )
+        logger.warning("[%s] WS gap %.1fs detected - backfilling klines via REST", name, gap_s)
         for sym in DEFAULT_SYMBOLS:
             try:
                 # Re-fetch the last 100 candles on the default interval. The
                 # in-memory deque is keyed by close_time, so overlapping bars
                 # are upserted rather than duplicated.
                 await binance_data.fetch_historical_klines(
-                    sym, DEFAULT_INTERVAL, limit=100,
+                    sym,
+                    DEFAULT_INTERVAL,
+                    limit=100,
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.debug("[%s] kline backfill %s: %s", name, sym, exc)
@@ -645,7 +700,8 @@ async def lifespan(app: FastAPI):
         # resumes automatically after reconnect.
         logger.warning(
             "[%s] WS gap %.1fs - relying on stream reconnect (no REST backfill)",
-            name, gap_s,
+            name,
+            gap_s,
         )
 
     async def _on_mexc_gap(name: str, gap_start: float, gap_end: float) -> None:
@@ -654,7 +710,8 @@ async def lifespan(app: FastAPI):
             return
         logger.warning(
             "[%s] WS gap %.1fs - relying on stream reconnect (no REST backfill)",
-            name, gap_s,
+            name,
+            gap_s,
         )
 
     binance_conn = create_binance_connection()
@@ -701,9 +758,7 @@ async def lifespan(app: FastAPI):
     # and it never decides direction. Registered here rather than at import time
     # so backtests and tests keep a classifier that is a pure function of their
     # own klines.
-    regime_module.set_conditioner(
-        lambda regime: cross_regime.adjust_regime(regime, world_state.proxies)
-    )
+    regime_module.set_conditioner(lambda regime: cross_regime.adjust_regime(regime, world_state.proxies))
 
     # Wire circuit-breaker handlers to event-bus topics, then start the
     # producer loop. Order matters: subscribers first, producers second.
@@ -720,12 +775,11 @@ async def lifespan(app: FastAPI):
     elif not llm_status["model_installed"]:
         logger.error(
             "Ollama is up but %s is not installed - pull it with: ollama pull %s",
-            gemma4.model, gemma4.model,
+            gemma4.model,
+            gemma4.model,
         )
     else:
-        logger.info(
-            "Gemma 4 (%s): available (%s)", gemma4.model, llm_status["state"]
-        )
+        logger.info("Gemma 4 (%s): available (%s)", gemma4.model, llm_status["state"])
     if llm_status["missing_fallbacks"]:
         logger.warning(
             "Gemma 4 fallback chain is inert - configured but not pulled: %s. "
@@ -754,6 +808,7 @@ async def lifespan(app: FastAPI):
             # separate Deribit cache) via a localhost self-call.
             try:
                 import httpx
+
                 async with httpx.AsyncClient(timeout=20) as c:
                     await c.get(f"http://127.0.0.1:8001/api/matrix/{sym}")
             except Exception:  # noqa: BLE001
@@ -850,6 +905,7 @@ except NameError:
 app.include_router(make_matrix_router(state=_matrix_state))
 app.include_router(make_world_router(state=world_state))
 
+
 # ---------------------------------------------------------------------------
 # Health
 # ---------------------------------------------------------------------------
@@ -903,8 +959,16 @@ async def get_feed_health():
 # the strip watchlist; cached 5s with single-flight so polls never stack.
 # ---------------------------------------------------------------------------
 STRIP_SYMBOLS = [
-    "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT",
-    "DOGEUSDT", "ADAUSDT", "LINKUSDT", "AVAXUSDT", "SUIUSDT",
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "XRPUSDT",
+    "DOGEUSDT",
+    "ADAUSDT",
+    "LINKUSDT",
+    "AVAXUSDT",
+    "SUIUSDT",
 ]
 _strip_cache: dict = {}
 _strip_lock = asyncio.Lock()
@@ -928,18 +992,20 @@ async def get_crypto_strip():
             return_exceptions=True,
         )
         quotes = []
-        for sym, d in zip(STRIP_SYMBOLS, results):
+        for sym, d in zip(STRIP_SYMBOLS, results):  # noqa: B905
             if not isinstance(d, dict):
                 continue
             try:
-                quotes.append({
-                    "symbol": sym,
-                    "price": float(d.get("lastPrice", 0) or 0),
-                    "change_pct": float(d.get("priceChangePercent", 0) or 0),
-                    "high": float(d.get("highPrice", 0) or 0),
-                    "low": float(d.get("lowPrice", 0) or 0),
-                    "quote_volume": float(d.get("quoteVolume", 0) or 0),
-                })
+                quotes.append(
+                    {
+                        "symbol": sym,
+                        "price": float(d.get("lastPrice", 0) or 0),
+                        "change_pct": float(d.get("priceChangePercent", 0) or 0),
+                        "high": float(d.get("highPrice", 0) or 0),
+                        "low": float(d.get("lowPrice", 0) or 0),
+                        "quote_volume": float(d.get("quoteVolume", 0) or 0),
+                    }
+                )
             except (TypeError, ValueError):
                 continue
         payload = {
@@ -982,14 +1048,20 @@ async def get_brief(symbol: str):
             regime_data = regime_classifier.classify(closes, volumes, highs, lows)
         else:
             regime_data = {"regime": "insufficient_data", "confidence": 0}
-    except Exception:
+    except Exception:  # noqa: BLE001
         regime_data = {"regime": "unknown", "confidence": 0}
 
-    squeeze = squeeze_meters[symbol].compute(
-        funding_rate_pct=funding.get("weighted_rate_pct", 0),
-        oi_change_pct=oi_trackers[symbol].get_trend().get("change_pct", 0) if symbol in oi_trackers else 0,
-        regime=regime_data.get("regime"),
-    ) if symbol in squeeze_meters else {}
+    squeeze = (
+        squeeze_meters[symbol].compute(
+            funding_rate_pct=funding.get("weighted_rate_pct", 0),
+            oi_change_pct=oi_trackers[symbol].get_trend().get("change_pct", 0)
+            if symbol in oi_trackers
+            else 0,
+            regime=regime_data.get("regime"),
+        )
+        if symbol in squeeze_meters
+        else {}
+    )
 
     return {
         "symbol": symbol,
@@ -1111,7 +1183,7 @@ async def _build_derivatives_strip(sym: str, interval: str, limit: int) -> dict:
             req = _url.Request(url, headers={"User-Agent": "Nexus/0.3"})
             with _url.urlopen(req, timeout=4) as resp:
                 return _json.loads(resp.read())
-        except Exception:
+        except Exception:  # noqa: BLE001
             try:
                 ctx = _ssl.create_default_context()
                 ctx.check_hostname = False
@@ -1119,7 +1191,7 @@ async def _build_derivatives_strip(sym: str, interval: str, limit: int) -> dict:
                 req = _url.Request(url, headers={"User-Agent": "Nexus/0.3"})
                 with _url.urlopen(req, timeout=10, context=ctx) as resp:
                     return _json.loads(resp.read())
-            except Exception:
+            except Exception:  # noqa: BLE001
                 return None
 
     loop = asyncio.get_event_loop()
@@ -1151,12 +1223,12 @@ async def _build_derivatives_strip(sym: str, interval: str, limit: int) -> dict:
     try:
         if ft is not None and ft._history:
             funding_latest = ft._history[-1] or {}
-    except Exception:
+    except Exception:  # noqa: BLE001
         funding_latest = {}
     try:
         if ot is not None and ot._history:
             oi_latest = ot._history[-1] or {}
-    except Exception:
+    except Exception:  # noqa: BLE001
         oi_latest = {}
 
     # Dedupe by integer-second timestamp (tracker may sample multiple times per
@@ -1171,14 +1243,16 @@ async def _build_derivatives_strip(sym: str, interval: str, limit: int) -> dict:
     if ft is not None:
         funding_series = _dedupe_asc(
             (h["timestamp"], (h.get("weighted_rate") or 0.0) * 100.0)
-            for h in ft._history[-limit:] if h.get("weighted_rate") is not None
+            for h in ft._history[-limit:]
+            if h.get("weighted_rate") is not None
         )
 
     oi_series = []
     if ot is not None:
         oi_series = _dedupe_asc(
             (h["timestamp"], h.get("total") or 0.0)
-            for h in list(ot._history)[-limit:] if h.get("total") is not None
+            for h in list(ot._history)[-limit:]
+            if h.get("total") is not None
         )
 
     # Latest convenience snapshots - used by Matrix Engine when series is sparse.
@@ -1195,9 +1269,9 @@ async def _build_derivatives_strip(sym: str, interval: str, limit: int) -> dict:
         "funding": funding_series,
         "oi": oi_series,
         "latest": {
-            "basis_pct":     basis_latest_val,
-            "funding_pct":   funding_latest_val,
-            "oi_total":      oi_latest_total,
+            "basis_pct": basis_latest_val,
+            "funding_pct": funding_latest_val,
+            "oi_total": oi_latest_total,
             "funding_venues": funding_latest.get("venues") if isinstance(funding_latest, dict) else None,
         },
     }
@@ -1253,7 +1327,9 @@ async def get_obi(symbol: str, limit: int = 240):
 
 
 @app.get("/api/backtest/zones/{symbol}")
-async def backtest_zones_endpoint(symbol: str, interval: str = "15m", reaction_bars: int = 6, bounce_pct: float = 0.8):
+async def backtest_zones_endpoint(
+    symbol: str, interval: str = "15m", reaction_bars: int = 6, bounce_pct: float = 0.8
+):
     """Replay historical klines against the *current* detected zones and report
     touch / bounce / break stats. This is a scaffolding endpoint - the hit-rate
     gives a gut-check on whether the live zone map would have caught recent swings."""
@@ -1278,11 +1354,17 @@ async def backtest_zones_endpoint(symbol: str, interval: str = "15m", reaction_b
             tier=str(z.tier),
             score=float(getattr(z, "score", 0)),
         )
-        for z in zones if z.price_low > 0 and z.price_high > 0
+        for z in zones
+        if z.price_low > 0 and z.price_high > 0
     ]
     candles = [
-        {"time": c.get("open_time"), "open": c.get("open"), "high": c.get("high"),
-         "low": c.get("low"), "close": c.get("close")}
+        {
+            "time": c.get("open_time"),
+            "open": c.get("open"),
+            "high": c.get("high"),
+            "low": c.get("low"),
+            "close": c.get("close"),
+        }
         for c in history
     ]
     result = backtest_zones(candles, bands, reaction_bars=reaction_bars, bounce_pct=bounce_pct)
@@ -1383,13 +1465,15 @@ async def get_liquidations(symbol: str, limit: int = 180):
                     if r is None or r <= 0:
                         return None
                     return (r - 1.0) / (r + 1.0)
+
                 imb_retail = _to_imb(ls_v)
                 imb_top = _to_imb(top_v)
                 # Top traders are "smart money" - opposite sign of the crowd
                 # is the institutional signal. Combined imbalance weights top
                 # 2x because it leads.
                 parts = [(imb_retail, 1.0), (imb_top, 2.0)]
-                wsum = 0.0; w_total = 0.0
+                wsum = 0.0
+                w_total = 0.0
                 for v, w in parts:
                     if v is not None:
                         wsum += v * w
@@ -1463,8 +1547,13 @@ async def get_news():
             _news_cache["data"] = (time.time(), payload)
         return payload
 
-from backend.sentiment_router import router as sentiment_router
+
+from datetime import UTC  # noqa: E402
+
+from backend.sentiment_router import router as sentiment_router  # noqa: E402
+
 app.include_router(sentiment_router)
+
 
 # ---------------------------------------------------------------------------
 # Deribit options
@@ -1508,11 +1597,11 @@ class BloFinOrder(BaseModel):
     symbol: str = "BTC/USDT:USDT"
     side: str  # buy or sell
     amount: float
-    price: Optional[float] = None
+    price: float | None = None
     order_type: str = "limit"
     leverage: int = 5
-    stop_loss: Optional[float] = None
-    take_profit: Optional[float] = None
+    stop_loss: float | None = None
+    take_profit: float | None = None
 
 
 @app.post("/api/blofin/order")
@@ -1533,7 +1622,7 @@ async def place_blofin_order(req: BloFinOrder):
 
 
 @app.get("/api/blofin/orders")
-async def get_blofin_orders(symbol: Optional[str] = None):
+async def get_blofin_orders(symbol: str | None = None):
     if not blofin.connected:
         return {"error": "BloFin not configured"}
     return {"orders": await blofin.get_open_orders(symbol)}
@@ -1655,7 +1744,7 @@ async def get_market_sentiment():
         try:
             await meter.fetch_ls_ratio()
             await meter.fetch_top_trader_ls()
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         if getattr(meter, "_ls_ratio", None):
             ls_values.append(float(meter._ls_ratio))
@@ -1696,8 +1785,9 @@ def _upcoming_fred_releases(now_ts: float, horizon_days: int = 45) -> list[dict]
     NFP 1st Friday, PPI mid-month). Good enough for an awareness countdown -
     exact times are refined when FRED/investing.com feeds are wired.
     """
-    from datetime import datetime, timedelta, timezone
-    now = datetime.fromtimestamp(now_ts, tz=timezone.utc)
+    from datetime import datetime, timedelta
+
+    now = datetime.fromtimestamp(now_ts, tz=UTC)
     horizon = now + timedelta(days=horizon_days)
 
     events: list[tuple[datetime, str, str, str]] = []
@@ -1707,12 +1797,19 @@ def _upcoming_fred_releases(now_ts: float, horizon_days: int = 45) -> list[dict]
         y = now.year + ((now.month - 1 + month_offset) // 12)
         m = ((now.month - 1 + month_offset) % 12) + 1
         # 1st Friday of the month - NFP (Non-Farm Payrolls)
-        d = datetime(y, m, 1, 13, 30, tzinfo=timezone.utc)  # 08:30 ET ~= 13:30 UTC
+        d = datetime(y, m, 1, 13, 30, tzinfo=UTC)  # 08:30 ET ~= 13:30 UTC
         while d.weekday() != 4:  # Friday
             d += timedelta(days=1)
-        events.append((d, "NFP (Non-Farm Payrolls)", "Tier1_Critical", "US labour market print - direct USD/risk driver"))
+        events.append(
+            (
+                d,
+                "NFP (Non-Farm Payrolls)",
+                "Tier1_Critical",
+                "US labour market print - direct USD/risk driver",
+            )
+        )
         # 2nd Wednesday ~= CPI release day
-        cpi = datetime(y, m, 1, 13, 30, tzinfo=timezone.utc)
+        cpi = datetime(y, m, 1, 13, 30, tzinfo=UTC)
         cnt = 0
         while cnt < 2:
             if cpi.weekday() == 2:
@@ -1720,42 +1817,61 @@ def _upcoming_fred_releases(now_ts: float, horizon_days: int = 45) -> list[dict]
                 if cnt == 2:
                     break
             cpi += timedelta(days=1)
-        events.append((cpi, "CPI Inflation", "Tier1_Critical", "Headline + core CPI - primary inflation gauge"))
+        events.append(
+            (cpi, "CPI Inflation", "Tier1_Critical", "Headline + core CPI - primary inflation gauge")
+        )
         # PPI - day after CPI
-        events.append((cpi + timedelta(days=1), "PPI Inflation", "Tier2_High", "Producer price index - upstream inflation signal"))
+        events.append(
+            (
+                cpi + timedelta(days=1),
+                "PPI Inflation",
+                "Tier2_High",
+                "Producer price index - upstream inflation signal",
+            )
+        )
 
     # FOMC - approximately every 6 weeks on a Wednesday. Seed a rolling list.
     # 2026 FOMC meetings (public schedule): Jan 28, Mar 18, Apr 29, Jun 17, Jul 29, Sep 16, Oct 28, Dec 9.
     fomc_2026 = [
-        (2026, 1, 28), (2026, 3, 18), (2026, 4, 29), (2026, 6, 17),
-        (2026, 7, 29), (2026, 9, 16), (2026, 10, 28), (2026, 12, 9),
+        (2026, 1, 28),
+        (2026, 3, 18),
+        (2026, 4, 29),
+        (2026, 6, 17),
+        (2026, 7, 29),
+        (2026, 9, 16),
+        (2026, 10, 28),
+        (2026, 12, 9),
     ]
-    for (yy, mm, dd) in fomc_2026:
-        events.append((
-            datetime(yy, mm, dd, 18, 0, tzinfo=timezone.utc),
-            "FOMC Rate Decision",
-            "Tier1_Critical",
-            "Fed interest rate + dot plot + Powell press conference",
-        ))
+    for yy, mm, dd in fomc_2026:
+        events.append(
+            (
+                datetime(yy, mm, dd, 18, 0, tzinfo=UTC),
+                "FOMC Rate Decision",
+                "Tier1_Critical",
+                "Fed interest rate + dot plot + Powell press conference",
+            )
+        )
 
     # Filter + sort
     horizon_ts = horizon.timestamp()
     out = []
-    for (dt, name, tier, desc) in events:
+    for dt, name, tier, desc in events:
         if dt < now:
             continue
         if dt.timestamp() > horizon_ts:
             continue
         delta_sec = dt.timestamp() - now_ts
-        out.append({
-            "name": name,
-            "tier": tier,
-            "timestamp": dt.timestamp(),
-            "datetime_utc": dt.isoformat(),
-            "days_until": round(delta_sec / 86400, 1),
-            "hours_until": round(delta_sec / 3600, 1),
-            "description": desc,
-        })
+        out.append(
+            {
+                "name": name,
+                "tier": tier,
+                "timestamp": dt.timestamp(),
+                "datetime_utc": dt.isoformat(),
+                "days_until": round(delta_sec / 86400, 1),
+                "hours_until": round(delta_sec / 3600, 1),
+                "description": desc,
+            }
+        )
     out.sort(key=lambda e: e["timestamp"])
     return out[:12]
 
@@ -1774,6 +1890,7 @@ async def generate_ai_brief():
     sym = DEFAULT_SYMBOLS[0]
     engine = zone_engines.get(sym)
     zones = engine.detect_zones() if engine else []
+
     # Funding, OI and the news feed are three independent network round trips.
     # Awaited one after another they cost ~58s of the ~83s a warm brief took -
     # dwarfing the ~24s of actual inference. Run them concurrently.
@@ -1794,10 +1911,14 @@ async def generate_ai_brief():
     oi = oi_r if isinstance(oi_r, dict) else {}
     logger.info("ai/brief data fetch complete in %.1fs", time.time() - _t_fetch)
 
-    squeeze = squeeze_meters[sym].compute(
-        funding_rate_pct=funding.get("weighted_rate_pct", 0),
-        oi_change_pct=oi_trackers[sym].get_trend().get("change_pct", 0) if sym in oi_trackers else 0,
-    ) if sym in squeeze_meters else {}
+    squeeze = (
+        squeeze_meters[sym].compute(
+            funding_rate_pct=funding.get("weighted_rate_pct", 0),
+            oi_change_pct=oi_trackers[sym].get_trend().get("change_pct", 0) if sym in oi_trackers else 0,
+        )
+        if sym in squeeze_meters
+        else {}
+    )
     gate_status = macro_gate.evaluate().to_dict()
 
     headline_texts = news_feed.get_headline_texts()
@@ -1862,7 +1983,8 @@ async def _dvol_cached(currency: str, hours: int) -> dict:
         return hit[1]
     try:
         dv = await asyncio.wait_for(
-            deribit_feed.get_dvol(currency=currency, hours=hours), timeout=5.0,
+            deribit_feed.get_dvol(currency=currency, hours=hours),
+            timeout=5.0,
         )
     except Exception:  # noqa: BLE001 - timeout/venue error → stale-or-empty
         return hit[1] if hit else {}
@@ -1918,7 +2040,7 @@ async def _compute_alpha(symbol: str):
             regime_data = regime_classifier.classify(closes, volumes, highs, lows)
         else:
             regime_data = {"regime": "insufficient_data", "confidence": 0}
-    except Exception:
+    except Exception:  # noqa: BLE001
         regime_data = {"regime": "unknown", "confidence": 0}
 
     # Get smart money data
@@ -1933,14 +2055,15 @@ async def _compute_alpha(symbol: str):
     try:
         kh = list(binance_data.kline_history.get(symbol, []))
         closes_1h = [float(k.get("close", 0)) for k in kh if k.get("close")]
-    except Exception:
+    except Exception:  # noqa: BLE001
         closes_1h = []
     tsmom_payload = None
     try:
         if len(closes_1h) >= 75:
             from backend.computation.factors.tsmom import compute_tsmom as _tsmom
+
             tsmom_payload = _tsmom(closes_1h)
-    except Exception as _e:
+    except Exception as _e:  # noqa: BLE001
         logger.debug("tsmom %s: %s", symbol, _e)
 
     # funding_carry needs FundingTracker history populated - already by oi_poller.
@@ -1949,7 +2072,7 @@ async def _compute_alpha(symbol: str):
         ft = funding_trackers.get(symbol)
         if ft:
             funding_carry_payload = ft.carry_signal()
-    except Exception as _e:
+    except Exception as _e:  # noqa: BLE001
         logger.debug("funding_carry %s: %s", symbol, _e)
 
     # oi_momentum from OITracker (history seeded by oi_poller, ~30s cadence).
@@ -1962,27 +2085,31 @@ async def _compute_alpha(symbol: str):
         ot = oi_trackers.get(symbol)
         if ot:
             cascade = [
-                ("4h", "7d"),     # institutional standard - needs ~20h
-                ("1h", "24h"),    # ~5h
-                ("15m", "6h"),    # ~1.5h
-                ("5m", "2h"),     # ~25 min
-                ("1m", "30m"),    # ~5 min - earliest signal
+                ("4h", "7d"),  # institutional standard - needs ~20h
+                ("1h", "24h"),  # ~5h
+                ("15m", "6h"),  # ~1.5h
+                ("5m", "2h"),  # ~25 min
+                ("1m", "30m"),  # ~5 min - earliest signal
             ]
             for w, base in cascade:
                 payload = ot.roc_zscore(window=w, baseline_window=base)
-                if (payload or {}).get("reason") not in ("baseline too thin", "insufficient_data", "no valid reference OI"):
+                if (payload or {}).get("reason") not in (
+                    "baseline too thin",
+                    "insufficient_data",
+                    "no valid reference OI",
+                ):
                     oi_momentum_payload = payload
                     break
             else:
                 # All variants thin - surface the smallest so reason+samples is informative.
                 oi_momentum_payload = payload
-    except Exception as _e:
+    except Exception as _e:  # noqa: BLE001
         logger.debug("oi_momentum %s: %s", symbol, _e)
 
     # Squeeze risk (P1-A) - regime-aware contribution to composite alpha.
     # Reuses the same inputs as the brief endpoint: weighted funding, OI ROC,
     # current regime classification, optional VPIN toxicity amplification.
-    squeeze_payload: Optional[Dict[str, Any]] = None
+    squeeze_payload: dict[str, Any] | None = None
     try:
         meter = squeeze_meters.get(symbol)
         if meter:
@@ -1993,15 +2120,15 @@ async def _compute_alpha(symbol: str):
                 if ot:
                     trend = ot.get_trend()
                     oi_change_pct = float((trend or {}).get("change_pct", 0.0) or 0.0)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
-            vpin_now: Optional[float] = None
+            vpin_now: float | None = None
             try:
                 vt = vpin_trackers.get(symbol) if "vpin_trackers" in globals() else None
                 if vt:
                     snap = vt.snapshot()
                     vpin_now = getattr(snap, "running", None)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 vpin_now = None
             squeeze_payload = meter.compute(
                 funding_rate_pct=f_rate_pct,
@@ -2009,7 +2136,7 @@ async def _compute_alpha(symbol: str):
                 regime=(regime_data or {}).get("regime"),
                 vpin=vpin_now,
             )
-    except Exception as _e:
+    except Exception as _e:  # noqa: BLE001
         logger.debug("squeeze %s: %s", symbol, _e)
 
     # Deribit DVOL for vol_regime - replaces the previous {} which permanently
@@ -2022,7 +2149,7 @@ async def _compute_alpha(symbol: str):
             dv = await _dvol_cached(currency, hours=24)
             if isinstance(dv, dict) and dv:
                 deribit_payload = dv
-    except Exception as _e:
+    except Exception as _e:  # noqa: BLE001
         logger.debug("deribit dvol %s: %s", symbol, _e)
 
     # Generate composite
@@ -2044,7 +2171,7 @@ async def _compute_alpha(symbol: str):
             # Compute the mid here, prefer book top-of-book, fall back to mark.
             all_exchange_data=_build_cross_exchange_mids(symbol),
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.error(f"Alpha engine error for {symbol}: {e}")
         composite = {
             "composite_score": 0,
@@ -2084,7 +2211,9 @@ async def _compute_alpha(symbol: str):
         },
         "meta": {
             "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "data_age_ms": int((time.time() - mark.get("timestamp", time.time())) * 1000) if mark.get("timestamp") else 0,
+            "data_age_ms": int((time.time() - mark.get("timestamp", time.time())) * 1000)
+            if mark.get("timestamp")
+            else 0,
         },
     }
 
@@ -2160,16 +2289,18 @@ async def get_heatmap(symbol: str):
                 side = "long" if ev.get("side", "").lower() in ("sell", "long") else "short"
                 key = (band_idx, side)
                 buckets[key] = buckets.get(key, 0.0) + usd
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         for (idx, side), usd in buckets.items():
             band_mid = mark * (1.0 + (idx + 0.5) * bucket_pct)
-            liq_clusters.append({
-                "price": round(band_mid, 2),
-                "estimated_size_usd": round(usd, 2),
-                "side": side,
-                "band_pct": round((idx + 0.5) * bucket_pct * 100, 3),
-            })
+            liq_clusters.append(
+                {
+                    "price": round(band_mid, 2),
+                    "estimated_size_usd": round(usd, 2),
+                    "side": side,
+                    "band_pct": round((idx + 0.5) * bucket_pct * 100, 3),
+                }
+            )
         liq_clusters.sort(key=lambda c: -c["estimated_size_usd"])
         liq_clusters = liq_clusters[:30]
 
@@ -2261,6 +2392,7 @@ async def get_orderflow(symbol: str):
     # Active trade source - tells the frontend which venue is currently
     # feeding CVD/SmartMoney (binance/okx/mexc/None when all stale).
     from backend.ingestion.trade_router import select_source as _select_source
+
     active_source = _select_source(symbol, ws_manager=ws_manager)
 
     return {
@@ -2299,6 +2431,7 @@ async def get_kelly_for_symbol(
     branch of KellySizer.compute() activates.
     """
     import math as _m
+
     sym = symbol.upper()
     _ensure_symbol_engines(sym)
     hist = list(binance_data.kline_history.get(sym, []))
@@ -2315,11 +2448,7 @@ async def get_kelly_for_symbol(
             "reason": "Insufficient klines for realized stats",
         }
 
-    returns = [
-        _m.log(closes[i] / closes[i - 1])
-        for i in range(1, len(closes))
-        if closes[i - 1] > 0
-    ]
+    returns = [_m.log(closes[i] / closes[i - 1]) for i in range(1, len(closes)) if closes[i - 1] > 0]
     wins = [r for r in returns if r > 0]
     losses = [abs(r) for r in returns if r < 0]
     win_rate = (len(wins) / len(returns)) if returns else 0.5
@@ -2358,7 +2487,7 @@ async def get_kelly_for_symbol(
                 lookback=96,
             )
             correlations = pair_data.get("pairs") if isinstance(pair_data, dict) else None
-    except Exception:
+    except Exception:  # noqa: BLE001
         correlations = None
 
     out = kelly_sizer.compute(
@@ -2404,6 +2533,7 @@ async def get_var_for_symbol(
     if len(closes) < 31:
         return {"symbol": sym, "error": "Insufficient data (need 30+ closes)", "samples": len(closes)}
     import math
+
     returns = [math.log(closes[i] / closes[i - 1]) for i in range(1, len(closes)) if closes[i - 1] > 0]
     out = var_calculator.compute(returns, position_usd=position_usd, leverage=leverage)
     out["symbol"] = sym
@@ -2416,13 +2546,28 @@ async def get_var_for_symbol(
 # Works for ANY Binance USDT-M perpetual pair (not just DEFAULT_SYMBOLS).
 # Fetched on-demand via the existing urllib-with-SSL-fallback helper.
 # ---------------------------------------------------------------------------
-import json as _json
-import ssl as _ssl
-import urllib.request as _url
-import concurrent.futures as _cf
+import concurrent.futures as _cf  # noqa: E402
+import json as _json  # noqa: E402
+import ssl as _ssl  # noqa: E402
+import urllib.request as _url  # noqa: E402
 
-
-_VALID_INTERVALS = {"1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "8h", "12h", "1d", "3d", "1w", "1M"}
+_VALID_INTERVALS = {
+    "1m",
+    "3m",
+    "5m",
+    "15m",
+    "30m",
+    "1h",
+    "2h",
+    "4h",
+    "6h",
+    "8h",
+    "12h",
+    "1d",
+    "3d",
+    "1w",
+    "1M",
+}
 _symbols_cache: dict = {"updated": 0, "symbols": []}
 _klines_cache: dict = {}  # {(symbol,interval): (ts, data)}
 # Closed candles don't change; the live edge is carried by the mark-price /
@@ -2438,7 +2583,7 @@ def _binance_fut_get(path: str, timeout: int = 10):
         req = _url.Request(url, headers={"User-Agent": "Nexus/0.3"})
         with _url.urlopen(req, timeout=timeout) as resp:
             return _json.loads(resp.read())
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
     try:
         ctx = _ssl.create_default_context()
@@ -2447,7 +2592,7 @@ def _binance_fut_get(path: str, timeout: int = 10):
         req = _url.Request(url, headers={"User-Agent": "Nexus/0.3"})
         with _url.urlopen(req, timeout=timeout, context=ctx) as resp:
             return _json.loads(resp.read())
-    except Exception:
+    except Exception:  # noqa: BLE001
         return None
 
 
@@ -2488,18 +2633,20 @@ async def get_klines(
     for k in data:
         if not isinstance(k, list) or len(k) < 6:
             continue
-        candles.append({
-            "time": int(k[0] // 1000),             # seconds - lightweight-charts convention
-            "open_time": int(k[0]),                 # ms
-            "open": float(k[1]),
-            "high": float(k[2]),
-            "low": float(k[3]),
-            "close": float(k[4]),
-            "volume": float(k[5]),
-            "close_time": int(k[6]) if len(k) > 6 else int(k[0]),
-            "quote_volume": float(k[7]) if len(k) > 7 else 0.0,
-            "trades": int(k[8]) if len(k) > 8 else 0,
-        })
+        candles.append(
+            {
+                "time": int(k[0] // 1000),  # seconds - lightweight-charts convention
+                "open_time": int(k[0]),  # ms
+                "open": float(k[1]),
+                "high": float(k[2]),
+                "low": float(k[3]),
+                "close": float(k[4]),
+                "volume": float(k[5]),
+                "close_time": int(k[6]) if len(k) > 6 else int(k[0]),
+                "quote_volume": float(k[7]) if len(k) > 7 else 0.0,
+                "trades": int(k[8]) if len(k) > 8 else 0,
+            }
+        )
 
     payload = {"symbol": symbol, "interval": interval, "count": len(candles), "candles": candles}
     _klines_cache[key] = (now, payload)
@@ -2522,13 +2669,15 @@ async def search_symbols(q: str = Query("", description="Partial pair filter, e.
                 and s.get("status") == "TRADING"
                 and s.get("quoteAsset") == "USDT"
             ):
-                out.append({
-                    "symbol": s["symbol"],
-                    "base": s.get("baseAsset", ""),
-                    "quote": s.get("quoteAsset", "USDT"),
-                    "pricePrecision": int(s.get("pricePrecision", 2)),
-                    "qtyPrecision": int(s.get("quantityPrecision", 3)),
-                })
+                out.append(
+                    {
+                        "symbol": s["symbol"],
+                        "base": s.get("baseAsset", ""),
+                        "quote": s.get("quoteAsset", "USDT"),
+                        "pricePrecision": int(s.get("pricePrecision", 2)),
+                        "qtyPrecision": int(s.get("quantityPrecision", 3)),
+                    }
+                )
         # Sort: put majors first, then alpha
         MAJORS = {"BTCUSDT": 0, "ETHUSDT": 1, "SOLUSDT": 2, "BNBUSDT": 3, "XRPUSDT": 4}
         out.sort(key=lambda x: (MAJORS.get(x["symbol"], 999), x["symbol"]))
@@ -2570,8 +2719,8 @@ async def get_ticker(symbol: str):
             "trades_24h": int(data.get("count", 0) or 0),
             "timestamp": int(data.get("closeTime", 0) or 0),
         }
-    except Exception as e:
-        raise HTTPException(502, f"ticker parse failed: {e}")
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(502, f"ticker parse failed: {e}")  # noqa: B904
 
 
 # ---------- Technical indicators (RSI / EMA / BB / MACD / Stoch / ADX / ATR) ----------
@@ -2591,7 +2740,7 @@ async def get_ticker(symbol: str):
 #     noticeably different curve.
 #   * Pivots: computed from the PRIOR closed candle (conventional intraday use).
 
-import math
+import math  # noqa: E402
 
 
 def _ema_series(values, period: int):
@@ -2694,10 +2843,10 @@ def _bollinger(values, period: int = 20, k: float = 2.0):
             upper.append(float("nan"))
             lower.append(float("nan"))
             continue
-        window = values[i - period + 1: i + 1]
+        window = values[i - period + 1 : i + 1]
         m = mid[i]
         var = sum((x - m) ** 2 for x in window) / len(window)  # population
-        sd = var ** 0.5
+        sd = var**0.5
         upper.append(m + k * sd)
         lower.append(m - k * sd)
     return upper, mid, lower
@@ -2709,10 +2858,7 @@ def _macd(values, fast: int = 12, slow: int = 26, signal: int = 9):
         return nan, nan, nan
     ef = _ema_series(values, fast)
     es = _ema_series(values, slow)
-    macd = [
-        (a - b) if (not math.isnan(a) and not math.isnan(b)) else float("nan")
-        for a, b in zip(ef, es)
-    ]
+    macd = [(a - b) if (not math.isnan(a) and not math.isnan(b)) else float("nan") for a, b in zip(ef, es)]  # noqa: B905
     # Signal line is EMA of macd - but EMA wants numeric input. Replace NaNs
     # with the first real value's position by slicing.
     first_real = next((i for i, v in enumerate(macd) if not math.isnan(v)), -1)
@@ -2720,10 +2866,7 @@ def _macd(values, fast: int = 12, slow: int = 26, signal: int = 9):
         return macd, macd, macd
     sig_part = _ema_series(macd[first_real:], signal)
     sig = [float("nan")] * first_real + sig_part
-    hist = [
-        (m - s) if (not math.isnan(m) and not math.isnan(s)) else float("nan")
-        for m, s in zip(macd, sig)
-    ]
+    hist = [(m - s) if (not math.isnan(m) and not math.isnan(s)) else float("nan") for m, s in zip(macd, sig)]  # noqa: B905
     return macd, sig, hist
 
 
@@ -2736,8 +2879,8 @@ def _stoch(highs, lows, closes, k_period: int = 14, d_period: int = 3):
             k_vals.append(float("nan"))
             continue
         start = i - k_period + 1
-        hh = max(highs[start:i + 1])
-        ll = min(lows[start:i + 1])
+        hh = max(highs[start : i + 1])
+        ll = min(lows[start : i + 1])
         denom = hh - ll
         if denom <= 0:
             k_vals.append(50.0)  # flat range → midpoint (canonical handling)
@@ -2796,7 +2939,7 @@ def _adx(highs, lows, closes, period: int = 14):
     plus_ds = _wilder_series(plus_dm, period)
     minus_ds = _wilder_series(minus_dm, period)
     plus_di, minus_di = [], []
-    for p, m, a in zip(plus_ds, minus_ds, atr_s):
+    for p, m, a in zip(plus_ds, minus_ds, atr_s):  # noqa: B905
         if math.isnan(a) or a <= 0:
             plus_di.append(float("nan"))
             minus_di.append(float("nan"))
@@ -2804,7 +2947,7 @@ def _adx(highs, lows, closes, period: int = 14):
             plus_di.append(100 * p / a)
             minus_di.append(100 * m / a)
     dx = []
-    for p, m in zip(plus_di, minus_di):
+    for p, m in zip(plus_di, minus_di):  # noqa: B905
         if math.isnan(p) or math.isnan(m):
             dx.append(float("nan"))
             continue
@@ -2859,9 +3002,9 @@ def _obv_series(closes, volumes):
     return out
 
 
-def _ichimoku(highs, lows, closes,
-              tenkan_p: int = 9, kijun_p: int = 26, senkou_b_p: int = 52,
-              disp: int = 26):
+def _ichimoku(
+    highs, lows, closes, tenkan_p: int = 9, kijun_p: int = 26, senkou_b_p: int = 52, disp: int = 26
+):
     """Ichimoku Cloud components. Returns (tenkan, kijun, senkou_a, senkou_b,
     chikou) all aligned to `closes` length.
 
@@ -2874,20 +3017,23 @@ def _ichimoku(highs, lows, closes,
     Warm-up values are NaN.
     """
     n = len(closes)
+
     def _donchian_mid(period: int):
         out = [float("nan")] * n
         for i in range(period - 1, n):
-            hh = max(highs[i - period + 1: i + 1])
-            ll = min(lows[i - period + 1: i + 1])
+            hh = max(highs[i - period + 1 : i + 1])
+            ll = min(lows[i - period + 1 : i + 1])
             out[i] = (hh + ll) / 2.0
         return out
+
     tenkan = _donchian_mid(tenkan_p)
     kijun = _donchian_mid(kijun_p)
     # senkou_a shifted forward `disp` bars: value AT index i comes from
     # the pair at index i-disp (earlier). Positions [0..disp-1] are NaN.
     senkou_a = [float("nan")] * n
     for i in range(disp, n):
-        t = tenkan[i - disp]; k = kijun[i - disp]
+        t = tenkan[i - disp]
+        k = kijun[i - disp]
         if math.isnan(t) or math.isnan(k):
             continue
         senkou_a[i] = (t + k) / 2.0
@@ -2926,7 +3072,7 @@ def _stddev_channel(values, period: int = 100, k: float = 2.0):
     x_mean = sum(xs) / period
     x_var = sum((x - x_mean) ** 2 for x in xs)  # constant denom
     for i in range(period - 1, n):
-        window = values[i - period + 1: i + 1]
+        window = values[i - period + 1 : i + 1]
         y_mean = sum(window) / period
         # slope = Σ(x-x̄)(y-ȳ) / Σ(x-x̄)²
         num = sum((xs[j] - x_mean) * (window[j] - y_mean) for j in range(period))
@@ -3147,7 +3293,8 @@ async def get_indicators(
             "macd_signal": _safe(sig_last, 6),
             "macd_hist": _safe(hist_last, 6),
             "macd_bias": (
-                "bullish" if (hist_last is not None and hist_last > 0)
+                "bullish"
+                if (hist_last is not None and hist_last > 0)
                 else ("bearish" if hist_last is not None else None)
             ),
             "stoch_k": _safe(k_last, 2),
@@ -3162,7 +3309,8 @@ async def get_indicators(
             "ichimoku_senkou_a": _safe(senkou_a_last, 6),
             "ichimoku_senkou_b": _safe(senkou_b_last, 6),
             "ichimoku_bias": (
-                "bullish" if (senkou_a_last is not None and senkou_b_last is not None and senkou_a_last > senkou_b_last)
+                "bullish"
+                if (senkou_a_last is not None and senkou_b_last is not None and senkou_a_last > senkou_b_last)
                 else ("bearish" if (senkou_a_last is not None and senkou_b_last is not None) else None)
             ),
             "stddev_channel_upper": _safe(sdc_upper_last, 6),
@@ -3249,21 +3397,33 @@ def _brief_bias(ind: dict) -> tuple[str, list[str]]:
 
 def _brief_levels(ind: dict) -> list[str]:
     out: list[str] = []
-    pivots = (ind.get("pivots") or {})
+    pivots = ind.get("pivots") or {}
     variants = (pivots.get("variants") or {}).get("classic") or pivots
     last = ind.get("last_close")
     if last is not None:
         out.append(f"Last close: {last:.6g}")
-    order = [("R3", "r3"), ("R2", "r2"), ("R1", "r1"), ("Pivot", "pivot"), ("S1", "s1"), ("S2", "s2"), ("S3", "s3")]
+    order = [
+        ("R3", "r3"),
+        ("R2", "r2"),
+        ("R1", "r1"),
+        ("Pivot", "pivot"),
+        ("S1", "s1"),
+        ("S2", "s2"),
+        ("S3", "s3"),
+    ]
     for lbl, key in order:
         v = variants.get(key)
         if v is None:
             continue
         out.append(f"{lbl}: {float(v):.6g}")
     latest = ind.get("latest", {})
-    for key, lbl in [("bb_upper", "BB Upper"), ("bb_lower", "BB Lower"),
-                     ("stddev_channel_upper", "SDC Upper"), ("stddev_channel_lower", "SDC Lower"),
-                     ("vwap", "VWAP")]:
+    for key, lbl in [
+        ("bb_upper", "BB Upper"),
+        ("bb_lower", "BB Lower"),
+        ("stddev_channel_upper", "SDC Upper"),
+        ("stddev_channel_lower", "SDC Lower"),
+        ("vwap", "VWAP"),
+    ]:
         v = latest.get(key)
         if v is not None:
             out.append(f"{lbl}: {float(v):.6g}")
@@ -3275,15 +3435,22 @@ def _brief_signals(ind: dict) -> list[str]:
     latest = ind.get("latest", {})
     rsi = latest.get("rsi_14")
     if rsi is not None:
-        if rsi >= 70: out.append(f"RSI 14 {rsi:.1f} - overbought")
-        elif rsi <= 30: out.append(f"RSI 14 {rsi:.1f} - oversold")
-        else: out.append(f"RSI 14 {rsi:.1f} - neutral range")
+        if rsi >= 70:
+            out.append(f"RSI 14 {rsi:.1f} - overbought")
+        elif rsi <= 30:
+            out.append(f"RSI 14 {rsi:.1f} - oversold")
+        else:
+            out.append(f"RSI 14 {rsi:.1f} - neutral range")
     k, d = latest.get("stoch_k"), latest.get("stoch_d")
     if k is not None and d is not None:
-        if k > 80 and d > 80: out.append(f"Stochastic {k:.0f}/{d:.0f} - overbought")
-        elif k < 20 and d < 20: out.append(f"Stochastic {k:.0f}/{d:.0f} - oversold")
-        elif k > d: out.append(f"Stochastic %K {k:.0f} > %D {d:.0f} - bullish cross")
-        else: out.append(f"Stochastic %K {k:.0f} ≤ %D {d:.0f} - bearish cross")
+        if k > 80 and d > 80:
+            out.append(f"Stochastic {k:.0f}/{d:.0f} - overbought")
+        elif k < 20 and d < 20:
+            out.append(f"Stochastic {k:.0f}/{d:.0f} - oversold")
+        elif k > d:
+            out.append(f"Stochastic %K {k:.0f} > %D {d:.0f} - bullish cross")
+        else:
+            out.append(f"Stochastic %K {k:.0f} ≤ %D {d:.0f} - bearish cross")
     hist = latest.get("macd_hist")
     if hist is not None:
         direction = "expanding bullish" if hist > 0 else "expanding bearish"
@@ -3371,7 +3538,7 @@ async def get_research_brief(
         raise
     try:
         brief_payload = await get_brief(symbol)
-    except Exception:
+    except Exception:  # noqa: BLE001
         brief_payload = {}
 
     bias_head, bias_bullets = _brief_bias(ind_payload)
@@ -3379,11 +3546,11 @@ async def get_research_brief(
         "symbol": symbol.upper(),
         "interval": interval,
         "generated_at": int(time.time()),
-        "bias":    {"headline": bias_head, "bullets": bias_bullets},
-        "levels":  {"bullets": _brief_levels(ind_payload)},
+        "bias": {"headline": bias_head, "bullets": bias_bullets},
+        "levels": {"bullets": _brief_levels(ind_payload)},
         "signals": {"bullets": _brief_signals(ind_payload)},
-        "macro":   {"bullets": _brief_macro(brief_payload)},
-        "risk":    {"bullets": _brief_risk(ind_payload, brief_payload)},
+        "macro": {"bullets": _brief_macro(brief_payload)},
+        "risk": {"bullets": _brief_risk(ind_payload, brief_payload)},
     }
 
 
@@ -3392,4 +3559,5 @@ async def get_research_brief(
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8001, reload=True)

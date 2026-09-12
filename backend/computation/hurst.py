@@ -14,10 +14,11 @@ References
 - Hurst, H. E. (1951). Long-term storage capacity of reservoirs. Trans. ASCE.
 - Mandelbrot & Wallis (1969). Robustness of the rescaled range R/S.
 """
+
 from __future__ import annotations
 
 import math
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -42,7 +43,7 @@ def _rs_at_lag(x: np.ndarray, lag: int) -> float:
     return float(np.mean(vals))
 
 
-def hurst_exponent(returns: Sequence[float], min_lag: int = 8, max_lag: int = 128) -> Optional[float]:
+def hurst_exponent(returns: Sequence[float], min_lag: int = 8, max_lag: int = 128) -> float | None:
     """Estimate Hurst via R/S analysis on a returns series.
 
     Returns None when the series is too short or numerically degenerate.
@@ -78,7 +79,7 @@ def hurst_exponent(returns: Sequence[float], min_lag: int = 8, max_lag: int = 12
     return max(0.0, min(1.0, H))
 
 
-def hurst_score(H: Optional[float]) -> float:
+def hurst_score(H: float | None) -> float:
     """Map Hurst H ∈ [0,1] into an alpha-compatible signal in [-1, +1].
 
     +1: strongly trending. 0: random walk. -1: strongly mean-reverting.

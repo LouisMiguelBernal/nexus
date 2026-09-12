@@ -16,13 +16,13 @@ import pytest
 
 from backend.computation import regime as regime_module
 from backend.computation.alpha_engine import WEIGHTS_BY_REGIME, set_regime_conditioner
-from backend.computation.regime import RegimeClassifier
 from backend.computation.cross_regime import (
     VALID_REGIMES,
     adjust_regime,
     macro_stress,
     risk_appetite,
 )
+from backend.computation.regime import RegimeClassifier
 
 
 def _series(start: float, drift: float, n: int = 60) -> list:
@@ -60,6 +60,7 @@ def _risk_off_board() -> dict:
 # ---------------------------------------------------------------------------
 # Risk appetite
 # ---------------------------------------------------------------------------
+
 
 def test_risk_on_board_scores_positive():
     result = risk_appetite(_risk_on_board())
@@ -110,6 +111,7 @@ def test_stress_is_unsigned():
 # ---------------------------------------------------------------------------
 # Regime conditioning
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize("label", list(VALID_REGIMES))
 def test_conditioner_never_leaves_the_known_vocabulary(label):
@@ -172,8 +174,9 @@ def test_insufficient_data_regime_is_passed_through():
 # how the reported regime and the regime the weights came from drift apart.
 # ---------------------------------------------------------------------------
 
+
 def _trending_klines(n: int = 60):
-    closes = [100.0 * (1.01 ** i) for i in range(n)]
+    closes = [100.0 * (1.01**i) for i in range(n)]
     return (
         closes,
         [1000.0 + 40 * i for i in range(n)],

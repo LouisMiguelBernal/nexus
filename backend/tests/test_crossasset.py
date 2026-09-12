@@ -11,10 +11,10 @@ import pytest
 from backend.crossasset.equity import _open_interest_is_credible, max_pain
 from backend.crossasset.fred import _nearest_year_ago, _parse_csv
 
-
 # ---------------------------------------------------------------------------
 # Option chain
 # ---------------------------------------------------------------------------
+
 
 def _leg(pairs):
     return [{"strike": s, "open_interest": oi} for s, oi in pairs]
@@ -69,6 +69,7 @@ def test_open_interest_credibility_accepts_a_healthy_chain():
 # ---------------------------------------------------------------------------
 # FRED CSV
 # ---------------------------------------------------------------------------
+
 
 def test_parse_csv_skips_missing_observations():
     """FRED writes '.' for a missing print; those rows are not zeros."""

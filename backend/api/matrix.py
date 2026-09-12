@@ -15,20 +15,21 @@ to make every 30 s. Aggregates:
 Designed so the frontend can mount a single `useSWR("/api/matrix/{sym}")`
 hook and bind the entire MatrixPanel from one snapshot.
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import math
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from backend.computation import matrix_score
 from backend.computation.entropy import entropy_score, sign_entropy
 from backend.computation.fallbacks import (
-    Inferred, absent, direct, infer_gex_proxy, proxy,
+    infer_gex_proxy,
 )
 from backend.computation.hurst import hurst_exponent, hurst_score
 from backend.risk.expected_shortfall import ESCalculator
@@ -44,7 +45,8 @@ _es_calculator = ESCalculator()
 # Helpers - compute per-layer inputs from app-level state
 # ---------------------------------------------------------------------------
 
-def _safe_get(d: Optional[dict], *keys, default=None):
+
+def _safe_get(d: dict | None, *keys, default=None):
     cur: Any = d
     for k in keys:
         if not isinstance(cur, dict):
@@ -64,21 +66,23 @@ def _log_returns(closes: list[float]) -> list[float]:
     return out
 
 
-def _z_from_series(series: list[float], current: Optional[float]) -> Optional[float]:
+def _z_from_series(series: list[float], current: float | None) -> float | None:
     if current is None or len(series) < 8:
         return None
     import statistics as _s
+
     try:
         mu = _s.mean(series)
         sd = _s.pstdev(series) or 1e-9
         return (current - mu) / sd
-    except Exception:
+    except Exception:  # noqa: BLE001
         return None
 
 
 # ---------------------------------------------------------------------------
 # Endpoint factory - main.py mounts the router with bound state
 # ---------------------------------------------------------------------------
+
 
 def make_router(*, state) -> APIRouter:
     """Build the matrix router bound to a state object exposing:
@@ -94,8 +98,8 @@ def make_router(*, state) -> APIRouter:
     # Response cache + single-flight. The frontend polls this route every 4s;
     # without these, overlapping polls each re-await Deribit/funding upstream
     # and the loop backlog snowballs (observed 25s responses → "nothing loads").
-    _resp_cache: Dict[str, tuple[float, Dict]] = {}
-    _locks: Dict[str, asyncio.Lock] = {}
+    _resp_cache: dict[str, tuple[float, dict]] = {}
+    _locks: dict[str, asyncio.Lock] = {}
     # 8s: the composite recompute is the heaviest route; regime/layers don't
     # need 4s freshness. Halves recompute frequency vs the frontend's poll.
     _RESP_TTL_S = 8.0
@@ -103,7 +107,7 @@ def make_router(*, state) -> APIRouter:
     # Deribit aggregates change slowly (options OI / DVOL) - 60s cache, and the
     # three calls run concurrently with a hard per-call timeout so a slow
     # Deribit day can never stall the whole matrix.
-    _deribit_cache: Dict[str, tuple[float, tuple]] = {}
+    _deribit_cache: dict[str, tuple[float, tuple]] = {}
     _DERIBIT_TTL_S = 60.0
     _DERIBIT_CALL_TIMEOUT_S = 5.0
 
@@ -132,7 +136,7 @@ def make_router(*, state) -> APIRouter:
         return result
 
     @router.get("/matrix/{symbol}")
-    async def get_matrix(symbol: str) -> Dict:
+    async def get_matrix(symbol: str) -> dict:
         sym = symbol.upper()
 
         now = time.time()
@@ -148,7 +152,7 @@ def make_router(*, state) -> APIRouter:
             _resp_cache[sym] = (time.time(), payload)
             return payload
 
-    async def _compute_matrix(sym: str) -> Dict:
+    async def _compute_matrix(sym: str) -> dict:
         state.ensure_engines(sym)
 
         klines = list(state.binance_data.kline_history.get(sym, []))
@@ -192,7 +196,11 @@ def make_router(*, state) -> APIRouter:
         cvd_1h = _get_or_none(cvd_mtf.get("1h") if isinstance(cvd_mtf, dict) else None, "net_delta")
         cvd_1h_buy = _get_or_none(cvd_mtf.get("1h") if isinstance(cvd_mtf, dict) else None, "buy_volume")
         cvd_1h_sell = _get_or_none(cvd_mtf.get("1h") if isinstance(cvd_mtf, dict) else None, "sell_volume")
-        cvd_total = ((cvd_1h_buy or 0.0) + (cvd_1h_sell or 0.0)) if (cvd_1h_buy is not None and cvd_1h_sell is not None) else 0.0
+        cvd_total = (
+            ((cvd_1h_buy or 0.0) + (cvd_1h_sell or 0.0))
+            if (cvd_1h_buy is not None and cvd_1h_sell is not None)
+            else 0.0
+        )
         cvd_z = ((cvd_1h or 0.0) / cvd_total) if cvd_total > 1e-6 else None
         flow_ratio = ((cvd_1h_buy or 0.0) / cvd_total) if cvd_total > 1e-6 else None
 
@@ -201,12 +209,12 @@ def make_router(*, state) -> APIRouter:
         # Dual notional + qty tracking (P1-6): expose both so the frontend can
         # compare large-price wall pressure against raw size pressure.
         obi_tracker = state.obi_trackers.get(sym)
-        obi_val: Optional[float] = None
-        obi_z: Optional[float] = None
-        obi_bias: Optional[str] = None
-        obi_qty_val: Optional[float] = None
-        obi_qty_z: Optional[float] = None
-        obi_qty_bias: Optional[str] = None
+        obi_val: float | None = None
+        obi_z: float | None = None
+        obi_bias: str | None = None
+        obi_qty_val: float | None = None
+        obi_qty_z: float | None = None
+        obi_qty_bias: str | None = None
         try:
             if obi_tracker and hasattr(obi_tracker, "summary"):
                 obi_summary = obi_tracker.summary(window=180)
@@ -215,15 +223,25 @@ def make_router(*, state) -> APIRouter:
                     obi_bias = obi_summary.get("bias")
                     mu = obi_summary.get("mean")
                     sd = obi_summary.get("std")
-                    if (obi_val is not None and mu is not None and sd is not None
-                            and isinstance(sd, (int, float)) and sd > 1e-6):
+                    if (
+                        obi_val is not None
+                        and mu is not None
+                        and sd is not None
+                        and isinstance(sd, (int, float))
+                        and sd > 1e-6
+                    ):
                         obi_z = (obi_val - mu) / sd
                     obi_qty_val = obi_summary.get("latest_qty")
                     obi_qty_bias = obi_summary.get("bias_qty")
                     qmu = obi_summary.get("mean_qty")
                     qsd = obi_summary.get("std_qty")
-                    if (obi_qty_val is not None and qmu is not None and qsd is not None
-                            and isinstance(qsd, (int, float)) and qsd > 1e-6):
+                    if (
+                        obi_qty_val is not None
+                        and qmu is not None
+                        and qsd is not None
+                        and isinstance(qsd, (int, float))
+                        and qsd > 1e-6
+                    ):
                         obi_qty_z = (obi_qty_val - qmu) / qsd
         except Exception:  # noqa: BLE001
             obi_val = None
@@ -233,7 +251,7 @@ def make_router(*, state) -> APIRouter:
 
         # VPIN
         vpin_tracker = state.vpin_trackers.get(sym)
-        vpin_val: Optional[float] = None
+        vpin_val: float | None = None
         try:
             if vpin_tracker:
                 snap = vpin_tracker.snapshot()
@@ -284,10 +302,7 @@ def make_router(*, state) -> APIRouter:
                     # Persistence: ratio of same-sign venues (when ≥3 venues).
                     venues = snap.get("venues") or {}
                     if isinstance(venues, dict) and len(venues) >= 2:
-                        signs = [
-                            (1 if (v or 0) > 0 else -1 if (v or 0) < 0 else 0)
-                            for v in venues.values()
-                        ]
+                        signs = [(1 if (v or 0) > 0 else -1 if (v or 0) < 0 else 0) for v in venues.values()]
                         nz = [s for s in signs if s != 0]
                         if nz:
                             same = sum(1 for s in nz if s == nz[0])
@@ -307,14 +322,15 @@ def make_router(*, state) -> APIRouter:
 
         # Cross-venue dispersion: pull mids from all WS-connected venues and
         # measure stdev of (mid_v - ref_mid) / ref_mid * 100.
-        basis_dispersion: Optional[float] = None
+        basis_dispersion: float | None = None
         try:
             mids: list[float] = []
-            for store_name in ("binance_data", "okx_data", "mexc_data"):
+            for store_name in ("binance_data", "okx_data", "mexc_data"):  # noqa: B007
                 pass  # placeholder - direct module lookup below
             # Use the venue stores directly via state.binance_data + globals
-            from backend.ingestion.okx_ws import okx_data as _okx
             from backend.ingestion.mexc_ws import mexc_data as _mexc
+            from backend.ingestion.okx_ws import okx_data as _okx
+
             for venue_book in (
                 state.binance_data.order_books.get(sym),
                 _okx.order_books.get(sym),
@@ -326,7 +342,8 @@ def make_router(*, state) -> APIRouter:
                 asks = venue_book.get("asks") or []
                 if not bids or not asks:
                     continue
-                bb = float(bids[0][0]); ba = float(asks[0][0])
+                bb = float(bids[0][0])
+                ba = float(asks[0][0])
                 if bb > 0 and ba > 0:
                     mids.append((bb + ba) / 2.0)
             if len(mids) >= 2:
@@ -350,6 +367,7 @@ def make_router(*, state) -> APIRouter:
         try:
             if len(closes) >= 30:
                 import numpy as _np
+
                 arr = _np.asarray(closes[-50:], dtype=float)
                 mid = arr.mean()
                 sd = arr.std(ddof=0)
@@ -357,7 +375,7 @@ def make_router(*, state) -> APIRouter:
                 # Rolling 20-period BB widths for baseline
                 widths = []
                 for i in range(20, len(closes)):
-                    w = closes[i - 20:i]
+                    w = closes[i - 20 : i]
                     mu = sum(w) / 20
                     s2 = sum((x - mu) ** 2 for x in w) / 20
                     s = math.sqrt(s2)
@@ -391,8 +409,8 @@ def make_router(*, state) -> APIRouter:
         # ------------------------------------------------------------------
         # Dealer / GEX proxy via Deribit aggregates
         # ------------------------------------------------------------------
-        gex_proxy_val: Optional[float] = None
-        funding_skew_val: Optional[float] = None
+        gex_proxy_val: float | None = None
+        funding_skew_val: float | None = None
         try:
             currency = "BTC" if sym.startswith("BTC") else "ETH" if sym.startswith("ETH") else None
             if currency and state.deribit_feed:
@@ -415,7 +433,7 @@ def make_router(*, state) -> APIRouter:
         # realized 7d mean. Available only when ≥10 history samples - the
         # FundingTracker gates `available` itself; we propagate None below
         # that bar so the dealer layer downgrades confidence cleanly.
-        funding_skew_payload: Optional[Dict[str, Any]] = None
+        funding_skew_payload: dict[str, Any] | None = None
         try:
             if funding:
                 skew = funding.term_structure_skew()
@@ -439,40 +457,51 @@ def make_router(*, state) -> APIRouter:
             pass
 
         layer_trend = matrix_score.layer_trend(
-            ema50_slope_pct=ema50_slope_pct, adx=adx, hurst_signed=H_score,
+            ema50_slope_pct=ema50_slope_pct,
+            adx=adx,
+            hurst_signed=H_score,
         )
         # Use OBI z-score when available (more informative than raw level);
         # falls back to the raw OBI which is already in [-1,+1].
         obi_for_flow = obi_z if obi_z is not None else obi_val
         layer_flow = matrix_score.layer_flow(
-            cvd_1h_z=cvd_z, obi=obi_for_flow, vpin=vpin_val, flow_ratio=flow_ratio,
+            cvd_1h_z=cvd_z,
+            obi=obi_for_flow,
+            vpin=vpin_val,
+            flow_ratio=flow_ratio,
         )
         layer_oi = matrix_score.layer_oi(
             oi_change_pct=oi_change_pct or None,
             funding_persistence=funding_persistence,
         )
         layer_basis = matrix_score.layer_basis(
-            basis_pct=basis_pct, basis_dispersion=basis_dispersion,
+            basis_pct=basis_pct,
+            basis_dispersion=basis_dispersion,
         )
         layer_vol = matrix_score.layer_vol(
-            bb_width_pct=bb_width_pct, bb_width_avg=bb_width_avg,
-            atr_pct=atr_pct, atr_avg=atr_avg,
+            bb_width_pct=bb_width_pct,
+            bb_width_avg=bb_width_avg,
+            atr_pct=atr_pct,
+            atr_avg=atr_avg,
         )
         layer_liq = matrix_score.layer_liq(
-            long_liq_usd=long_liq, short_liq_usd=short_liq, liq_vacuum=None,
+            long_liq_usd=long_liq,
+            short_liq_usd=short_liq,
+            liq_vacuum=None,
         )
         layer_dealer = matrix_score.layer_dealer(
-            gex_proxy=gex_proxy_val, funding_skew=funding_skew_val,
+            gex_proxy=gex_proxy_val,
+            funding_skew=funding_skew_val,
         )
 
         composite = matrix_score.assemble(
             {
-                "trend":  layer_trend,
-                "flow":   layer_flow,
-                "oi":     layer_oi,
-                "basis":  layer_basis,
-                "vol":    layer_vol,
-                "liq":    layer_liq,
+                "trend": layer_trend,
+                "flow": layer_flow,
+                "oi": layer_oi,
+                "basis": layer_basis,
+                "vol": layer_vol,
+                "liq": layer_liq,
                 "dealer": layer_dealer,
             },
             regime=regime_label,
@@ -482,9 +511,12 @@ def make_router(*, state) -> APIRouter:
         # ------------------------------------------------------------------
         # Risk: VaR + ES
         # ------------------------------------------------------------------
-        risk_block: Dict[str, Any] = {
-            "var_ens": None, "var_stressed": None, "es_95": None,
-            "liq_proximity_pct": None, "vpin_toxicity": vpin_val,
+        risk_block: dict[str, Any] = {
+            "var_ens": None,
+            "var_stressed": None,
+            "es_95": None,
+            "liq_proximity_pct": None,
+            "vpin_toxicity": vpin_val,
             "samples": len(returns),
         }
         if len(returns) >= 31:
@@ -505,18 +537,20 @@ def make_router(*, state) -> APIRouter:
         # ------------------------------------------------------------------
         # Venue health from ws_manager.gap_report
         # ------------------------------------------------------------------
-        venues: list[Dict] = []
+        venues: list[dict] = []
         try:
             gap_report = state.ws_manager.gap_report()
             if isinstance(gap_report, dict):
                 for name, data in gap_report.items():
                     sec_since = float(data.get("seconds_since_last_event", 999) or 999)
-                    venues.append({
-                        "name": name,
-                        "staleness_ms": int(sec_since * 1000),
-                        "healthy": sec_since < 30,
-                        "gaps": int(data.get("gap_count", 0) or 0),
-                    })
+                    venues.append(
+                        {
+                            "name": name,
+                            "staleness_ms": int(sec_since * 1000),
+                            "healthy": sec_since < 30,
+                            "gaps": int(data.get("gap_count", 0) or 0),
+                        }
+                    )
         except Exception:  # noqa: BLE001
             pass
 
@@ -542,11 +576,17 @@ def make_router(*, state) -> APIRouter:
             },
             "flow": {
                 "cvd_5m": _get_or_none(cvd_mtf.get("5m") if isinstance(cvd_mtf, dict) else None, "net_delta"),
-                "cvd_15m": _get_or_none(cvd_mtf.get("15m") if isinstance(cvd_mtf, dict) else None, "net_delta"),
+                "cvd_15m": _get_or_none(
+                    cvd_mtf.get("15m") if isinstance(cvd_mtf, dict) else None, "net_delta"
+                ),
                 "cvd_1h": cvd_1h,
                 "cvd_4h": _get_or_none(cvd_mtf.get("4h") if isinstance(cvd_mtf, dict) else None, "net_delta"),
-                "trades_5m": _get_or_none(cvd_mtf.get("5m") if isinstance(cvd_mtf, dict) else None, "trade_count"),
-                "trades_1h": _get_or_none(cvd_mtf.get("1h") if isinstance(cvd_mtf, dict) else None, "trade_count"),
+                "trades_5m": _get_or_none(
+                    cvd_mtf.get("5m") if isinstance(cvd_mtf, dict) else None, "trade_count"
+                ),
+                "trades_1h": _get_or_none(
+                    cvd_mtf.get("1h") if isinstance(cvd_mtf, dict) else None, "trade_count"
+                ),
                 "flow_ratio": round(flow_ratio, 4) if flow_ratio is not None else None,
                 "absorption": absorption_state,
                 "vpin": round(vpin_val, 4) if vpin_val is not None else None,
@@ -565,7 +605,9 @@ def make_router(*, state) -> APIRouter:
                 "basis_pct": round(basis_pct, 4) if basis_pct is not None else None,
                 "basis_dispersion_pct": round(basis_dispersion, 5) if basis_dispersion is not None else None,
                 "funding_pct": round(funding_pct, 4) if funding_pct is not None else None,
-                "funding_persistence": round(funding_persistence, 3) if funding_persistence is not None else None,
+                "funding_persistence": round(funding_persistence, 3)
+                if funding_persistence is not None
+                else None,
                 "funding_skew_pct": round(funding_skew_val, 4) if funding_skew_val is not None else None,
                 "funding_skew": funding_skew_payload,
                 "gex_proxy": round(gex_proxy_val, 4) if gex_proxy_val is not None else None,

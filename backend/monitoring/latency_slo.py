@@ -10,11 +10,8 @@ the configured budget for a sustained `breach_window` of samples.
 
 from __future__ import annotations
 
-import math
-import time
 from collections import deque
 from dataclasses import dataclass
-from typing import Deque, Dict, List, Optional
 
 
 class _P2Estimator:
@@ -27,7 +24,7 @@ class _P2Estimator:
         self.n = [1, 2, 3, 4, 5]
         self.n_prime = [1.0, 1.0 + 2.0 * p, 1.0 + 4.0 * p, 3.0 + 2.0 * p, 5.0]
         self.dn = [0.0, p / 2.0, p, (1.0 + p) / 2.0, 1.0]
-        self.q: List[float] = []
+        self.q: list[float] = []
 
     def add(self, x: float) -> None:
         if len(self.q) < 5:
@@ -58,8 +55,7 @@ class _P2Estimator:
 
         for i in range(1, 4):
             d = self.n_prime[i] - self.n[i]
-            if (d >= 1 and self.n[i + 1] - self.n[i] > 1) or \
-               (d <= -1 and self.n[i - 1] - self.n[i] < -1):
+            if (d >= 1 and self.n[i + 1] - self.n[i] > 1) or (d <= -1 and self.n[i - 1] - self.n[i] < -1):
                 ds = 1 if d >= 0 else -1
                 qp = self._parabolic(i, ds)
                 if self.q[i - 1] < qp < self.q[i + 1]:
@@ -70,16 +66,14 @@ class _P2Estimator:
 
     def _parabolic(self, i: int, d: int) -> float:
         term1 = d / (self.n[i + 1] - self.n[i - 1])
-        term2 = ((self.n[i] - self.n[i - 1] + d) *
-                 (self.q[i + 1] - self.q[i]) / (self.n[i + 1] - self.n[i]))
-        term3 = ((self.n[i + 1] - self.n[i] - d) *
-                 (self.q[i] - self.q[i - 1]) / (self.n[i] - self.n[i - 1]))
+        term2 = (self.n[i] - self.n[i - 1] + d) * (self.q[i + 1] - self.q[i]) / (self.n[i + 1] - self.n[i])
+        term3 = (self.n[i + 1] - self.n[i] - d) * (self.q[i] - self.q[i - 1]) / (self.n[i] - self.n[i - 1])
         return self.q[i] + term1 * (term2 + term3)
 
     def _linear(self, i: int, d: int) -> float:
         return self.q[i] + d * (self.q[i + d] - self.q[i]) / (self.n[i + d] - self.n[i])
 
-    def quantile(self) -> Optional[float]:
+    def quantile(self) -> float | None:
         if len(self.q) < 5:
             return None
         return self.q[2]
@@ -96,14 +90,14 @@ class LatencySLO:
 class LatencyTracker:
     """Per-stream streaming latency percentiles + SLO breach detection."""
 
-    def __init__(self, slos: Optional[List[LatencySLO]] = None, default_budget_ms: float = 250.0):
+    def __init__(self, slos: list[LatencySLO] | None = None, default_budget_ms: float = 250.0):
         self.default_budget_ms = default_budget_ms
-        self._slos: Dict[str, LatencySLO] = {s.stream: s for s in (slos or [])}
-        self._p50: Dict[str, _P2Estimator] = {}
-        self._p95: Dict[str, _P2Estimator] = {}
-        self._p99: Dict[str, _P2Estimator] = {}
-        self._recent: Dict[str, Deque[float]] = {}
-        self._count: Dict[str, int] = {}
+        self._slos: dict[str, LatencySLO] = {s.stream: s for s in (slos or [])}
+        self._p50: dict[str, _P2Estimator] = {}
+        self._p95: dict[str, _P2Estimator] = {}
+        self._p99: dict[str, _P2Estimator] = {}
+        self._recent: dict[str, deque[float]] = {}
+        self._count: dict[str, int] = {}
 
     def _ensure(self, stream: str) -> None:
         if stream not in self._p99:
@@ -127,14 +121,14 @@ class LatencyTracker:
         if stream not in self._slos:
             return False
         slo = self._slos[stream]
-        recent = list(self._recent.get(stream, []))[-slo.breach_window:]
+        recent = list(self._recent.get(stream, []))[-slo.breach_window :]
         if len(recent) < slo.breach_window:
             return False
         breaches = sum(1 for ms in recent if ms > slo.budget_ms)
         return breaches >= slo.breach_threshold
 
-    def snapshot(self) -> Dict[str, Dict]:
-        out: Dict[str, Dict] = {}
+    def snapshot(self) -> dict[str, dict]:
+        out: dict[str, dict] = {}
         for stream in self._count.keys():
             slo = self._slos[stream]
             out[stream] = {

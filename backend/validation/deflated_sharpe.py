@@ -28,8 +28,7 @@ is > 0.70.
 from __future__ import annotations
 
 import math
-from typing import Dict, Sequence
-
+from collections.abc import Sequence
 
 _EULER = 0.5772156649015329
 
@@ -42,30 +41,51 @@ def _norm_ppf(p: float) -> float:
     """Inverse standard-normal CDF via Acklam's rational approximation."""
     if not (0.0 < p < 1.0):
         raise ValueError("p must be in (0, 1)")
-    a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02,
-         1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00]
-    b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02,
-         6.680131188771972e+01, -1.328068155288572e+01]
-    c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00,
-         -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00]
-    d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00,
-         3.754408661907416e+00]
+    a = [
+        -3.969683028665376e01,
+        2.209460984245205e02,
+        -2.759285104469687e02,
+        1.383577518672690e02,
+        -3.066479806614716e01,
+        2.506628277459239e00,
+    ]
+    b = [
+        -5.447609879822406e01,
+        1.615858368580409e02,
+        -1.556989798598866e02,
+        6.680131188771972e01,
+        -1.328068155288572e01,
+    ]
+    c = [
+        -7.784894002430293e-03,
+        -3.223964580411365e-01,
+        -2.400758277161838e00,
+        -2.549732539343734e00,
+        4.374664141464968e00,
+        2.938163982698783e00,
+    ]
+    d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e00, 3.754408661907416e00]
     plow, phigh = 0.02425, 1 - 0.02425
     if p < plow:
         q = math.sqrt(-2 * math.log(p))
-        return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / \
-               ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1)
+        return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / (
+            (((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1
+        )
     if p <= phigh:
         q = p - 0.5
         r = q * q
-        return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / \
-               (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1)
+        return (
+            (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5])
+            * q
+            / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1)
+        )
     q = math.sqrt(-2 * math.log(1 - p))
-    return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / \
-           ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1)
+    return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / (
+        (((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1
+    )
 
 
-def _moments(returns: Sequence[float]) -> Dict[str, float]:
+def _moments(returns: Sequence[float]) -> dict[str, float]:
     n = len(returns)
     if n < 4:
         return {"mean": 0.0, "std": 0.0, "skew": 0.0, "kurt": 3.0, "n": n}
@@ -74,8 +94,8 @@ def _moments(returns: Sequence[float]) -> Dict[str, float]:
     m3 = sum((r - mean) ** 3 for r in returns) / n
     m4 = sum((r - mean) ** 4 for r in returns) / n
     std = math.sqrt(m2) if m2 > 0 else 0.0
-    skew = m3 / (std ** 3) if std > 0 else 0.0
-    kurt = m4 / (m2 ** 2) if m2 > 0 else 3.0
+    skew = m3 / (std**3) if std > 0 else 0.0
+    kurt = m4 / (m2**2) if m2 > 0 else 3.0
     return {"mean": mean, "std": std, "skew": skew, "kurt": kurt, "n": n}
 
 
@@ -96,7 +116,7 @@ def deflated_sharpe(
     n_trials: int = 1,
     sharpe_variance: float = 0.5,
     annualization: float = math.sqrt(365),
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Compute DSR for a single OOS return stream.
 
     Parameters
@@ -124,14 +144,14 @@ def deflated_sharpe(
             "reason": "insufficient samples or flat return series",
         }
 
-    sr_bar = m["mean"] / m["std"]             # per-bar Sharpe
+    sr_bar = m["mean"] / m["std"]  # per-bar Sharpe
     sr_annual = sr_bar * annualization
     exp_max = expected_max_sharpe(n_trials, sharpe_variance)
 
     t = m["n"]
     skew = m["skew"]
     kurt = m["kurt"]
-    denom_sq = 1.0 - skew * sr_bar + ((kurt - 1.0) / 4.0) * (sr_bar ** 2)
+    denom_sq = 1.0 - skew * sr_bar + ((kurt - 1.0) / 4.0) * (sr_bar**2)
     denom = math.sqrt(denom_sq) if denom_sq > 0 else 1.0
     z = (sr_bar - exp_max) * math.sqrt(t - 1) / denom
     dsr = _norm_cdf(z)

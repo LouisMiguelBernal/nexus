@@ -27,41 +27,44 @@ import asyncio
 import logging
 import time
 from collections import deque
-from typing import Any, Awaitable, Callable, Deque, Dict, List, Optional
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 logger = logging.getLogger("nexus.event_bus")
 
 
-Subscriber = Callable[[str, Dict[str, Any]], Awaitable[None]]
+Subscriber = Callable[[str, dict[str, Any]], Awaitable[None]]
 
 
 class EventBus:
     """Async pub/sub with bounded per-subscriber queues."""
 
     def __init__(self, queue_size: int = 256):
-        self._subs: Dict[str, List[Subscriber]] = {}
+        self._subs: dict[str, list[Subscriber]] = {}
         self._queue_size = queue_size
         # Bounded recent-events log for /api/health introspection.
-        self._recent: Deque[Dict[str, Any]] = deque(maxlen=128)
+        self._recent: deque[dict[str, Any]] = deque(maxlen=128)
 
     def subscribe(self, topic: str, handler: Subscriber) -> None:
         self._subs.setdefault(topic, []).append(handler)
 
-    async def publish(self, topic: str, payload: Dict[str, Any]) -> None:
+    async def publish(self, topic: str, payload: dict[str, Any]) -> None:
         entry = {"ts": time.time(), "topic": topic, "payload": payload}
         self._recent.append(entry)
         handlers = list(self._subs.get(topic, ()))
         if not handlers:
             return
+
         # Run handlers concurrently; isolate failures.
         async def _run(h: Subscriber):
             try:
                 await h(topic, payload)
             except Exception:
                 logger.exception(f"event_bus subscriber failed on topic={topic}")
+
         await asyncio.gather(*[_run(h) for h in handlers], return_exceptions=False)
 
-    def recent(self, n: int = 32) -> List[Dict[str, Any]]:
+    def recent(self, n: int = 32) -> list[dict[str, Any]]:
         return list(self._recent)[-n:]
 
 
@@ -80,21 +83,21 @@ def wire_circuit_breaker(breaker: Any) -> None:
     done in production.
     """
 
-    async def _on_var(topic: str, p: Dict[str, Any]) -> None:
+    async def _on_var(topic: str, p: dict[str, Any]) -> None:
         breaker.on_var_breach(p.get("realized_pnl", 0.0), p.get("var_99", 0.0))
 
-    async def _on_corr(topic: str, p: Dict[str, Any]) -> None:
+    async def _on_corr(topic: str, p: dict[str, Any]) -> None:
         breaker.on_correlation_snapshot(p.get("avg_rho", 0.0), p.get("ts"))
 
-    async def _on_gap(topic: str, p: Dict[str, Any]) -> None:
+    async def _on_gap(topic: str, p: dict[str, Any]) -> None:
         report = p.get("gap_report") or {}
         if isinstance(report, dict) and report:
             breaker.on_ws_gap_report(report)
 
-    async def _on_funding(topic: str, p: Dict[str, Any]) -> None:
+    async def _on_funding(topic: str, p: dict[str, Any]) -> None:
         breaker.on_funding_zscore(p.get("stream", ""), p.get("zscore", 0.0))
 
-    async def _on_vpin(topic: str, p: Dict[str, Any]) -> None:
+    async def _on_vpin(topic: str, p: dict[str, Any]) -> None:
         breaker.on_vpin(p.get("stream", ""), p.get("vpin", 0.0))
 
     bus.subscribe("var.breach", _on_var)

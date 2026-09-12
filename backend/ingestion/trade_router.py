@@ -12,27 +12,26 @@ schema (`is_buyer_maker` boolean) so downstream consumers stay unchanged.
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from backend.ingestion.binance_ws import binance_data
-from backend.ingestion.okx_ws import okx_data
-from backend.ingestion.mexc_ws import mexc_data
 from backend.ingestion.feed_validator import evaluate_feeds
-
+from backend.ingestion.mexc_ws import mexc_data
+from backend.ingestion.okx_ws import okx_data
 
 # Order matters - first acceptable source wins.
-_TRADE_PRIORITY: Tuple[str, ...] = ("binance", "okx", "mexc")
+_TRADE_PRIORITY: tuple[str, ...] = ("binance", "okx", "mexc")
 
 # Health gates for promotion to primary
 MIN_DEGRADATION = 0.3
 MAX_AGE_S = 5.0
 
 # Per-symbol active source + cursor (ms epoch of last forwarded trade)
-_active_source: Dict[str, str] = {}
-_cursor: Dict[str, int] = {}
+_active_source: dict[str, str] = {}
+_cursor: dict[str, int] = {}
 
 
-def _is_acceptable(h: Dict[str, Any]) -> bool:
+def _is_acceptable(h: dict[str, Any]) -> bool:
     if not h.get("connected", False):
         return False
     if (h.get("degradation") or 0.0) < MIN_DEGRADATION:
@@ -43,7 +42,7 @@ def _is_acceptable(h: Dict[str, Any]) -> bool:
     return True
 
 
-def _normalize_okx_trade(t: dict) -> Optional[dict]:
+def _normalize_okx_trade(t: dict) -> dict | None:
     try:
         price = float(t.get("price", 0))
         qty = float(t.get("qty", 0))
@@ -62,7 +61,7 @@ def _normalize_okx_trade(t: dict) -> Optional[dict]:
     }
 
 
-def _normalize_mexc_trade(t: dict) -> Optional[dict]:
+def _normalize_mexc_trade(t: dict) -> dict | None:
     try:
         price = float(t.get("price", 0))
         qty = float(t.get("qty", 0))
@@ -80,11 +79,11 @@ def _normalize_mexc_trade(t: dict) -> Optional[dict]:
     }
 
 
-def _raw_trades(venue: str, symbol: str) -> List[dict]:
+def _raw_trades(venue: str, symbol: str) -> list[dict]:
     if venue == "binance":
         return list(binance_data.agg_trades.get(symbol, []))
     if venue == "okx":
-        normed: List[dict] = []
+        normed: list[dict] = []
         for t in list(okx_data.trades.get(symbol, [])):
             n = _normalize_okx_trade(t)
             if n is not None:
@@ -100,7 +99,7 @@ def _raw_trades(venue: str, symbol: str) -> List[dict]:
     return []
 
 
-def select_source(symbol: str, ws_manager: Optional[Any] = None) -> Optional[str]:
+def select_source(symbol: str, ws_manager: Any | None = None) -> str | None:
     """Choose primary trade source for `symbol` based on live health."""
     health = evaluate_feeds(symbol, ws_manager=ws_manager)
     for venue in _TRADE_PRIORITY:
@@ -112,8 +111,8 @@ def select_source(symbol: str, ws_manager: Optional[Any] = None) -> Optional[str
 
 def fetch_new_trades(
     symbol: str,
-    ws_manager: Optional[Any] = None,
-) -> Tuple[Optional[str], List[dict]]:
+    ws_manager: Any | None = None,
+) -> tuple[str | None, list[dict]]:
     """Return `(active_source, list_of_new_trades_since_cursor)`.
 
     Source switch resets the cursor to avoid replaying historical trades from
@@ -144,6 +143,6 @@ def fetch_new_trades(
     return chosen, new_trades
 
 
-def active_sources() -> Dict[str, str]:
+def active_sources() -> dict[str, str]:
     """Snapshot of current primary venue per symbol - for /api/feed/health."""
     return dict(_active_source)

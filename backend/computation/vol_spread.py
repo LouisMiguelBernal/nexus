@@ -14,8 +14,6 @@ volatile than options expect (premium-buyer environment).
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional
-
 
 _SECONDS_PER_YEAR = 365 * 24 * 3600
 
@@ -35,11 +33,11 @@ def _interval_seconds(interval: str) -> int:
     return 900
 
 
-def realized_volatility(closes: List[float], interval: str = "15m") -> Optional[float]:
+def realized_volatility(closes: list[float], interval: str = "15m") -> float | None:
     """Annualized realized vol (%), Parkinson-free close-to-close estimator."""
     if not closes or len(closes) < 8:
         return None
-    rets: List[float] = []
+    rets: list[float] = []
     for i in range(1, len(closes)):
         prev = closes[i - 1]
         cur = closes[i]
@@ -57,10 +55,10 @@ def realized_volatility(closes: List[float], interval: str = "15m") -> Optional[
 
 
 def compute_spread(
-    closes: List[float],
-    iv_pct: Optional[float],
+    closes: list[float],
+    iv_pct: float | None,
     interval: str = "15m",
-) -> Dict:
+) -> dict:
     """Return {rv, iv, spread, regime} where all vols are annualized percent."""
     rv = realized_volatility(closes, interval=interval)
     if rv is None or iv_pct is None:
@@ -75,11 +73,11 @@ def compute_spread(
     spread = iv_pct - rv
     # Classify
     if spread >= 15:
-        regime = "iv_rich"            # premium sellers favored
+        regime = "iv_rich"  # premium sellers favored
     elif spread >= 5:
         regime = "iv_premium"
     elif spread <= -15:
-        regime = "iv_cheap"            # premium buyers favored (spot whippy)
+        regime = "iv_cheap"  # premium buyers favored (spot whippy)
     elif spread <= -5:
         regime = "iv_discount"
     else:

@@ -21,7 +21,7 @@ NO MANUAL OVERRIDE. override_allowed = False.
 import logging
 import time
 from collections import deque
-from typing import Any, Deque, Dict, Optional
+from typing import Any
 
 from backend.config import CIRCUIT_BREAKER
 
@@ -77,9 +77,9 @@ class CircuitBreaker:
         self._day_start_time: float = 0.0
         # Event-trigger log (bounded). Each entry:
         #   {"ts": float, "kind": str, "detail": str, "payload": dict}
-        self._event_log: Deque[Dict[str, Any]] = deque(maxlen=128)
+        self._event_log: deque[dict[str, Any]] = deque(maxlen=128)
         # Rolling correlation snapshots for Δρ detection.
-        self._rho_history: Deque[tuple] = deque(maxlen=240)
+        self._rho_history: deque[tuple] = deque(maxlen=240)
 
     def initialize(self, current_equity: float):
         """Set starting equity values. Call on startup and daily reset."""
@@ -129,21 +129,21 @@ class CircuitBreaker:
         if daily_pct >= CIRCUIT_BREAKER["daily_loss_limit_pct"]:
             self._state.triggered = True
             self._state.signals_suppressed = True
-            self._state.trigger_reason = f"Daily loss {self._state.daily_loss_pct:.2f}% >= {CIRCUIT_BREAKER['daily_loss_limit_pct']*100}%"
+            self._state.trigger_reason = f"Daily loss {self._state.daily_loss_pct:.2f}% >= {CIRCUIT_BREAKER['daily_loss_limit_pct'] * 100}%"
             logger.critical(f"CIRCUIT BREAKER: {self._state.trigger_reason}")
 
         # Weekly loss limit (10%)
         if weekly_pct >= CIRCUIT_BREAKER["weekly_loss_limit_pct"]:
             self._state.triggered = True
             self._state.signals_suppressed = True
-            self._state.trigger_reason = f"Weekly loss {self._state.weekly_loss_pct:.2f}% >= {CIRCUIT_BREAKER['weekly_loss_limit_pct']*100}%"
+            self._state.trigger_reason = f"Weekly loss {self._state.weekly_loss_pct:.2f}% >= {CIRCUIT_BREAKER['weekly_loss_limit_pct'] * 100}%"
             logger.critical(f"CIRCUIT BREAKER: {self._state.trigger_reason}")
 
         # Max drawdown from peak (15%)
         if dd_pct >= CIRCUIT_BREAKER["max_drawdown_from_peak_pct"]:
             self._state.triggered = True
             self._state.signals_suppressed = True
-            self._state.trigger_reason = f"Drawdown {self._state.drawdown_from_peak_pct:.2f}% >= {CIRCUIT_BREAKER['max_drawdown_from_peak_pct']*100}%"
+            self._state.trigger_reason = f"Drawdown {self._state.drawdown_from_peak_pct:.2f}% >= {CIRCUIT_BREAKER['max_drawdown_from_peak_pct'] * 100}%"
             logger.critical(f"CIRCUIT BREAKER: {self._state.trigger_reason}")
 
         return self._state
@@ -182,13 +182,15 @@ class CircuitBreaker:
         self._state.trigger_reason = reason
         logger.critical(f"CIRCUIT BREAKER [event]: {reason}")
 
-    def _log_event(self, kind: str, detail: str, payload: Optional[Dict] = None) -> None:
-        self._event_log.append({
-            "ts": time.time(),
-            "kind": kind,
-            "detail": detail,
-            "payload": payload or {},
-        })
+    def _log_event(self, kind: str, detail: str, payload: dict | None = None) -> None:
+        self._event_log.append(
+            {
+                "ts": time.time(),
+                "kind": kind,
+                "detail": detail,
+                "payload": payload or {},
+            }
+        )
 
     def on_var_breach(self, realized_pnl: float, var_99: float) -> bool:
         """Fire when a realized loss exceeds the 99% VaR envelope."""
@@ -196,13 +198,12 @@ class CircuitBreaker:
             return False
         if abs(realized_pnl) > var_99:
             msg = f"Realized loss {realized_pnl:.2f} exceeds VaR99 {var_99:.2f}"
-            self._log_event("var_breach", msg,
-                            {"realized_pnl": realized_pnl, "var_99": var_99})
+            self._log_event("var_breach", msg, {"realized_pnl": realized_pnl, "var_99": var_99})
             self._trip(msg)
             return True
         return False
 
-    def on_correlation_snapshot(self, avg_rho: float, ts: Optional[float] = None) -> bool:
+    def on_correlation_snapshot(self, avg_rho: float, ts: float | None = None) -> bool:
         """Detect a |Δρ| > threshold spike vs any sample within the rolling window."""
         t = time.time() if ts is None else ts
         cutoff = t - EVENT_THRESHOLDS["correlation_shock_window_s"]
@@ -214,14 +215,13 @@ class CircuitBreaker:
             prev_max = max(abs(avg_rho - old_rho) for _, old_rho in self._rho_history)
             if prev_max >= EVENT_THRESHOLDS["correlation_shock_delta"]:
                 msg = f"Correlation shock |Δρ|={prev_max:.3f} within 1h window"
-                self._log_event("correlation_shock", msg,
-                                {"current_rho": avg_rho, "max_delta": prev_max})
+                self._log_event("correlation_shock", msg, {"current_rho": avg_rho, "max_delta": prev_max})
                 self._trip(msg)
                 shocked = True
         self._rho_history.append((t, avg_rho))
         return shocked
 
-    def on_ws_gap_report(self, gap_report: Dict[str, Any]) -> bool:
+    def on_ws_gap_report(self, gap_report: dict[str, Any]) -> bool:
         """Consume `WSManager.gap_report()` and trip on any outage > threshold."""
         tripped = False
         for stream, bundle in gap_report.items():

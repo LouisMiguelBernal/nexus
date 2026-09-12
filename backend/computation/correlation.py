@@ -12,11 +12,10 @@ to [-1, 1].
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Tuple
 
 
-def _log_returns(closes: List[float]) -> List[float]:
-    out: List[float] = []
+def _log_returns(closes: list[float]) -> list[float]:
+    out: list[float] = []
     for i in range(1, len(closes)):
         p0, p1 = closes[i - 1], closes[i]
         if p0 <= 0 or p1 <= 0:
@@ -25,7 +24,7 @@ def _log_returns(closes: List[float]) -> List[float]:
     return out
 
 
-def _pearson(xs: List[float], ys: List[float]) -> float:
+def _pearson(xs: list[float], ys: list[float]) -> float:
     n = min(len(xs), len(ys))
     if n < 3:
         return 0.0
@@ -36,7 +35,7 @@ def _pearson(xs: List[float], ys: List[float]) -> float:
     num = 0.0
     dx2 = 0.0
     dy2 = 0.0
-    for x, y in zip(xs, ys):
+    for x, y in zip(xs, ys):  # noqa: B905
         a = x - mx
         b = y - my
         num += a * b
@@ -53,7 +52,7 @@ def _pearson(xs: List[float], ys: List[float]) -> float:
     return r
 
 
-def correlation_matrix(series: Dict[str, List[float]], min_bars: int = 20) -> Dict:
+def correlation_matrix(series: dict[str, list[float]], min_bars: int = 20) -> dict:
     """Compute a full symmetric correlation matrix from closes.
 
     Returns:
@@ -64,7 +63,7 @@ def correlation_matrix(series: Dict[str, List[float]], min_bars: int = 20) -> Di
         }
     """
     # Convert to log returns, filter undersized series
-    returns: Dict[str, List[float]] = {}
+    returns: dict[str, list[float]] = {}
     for sym, closes in series.items():
         r = _log_returns(closes or [])
         if len(r) >= min_bars:
@@ -78,9 +77,9 @@ def correlation_matrix(series: Dict[str, List[float]], min_bars: int = 20) -> Di
     aligned = {s: v[-common:] for s, v in returns.items()}
 
     symbols = sorted(aligned.keys())
-    mat: List[List[float]] = []
+    mat: list[list[float]] = []
     for a in symbols:
-        row: List[float] = []
+        row: list[float] = []
         for b in symbols:
             if a == b:
                 row.append(1.0)
@@ -91,11 +90,11 @@ def correlation_matrix(series: Dict[str, List[float]], min_bars: int = 20) -> Di
     return {"symbols": symbols, "matrix": mat, "n_bars": common}
 
 
-def pairwise_sorted(matrix: Dict, limit: int = 10) -> List[Dict]:
+def pairwise_sorted(matrix: dict, limit: int = 10) -> list[dict]:
     """Flatten the upper triangle and return top |r| pairs."""
     symbols = matrix.get("symbols", [])
     m = matrix.get("matrix", [])
-    out: List[Tuple[str, str, float]] = []
+    out: list[tuple[str, str, float]] = []
     for i, a in enumerate(symbols):
         for j in range(i + 1, len(symbols)):
             b = symbols[j]

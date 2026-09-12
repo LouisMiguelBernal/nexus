@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import time
 from collections import deque
-from typing import Deque, Dict, List, Optional, Tuple
 
 
 def _classify_binance(side: str) -> str:
@@ -47,11 +46,11 @@ class LiquidationAggregator:
         self.window_seconds = window_seconds
         self.max_samples = max_samples
         # Events: (ts_seconds, bucket, usd)
-        self._events: Deque[Tuple[float, str, float]] = deque(maxlen=5_000)
+        self._events: deque[tuple[float, str, float]] = deque(maxlen=5_000)
         # Sampled series: (t, long_usd, short_usd, imbalance)
-        self._samples: Deque[Tuple[float, float, float, float]] = deque(maxlen=max_samples)
+        self._samples: deque[tuple[float, float, float, float]] = deque(maxlen=max_samples)
         # Exchange cursors to avoid double counting
-        self._cursors: Dict[str, int] = {"binance": 0, "okx": 0}
+        self._cursors: dict[str, int] = {"binance": 0, "okx": 0}
 
     # ---- ingestion ------------------------------------------------------
     def _ingest_one(self, bucket: str, price: float, qty: float, ts_ms: float) -> None:
@@ -61,13 +60,13 @@ class LiquidationAggregator:
         ts = ts_ms / 1000.0 if ts_ms > 1e12 else float(ts_ms or time.time())
         self._events.append((ts, bucket, usd))
 
-    def ingest_binance(self, liquidations: List[Dict]) -> None:
+    def ingest_binance(self, liquidations: list[dict]) -> None:
         self._ingest_exchange("binance", liquidations, _classify_binance)
 
-    def ingest_okx(self, liquidations: List[Dict]) -> None:
+    def ingest_okx(self, liquidations: list[dict]) -> None:
         self._ingest_exchange("okx", liquidations, _classify_okx)
 
-    def _ingest_exchange(self, name: str, liquidations: List[Dict], classifier) -> None:
+    def _ingest_exchange(self, name: str, liquidations: list[dict], classifier) -> None:
         cursor = self._cursors.get(name, 0)
         # Liquidations list grows append-only; new = tail beyond cursor
         new_len = len(liquidations)
@@ -86,7 +85,7 @@ class LiquidationAggregator:
         self._cursors[name] = new_len
 
     # ---- sampling -------------------------------------------------------
-    def sample(self) -> Dict:
+    def sample(self) -> dict:
         now = time.time()
         # Sample window for the canonical 5m metric.
         cutoff = now - self.window_seconds
@@ -117,7 +116,7 @@ class LiquidationAggregator:
             "window_seconds": self.window_seconds,
         }
 
-    def latest(self) -> Optional[Dict]:
+    def latest(self) -> dict | None:
         if not self._samples:
             return None
         t, lu, su, imb = self._samples[-1]
@@ -128,14 +127,14 @@ class LiquidationAggregator:
             "imbalance": round(imb, 4),
         }
 
-    def series(self, limit: int = 180) -> List[Dict]:
+    def series(self, limit: int = 180) -> list[dict]:
         data = list(self._samples)[-limit:]
         return [
             {"time": t, "long_usd": round(lu, 2), "short_usd": round(su, 2), "imbalance": round(imb, 4)}
             for t, lu, su, imb in data
         ]
 
-    def windowed_flow(self, window_seconds: int) -> Dict:
+    def windowed_flow(self, window_seconds: int) -> dict:
         """Compute long_usd / short_usd / imbalance directly from `_events`
         for an arbitrary lookback window (independent of `self.window_seconds`).
 
@@ -164,7 +163,7 @@ class LiquidationAggregator:
             "available": total > 0,
         }
 
-    def summary(self) -> Dict:
+    def summary(self) -> dict:
         if not self._samples:
             return {
                 "count": 0,

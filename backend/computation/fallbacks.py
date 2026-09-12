@@ -8,11 +8,11 @@ WS, cold start) we substitute a proxy and de-rate confidence accordingly.
 Frontend reads `source ∈ {"direct", "proxy", "none"}` and tints proxy values
 8% lower opacity. Confidence ∈ [0,1] feeds the composite layer-stdev.
 """
+
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, asdict
-from typing import Dict, Optional
+from dataclasses import asdict, dataclass
 
 
 @dataclass
@@ -22,7 +22,7 @@ class Inferred:
     confidence: float  # [0, 1]
     note: str = ""
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         return asdict(self)
 
 
@@ -47,10 +47,11 @@ def absent(note: str = "") -> Inferred:
 # Specific inference recipes
 # ---------------------------------------------------------------------------
 
+
 def infer_top_trader_ratio(
-    cvd_z: Optional[float],
-    funding_z: Optional[float],
-    taker_imbalance: Optional[float],
+    cvd_z: float | None,
+    funding_z: float | None,
+    taker_imbalance: float | None,
 ) -> Inferred:
     """Public top-trader long/short ratio is paid/restricted on most venues.
 
@@ -67,8 +68,8 @@ def infer_top_trader_ratio(
 
 def infer_oi_delta(
     price_change_pct: float,
-    volume_delta_z: Optional[float],
-    liquidation_flux: Optional[float],
+    volume_delta_z: float | None,
+    liquidation_flux: float | None,
 ) -> Inferred:
     """Used when OI WS gap > 60s and snapshot poller hasn't refreshed yet.
 
@@ -84,9 +85,9 @@ def infer_oi_delta(
 
 
 def infer_gex_proxy(
-    options_pcr: Optional[float],
-    dvol: Optional[float],
-    spot_max_pain_dist_pct: Optional[float],
+    options_pcr: float | None,
+    dvol: float | None,
+    spot_max_pain_dist_pct: float | None,
 ) -> Inferred:
     """Dealer-gamma proxy from Deribit aggregate metrics (no per-strike Greeks).
 

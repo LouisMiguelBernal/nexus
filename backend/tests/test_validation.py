@@ -2,18 +2,16 @@
 Verification: P2 validation primitives.
 """
 
-import math
 import random
 
-import pytest
-
-from backend.validation.walk_forward import walk_forward
-from backend.validation.regime_stratified import regime_stratified_kfold
 from backend.validation.combinatorial_purged_cv import combinatorial_purged_cv
-from backend.validation.deflated_sharpe import (
-    deflated_sharpe, expected_max_sharpe,
-)
 from backend.validation.cost_sensitivity import apply_costs, sweep_costs
+from backend.validation.deflated_sharpe import (
+    deflated_sharpe,
+    expected_max_sharpe,
+)
+from backend.validation.regime_stratified import regime_stratified_kfold
+from backend.validation.walk_forward import walk_forward
 
 
 def test_walk_forward_generates_folds_with_expected_cadence():
@@ -28,8 +26,13 @@ def test_walk_forward_generates_folds_with_expected_cadence():
         return [0.001 for _ in test_idx]
 
     out = walk_forward(
-        timestamps, fit, score,
-        train_min_days=90, test_days=30, step_days=7, embargo_days=5,
+        timestamps,
+        fit,
+        score,
+        train_min_days=90,
+        test_days=30,
+        step_days=7,
+        embargo_days=5,
     )
     assert out["n_folds"] > 20
     assert all(f["n_test"] > 0 for f in out["folds"])
@@ -56,8 +59,12 @@ def test_cpcv_generates_expected_number_of_paths():
         return [random.uniform(-0.01, 0.01) for _ in test_idx]
 
     out = combinatorial_purged_cv(
-        n_samples=500, fit=fit, score=score,
-        n_groups=6, n_test_groups=2, embargo=10,
+        n_samples=500,
+        fit=fit,
+        score=score,
+        n_groups=6,
+        n_test_groups=2,
+        embargo=10,
     )
     # C(6, 2) = 15 paths expected.
     assert out["n_paths"] == 15

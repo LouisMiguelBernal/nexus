@@ -5,8 +5,6 @@ Runs 60-second zone check loop + morning brief at 08:00.
 
 import asyncio
 import logging
-import time
-from typing import Optional
 
 from backend.alerts.telegram import TelegramBot
 from backend.storage.alerts import save_alert
@@ -38,7 +36,7 @@ class AlertScheduler:
                     if alerts:
                         for alert in alerts:
                             await self._process_alert(alert)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 logger.error(f"Alert check error: {e}")
             await asyncio.sleep(self._zone_check_interval)
 

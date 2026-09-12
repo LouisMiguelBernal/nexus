@@ -63,8 +63,8 @@ def test_429_without_deadline_uses_exponential_backoff():
 
     # Force the first window to expire, then a second 429 should escalate.
     rg.reset(HOST)
-    rg.record_response(HOST, 429, "rate limited")   # step 0 → 60s
-    rg.record_response(HOST, 429, "rate limited")   # step 1 → 120s
+    rg.record_response(HOST, 429, "rate limited")  # step 0 → 60s
+    rg.record_response(HOST, 429, "rate limited")  # step 1 → 120s
     second = rg.cooldown_remaining(HOST)
     assert 115 <= second <= 121
 
@@ -86,7 +86,7 @@ def test_success_resets_soft_backoff():
 
 def test_cooldown_not_shortened_by_later_soft_backoff():
     until_ms = int((time.time() + 300) * 1000)
-    rg.record_response(HOST, 418, f'banned until {until_ms}')
+    rg.record_response(HOST, 418, f"banned until {until_ms}")
     long_remaining = rg.cooldown_remaining(HOST)
     assert long_remaining > 250
 

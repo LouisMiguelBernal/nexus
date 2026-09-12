@@ -41,6 +41,7 @@ def _snapshot(**overrides) -> dict:
 # Scoring
 # ---------------------------------------------------------------------------
 
+
 def test_quiet_world_scores_near_zero():
     result = instability.compute(_snapshot(), smooth=False)
     assert result["score"] == pytest.approx(0.0, abs=1.0)
@@ -48,8 +49,10 @@ def test_quiet_world_scores_near_zero():
 
 
 def test_all_sources_down_reports_unknown_not_safe():
-    dead = {k: {"available": False, "events": []} for k in
-            ("seismic", "disasters", "space_weather", "wires", "natural")}
+    dead = {
+        k: {"available": False, "events": []}
+        for k in ("seismic", "disasters", "space_weather", "wires", "natural")
+    }
     result = instability.compute(dead, smooth=False)
     assert result["score"] is None
     assert result["band"] == "unknown"
@@ -71,14 +74,16 @@ def test_partial_coverage_renormalises_and_is_reported():
 
 
 def test_conflict_lexicon_drives_the_score():
-    hot = _snapshot(wires={
-        "available": True,
-        "items": [
-            {"title": "Missile strike closes Strait of Hormuz", "summary": "oil supply halted"},
-            {"title": "New sanctions and export ban announced", "summary": "escalation feared"},
-            {"title": "Coup attempt triggers state of emergency", "summary": ""},
-        ],
-    })
+    hot = _snapshot(
+        wires={
+            "available": True,
+            "items": [
+                {"title": "Missile strike closes Strait of Hormuz", "summary": "oil supply halted"},
+                {"title": "New sanctions and export ban announced", "summary": "escalation feared"},
+                {"title": "Coup attempt triggers state of emergency", "summary": ""},
+            ],
+        }
+    )
     quiet = instability.compute(_snapshot(), smooth=False)
     instability.reset_state()
     loud = instability.compute(hot, smooth=False)
@@ -87,12 +92,22 @@ def test_conflict_lexicon_drives_the_score():
 
 
 def test_de_escalation_terms_reduce_pressure():
-    escalating = _snapshot(wires={"available": True, "items": [
-        {"title": "Missile strike reported", "summary": "escalation"},
-    ]})
-    resolving = _snapshot(wires={"available": True, "items": [
-        {"title": "Missile strike reported", "summary": "ceasefire and peace deal agreed"},
-    ]})
+    escalating = _snapshot(
+        wires={
+            "available": True,
+            "items": [
+                {"title": "Missile strike reported", "summary": "escalation"},
+            ],
+        }
+    )
+    resolving = _snapshot(
+        wires={
+            "available": True,
+            "items": [
+                {"title": "Missile strike reported", "summary": "ceasefire and peace deal agreed"},
+            ],
+        }
+    )
     hot = instability.compute(escalating, smooth=False)["components"]["conflict"]
     instability.reset_state()
     cool = instability.compute(resolving, smooth=False)["components"]["conflict"]
@@ -100,10 +115,12 @@ def test_de_escalation_terms_reduce_pressure():
 
 
 def test_single_large_quake_saturates_rather_than_pinning_composite():
-    snap = _snapshot(seismic={
-        "available": True,
-        "events": [{"magnitude": 8.6, "place": "offshore", "tsunami": True}],
-    })
+    snap = _snapshot(
+        seismic={
+            "available": True,
+            "events": [{"magnitude": 8.6, "place": "offshore", "tsunami": True}],
+        }
+    )
     result = instability.compute(snap, smooth=False)
     assert result["components"]["seismic"] == 100.0
     # Seismic carries 12% of the weight; it must not own the composite.
@@ -115,9 +132,11 @@ def test_score_is_bounded_under_every_source_maxed():
         seismic={"available": True, "events": [{"magnitude": 9.5, "tsunami": True}]},
         disasters={"available": True, "events": [{"level": "red"}] * 12},
         space_weather={"available": True, "geomagnetic": 5, "radiation": 5, "radio_blackout": 5},
-        wires={"available": True, "items": [
-            {"title": "nuclear invasion missile sanctions coup", "summary": "escalation blockade"}
-        ] * 20},
+        wires={
+            "available": True,
+            "items": [{"title": "nuclear invasion missile sanctions coup", "summary": "escalation blockade"}]
+            * 20,
+        },
     )
     result = instability.compute(snap, smooth=False)
     assert 0.0 <= result["score"] <= 100.0
@@ -144,7 +163,12 @@ def test_worldmonitor_enrichment_is_optional():
     instability.reset_state()
     with_wm = instability.compute(
         _snapshot(),
-        {"available": True, "peak_score": 90.0, "mean_top5": 70.0, "countries": [{"country": "X", "score": 90.0}]},
+        {
+            "available": True,
+            "peak_score": 90.0,
+            "mean_top5": 70.0,
+            "countries": [{"country": "X", "score": 90.0}],
+        },
         smooth=False,
     )
     assert with_wm["enriched"] is True
@@ -209,6 +233,7 @@ def test_worldmonitor_reports_why_it_is_unavailable():
 # ---------------------------------------------------------------------------
 # Macro gate overlay
 # ---------------------------------------------------------------------------
+
 
 class _NoEventsCalendar:
     def get_active_danger_windows(self):
@@ -296,9 +321,16 @@ def test_status_dict_keeps_its_existing_keys():
     """The frontend binds these names; adding fields must not remove any."""
     status = GateStatus().to_dict()
     for key in (
-        "is_restricted", "status", "active_tier", "active_event",
-        "confidence_threshold", "max_position_pct", "leverage_cap",
-        "new_positions_allowed", "minutes_until_event", "minutes_until_clear",
+        "is_restricted",
+        "status",
+        "active_tier",
+        "active_event",
+        "confidence_threshold",
+        "max_position_pct",
+        "leverage_cap",
+        "new_positions_allowed",
+        "minutes_until_event",
+        "minutes_until_clear",
     ):
         assert key in status, f"missing legacy key {key}"
     for key in ("geo_score", "geo_band", "geo_tier", "sources"):

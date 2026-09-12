@@ -11,9 +11,9 @@ import math
 import pytest
 
 from backend.computation.alpha_engine import (
-    AlphaEngine,
-    WEIGHTS_BY_REGIME,
     SIGNAL_WEIGHTS,
+    WEIGHTS_BY_REGIME,
+    AlphaEngine,
 )
 
 
@@ -50,7 +50,7 @@ def test_engine_selects_different_weights_under_trending_vs_ranging():
     info = engine._classify_regime(trending_klines)
     w_trending = engine._select_weights(info["regime"])
     assert info["regime"] in ("trending_bull", "trending_bear", "ranging", "volatile", "low_liq")
-    trending_regime = info["regime"]
+    trending_regime = info["regime"]  # noqa: F841
 
     # Now flip to a ranging regime: oscillate tightly around 150.
     ranging_klines = [_mk_kline(150 + math.sin(i / 2.0) * 0.3) for i in range(50)]
@@ -72,8 +72,14 @@ def test_engine_selects_different_weights_under_trending_vs_ranging():
 
 def test_pinned_weights_override_regime_selection():
     custom = {
-        "ofi": 1.0, "vwap_deviation": 0, "funding_arb": 0, "cross_exchange_spread": 0,
-        "liquidation_cascade": 0, "delta_divergence": 0, "smart_money_flow": 0, "vol_regime": 0,
+        "ofi": 1.0,
+        "vwap_deviation": 0,
+        "funding_arb": 0,
+        "cross_exchange_spread": 0,
+        "liquidation_cascade": 0,
+        "delta_divergence": 0,
+        "smart_money_flow": 0,
+        "vol_regime": 0,
     }
     engine = AlphaEngine(symbol="BTCUSDT", binance_data=None, weights=custom)
     assert engine._weights_pinned is True

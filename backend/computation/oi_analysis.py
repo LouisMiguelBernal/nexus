@@ -3,11 +3,10 @@ Nexus - Open Interest Analysis
 Tracks OI trends across exchanges and generates signals.
 """
 
+import logging
 import math
 import time
-import logging
 from collections import deque
-from typing import Dict, List, Optional
 
 import httpx
 
@@ -40,9 +39,9 @@ class OITracker:
     def __init__(self, symbol: str = "BTCUSDT"):
         self.symbol = symbol
         self._history: deque = deque(maxlen=1000)
-        self._last_oi: Dict[str, float] = {}
+        self._last_oi: dict[str, float] = {}
 
-    async def fetch_binance_oi(self) -> Optional[float]:
+    async def fetch_binance_oi(self) -> float | None:
         # Skip entirely while Binance has us rate-limit banned - hammering the
         # endpoint during a ban only extends it.
         if should_skip(BINANCE_FUTURES_HOST):
@@ -58,11 +57,11 @@ class OITracker:
                 oi = float(data.get("openInterest", 0))
                 self._last_oi["binance"] = oi
                 return oi
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Binance OI fetch error: {e}")
             return None
 
-    async def fetch_okx_oi(self) -> Optional[float]:
+    async def fetch_okx_oi(self) -> float | None:
         try:
             inst_id = self.symbol.replace("USDT", "-USDT-SWAP")
             url = f"{OKX_BASE}/api/v5/public/open-interest"
@@ -74,11 +73,11 @@ class OITracker:
                     oi = float(items[0].get("oi", 0))
                     self._last_oi["okx"] = oi
                     return oi
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"OKX OI fetch error: {e}")
         return None
 
-    async def fetch_all(self) -> Dict[str, float]:
+    async def fetch_all(self) -> dict[str, float]:
         """Fetch OI from all exchanges concurrently.
 
         Graceful degradation: if a venue's call fails on this tick, that
@@ -88,6 +87,7 @@ class OITracker:
         records which venues actually contributed via `sources`.
         """
         import asyncio
+
         results = await asyncio.gather(
             self.fetch_binance_oi(),
             self.fetch_okx_oi(),
@@ -96,7 +96,7 @@ class OITracker:
         venues = ("binance", "okx")
         per_venue = {}
         sources = []
-        for venue, result in zip(venues, results):
+        for venue, result in zip(venues, results):  # noqa: B905
             ok = isinstance(result, (int, float)) and result is not None and result > 0
             if ok:
                 per_venue[venue] = float(result)
@@ -119,7 +119,7 @@ class OITracker:
             self._history.append(snapshot)
         return snapshot
 
-    def get_trend(self, lookback_minutes: int = 60) -> Dict:
+    def get_trend(self, lookback_minutes: int = 60) -> dict:
         """Analyze OI trend over the lookback period."""
         if len(self._history) < 2:
             return {"trend": "insufficient_data", "change_pct": 0}
@@ -149,7 +149,7 @@ class OITracker:
     # OI-momentum factor (P1-5) - Liu & Tsyvinski (AER 2021)
     # ------------------------------------------------------------------
 
-    def roc_zscore(self, window: str = "4h", *, baseline_window: str = "7d") -> Dict:
+    def roc_zscore(self, window: str = "4h", *, baseline_window: str = "7d") -> dict:
         """Rate-of-change z-score of total OI.
 
         The numerator is the log ROC over `window`; the denominator is the
@@ -160,6 +160,7 @@ class OITracker:
         Parameters are parsed as `{n}h` or `{n}d`; defaults 4h / 7d match
         the plan's factor spec.
         """
+
         def _parse(s: str) -> float:
             s = s.strip().lower()
             if s.endswith("h"):
@@ -186,7 +187,7 @@ class OITracker:
                 "reason": "insufficient_data",
             }
 
-        def _oi_at(target_ts: float) -> Optional[float]:
+        def _oi_at(target_ts: float) -> float | None:
             """Find the history sample closest to target_ts (nearest neighbor)."""
             best = None
             best_dt = None
@@ -200,15 +201,21 @@ class OITracker:
         current_oi = self._history[-1]["total"]
         past_oi = _oi_at(now - w_s)
         if not current_oi or not past_oi:
-            return {"zscore": 0.0, "roc_pct": 0.0, "samples": len(self._history),
-                    "score": 0.0, "direction": "flat", "reason": "no valid reference OI"}
+            return {
+                "zscore": 0.0,
+                "roc_pct": 0.0,
+                "samples": len(self._history),
+                "score": 0.0,
+                "direction": "flat",
+                "reason": "no valid reference OI",
+            }
 
         current_log_roc = math.log(current_oi / past_oi) if past_oi > 0 else 0.0
 
         # Build the baseline distribution of log ROCs over non-overlapping
         # windows spanning `baseline_window`.
         cutoff = now - base_s
-        baseline: List[float] = []
+        baseline: list[float] = []
         # Walk through history sampling roughly every `w_s` seconds.
         last_ts = None
         last_oi = None
@@ -256,7 +263,7 @@ class OITracker:
             "direction": direction,
         }
 
-    def classify_signal(self, price_change_pct: float) -> Dict:
+    def classify_signal(self, price_change_pct: float) -> dict:
         """
         Classify OI + price action into a signal.
         price_change_pct: price change over same period as OI lookback.

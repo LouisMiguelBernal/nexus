@@ -20,7 +20,7 @@ References
 """
 
 import logging
-from typing import Dict, List, Mapping, Optional
+from collections.abc import Mapping
 
 from backend.config import KELLY_CONFIG
 
@@ -29,8 +29,8 @@ logger = logging.getLogger("nexus.kelly")
 
 def _max_abs_correlation(
     symbol: str,
-    open_positions: Optional[List[str]],
-    correlations: Optional[Mapping[str, float]],
+    open_positions: list[str] | None,
+    correlations: Mapping[str, float] | None,
 ) -> float:
     """Return max |ρ| between *symbol* and each symbol in *open_positions*.
 
@@ -83,12 +83,12 @@ class KellySizer:
         *,
         # Optional vol / correlation inputs (P0-2). When absent we degrade to
         # classic Kelly so existing callers keep working.
-        symbol: Optional[str] = None,
-        atr_pct: Optional[float] = None,
-        realized_vol_24h: Optional[float] = None,
-        correlations: Optional[Mapping[str, float]] = None,
-        open_positions: Optional[List[str]] = None,
-    ) -> Dict:
+        symbol: str | None = None,
+        atr_pct: float | None = None,
+        realized_vol_24h: float | None = None,
+        correlations: Mapping[str, float] | None = None,
+        open_positions: list[str] | None = None,
+    ) -> dict:
         """Compute Kelly-optimal position size.
 
         Parameters
@@ -177,7 +177,7 @@ class KellySizer:
         if usable_collateral <= 0:
             return {
                 "position_usd": 0,
-                "reason": f"Insufficient free margin (buffer: {self.margin_buffer*100}%)",
+                "reason": f"Insufficient free margin (buffer: {self.margin_buffer * 100}%)",
                 "kelly_raw": round(kelly_raw, 6),
                 "kelly_final": round(kelly_after_corr, 6),
                 "b_source": b_source,

@@ -3,7 +3,6 @@ Nexus - Trade Journal Storage
 """
 
 import logging
-from typing import Dict, List, Optional
 
 from backend.storage.db import get_connection
 
@@ -12,32 +11,35 @@ logger = logging.getLogger("nexus.storage.journal")
 
 def log_trade(trade: dict) -> int:
     conn = get_connection()
-    cursor = conn.execute("""
+    cursor = conn.execute(
+        """
         INSERT INTO trade_journal (symbol, side, entry_price, exit_price, leverage,
                                    size_usd, pnl_usd, pnl_pct, zone_tier, zone_type,
                                    macro_status, notes, entry_time, exit_time)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        trade.get("symbol"),
-        trade.get("side"),
-        trade.get("entry_price"),
-        trade.get("exit_price"),
-        trade.get("leverage", 1),
-        trade.get("size_usd"),
-        trade.get("pnl_usd"),
-        trade.get("pnl_pct"),
-        trade.get("zone_tier"),
-        trade.get("zone_type"),
-        trade.get("macro_status"),
-        trade.get("notes"),
-        trade.get("entry_time"),
-        trade.get("exit_time"),
-    ))
+    """,
+        (
+            trade.get("symbol"),
+            trade.get("side"),
+            trade.get("entry_price"),
+            trade.get("exit_price"),
+            trade.get("leverage", 1),
+            trade.get("size_usd"),
+            trade.get("pnl_usd"),
+            trade.get("pnl_pct"),
+            trade.get("zone_tier"),
+            trade.get("zone_type"),
+            trade.get("macro_status"),
+            trade.get("notes"),
+            trade.get("entry_time"),
+            trade.get("exit_time"),
+        ),
+    )
     conn.commit()
     return cursor.lastrowid
 
 
-def get_trades(symbol: Optional[str] = None, limit: int = 100) -> List[Dict]:
+def get_trades(symbol: str | None = None, limit: int = 100) -> list[dict]:
     conn = get_connection()
     if symbol:
         rows = conn.execute(
@@ -51,7 +53,7 @@ def get_trades(symbol: Optional[str] = None, limit: int = 100) -> List[Dict]:
     return [dict(r) for r in rows]
 
 
-def get_performance_stats() -> Dict:
+def get_performance_stats() -> dict:
     conn = get_connection()
     row = conn.execute("""
         SELECT

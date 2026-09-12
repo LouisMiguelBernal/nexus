@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import statistics
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 from backend.ingestion.feed_validator import (
     evaluate_feeds,
@@ -25,8 +25,8 @@ from backend.ingestion.feed_validator import (
 
 def compute_weighted_mid(
     symbol: str,
-    ws_manager: Optional[Any] = None,
-) -> Dict[str, Any]:
+    ws_manager: Any | None = None,
+) -> dict[str, Any]:
     """Compute the weighted mid for `symbol`.
 
     Returns
@@ -44,11 +44,11 @@ def compute_weighted_mid(
     health = evaluate_feeds(sym, ws_manager=ws_manager)
     weights = normalized_dynamic_weights(sym, ws_manager=ws_manager)
 
-    components: Dict[str, Dict[str, Any]] = {}
+    components: dict[str, dict[str, Any]] = {}
     weighted_total = 0.0
     weight_sum = 0.0
     available_mids = []
-    degradations: Dict[str, float] = {}
+    degradations: dict[str, float] = {}
 
     for venue, h in health.items():
         mid = h.get("mid")

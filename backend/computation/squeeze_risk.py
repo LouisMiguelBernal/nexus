@@ -5,16 +5,12 @@ probability score for long/short cascading liquidations.
 """
 
 import logging
-import time
-from typing import Dict, Optional
 
 import httpx
 
 from backend.config import (
     BINANCE_FUTURES_BASE,
     BINANCE_FUTURES_ENDPOINTS,
-    LS_RATIO_THRESHOLDS,
-    FUNDING_THRESHOLDS,
 )
 from backend.ingestion.rate_guard import (
     BINANCE_FUTURES_HOST,
@@ -31,21 +27,24 @@ class SqueezeRiskMeter:
 
     def __init__(self, symbol: str = "BTCUSDT"):
         self.symbol = symbol
-        self._ls_ratio: Optional[float] = None
-        self._top_ls_ratio: Optional[float] = None
+        self._ls_ratio: float | None = None
+        self._top_ls_ratio: float | None = None
 
-    async def fetch_ls_ratio(self) -> Optional[float]:
+    async def fetch_ls_ratio(self) -> float | None:
         """Fetch global long/short account ratio from Binance."""
         if should_skip(BINANCE_FUTURES_HOST):
             return None
         try:
             url = f"{BINANCE_FUTURES_BASE}{BINANCE_FUTURES_ENDPOINTS['ls_ratio']}"
             async with httpx.AsyncClient(timeout=10) as client:
-                resp = await client.get(url, params={
-                    "symbol": self.symbol,
-                    "period": "5m",
-                    "limit": 1,
-                })
+                resp = await client.get(
+                    url,
+                    params={
+                        "symbol": self.symbol,
+                        "period": "5m",
+                        "limit": 1,
+                    },
+                )
                 if record_response(BINANCE_FUTURES_HOST, resp.status_code, resp.text):
                     return None
                 record_success(BINANCE_FUTURES_HOST)
@@ -53,22 +52,25 @@ class SqueezeRiskMeter:
                 if data:
                     self._ls_ratio = float(data[-1].get("longShortRatio", 1.0))
                     return self._ls_ratio
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"L/S ratio fetch error: {e}")
         return None
 
-    async def fetch_top_trader_ls(self) -> Optional[float]:
+    async def fetch_top_trader_ls(self) -> float | None:
         """Fetch top trader long/short position ratio from Binance."""
         if should_skip(BINANCE_FUTURES_HOST):
             return None
         try:
             url = f"{BINANCE_FUTURES_BASE}{BINANCE_FUTURES_ENDPOINTS['top_ls']}"
             async with httpx.AsyncClient(timeout=10) as client:
-                resp = await client.get(url, params={
-                    "symbol": self.symbol,
-                    "period": "5m",
-                    "limit": 1,
-                })
+                resp = await client.get(
+                    url,
+                    params={
+                        "symbol": self.symbol,
+                        "period": "5m",
+                        "limit": 1,
+                    },
+                )
                 if record_response(BINANCE_FUTURES_HOST, resp.status_code, resp.text):
                     return None
                 record_success(BINANCE_FUTURES_HOST)
@@ -76,7 +78,7 @@ class SqueezeRiskMeter:
                 if data:
                     self._top_ls_ratio = float(data[-1].get("longShortRatio", 1.0))
                     return self._top_ls_ratio
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Top trader L/S error: {e}")
         return None
 
@@ -87,9 +89,9 @@ class SqueezeRiskMeter:
     _REGIME_MULT = {
         "trending_bull": {"long": 0.85, "short": 1.20},
         "trending_bear": {"long": 1.20, "short": 0.85},
-        "ranging":       {"long": 0.80, "short": 0.80},
-        "volatile":      {"long": 1.25, "short": 1.25},
-        "low_liq":       {"long": 1.15, "short": 1.15},
+        "ranging": {"long": 0.80, "short": 0.80},
+        "volatile": {"long": 1.25, "short": 1.25},
+        "low_liq": {"long": 1.15, "short": 1.15},
         "insufficient_data": {"long": 1.0, "short": 1.0},
     }
 
@@ -97,11 +99,11 @@ class SqueezeRiskMeter:
         self,
         funding_rate_pct: float,
         oi_change_pct: float,
-        ls_ratio: Optional[float] = None,
+        ls_ratio: float | None = None,
         nearest_liq_distance_pct: float = 5.0,
-        regime: Optional[str] = None,
-        vpin: Optional[float] = None,
-    ) -> Dict:
+        regime: str | None = None,
+        vpin: float | None = None,
+    ) -> dict:
         """
         Compute squeeze risk scores.
 
@@ -158,7 +160,9 @@ class SqueezeRiskMeter:
             "regime": regime_key,
             "regime_mult": mult,
             "vpin": round(vpin, 4) if vpin is not None else None,
-            "alert_level": "critical" if max(long_squeeze_risk, short_squeeze_risk) > 70
-                          else "elevated" if max(long_squeeze_risk, short_squeeze_risk) > 40
-                          else "normal",
+            "alert_level": "critical"
+            if max(long_squeeze_risk, short_squeeze_risk) > 70
+            else "elevated"
+            if max(long_squeeze_risk, short_squeeze_risk) > 40
+            else "normal",
         }

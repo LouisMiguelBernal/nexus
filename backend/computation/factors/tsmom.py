@@ -41,14 +41,14 @@ Output contract (alpha_engine-compatible)
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional, Sequence
+from collections.abc import Sequence
 
 # Annualization for hourly bars: sqrt(24 · 365) ≈ 93.3
 _HOURLY_ANNUALIZATION = math.sqrt(24 * 365)
 
 
-def _returns_from_closes(closes: Sequence[float]) -> List[float]:
-    out: List[float] = []
+def _returns_from_closes(closes: Sequence[float]) -> list[float]:
+    out: list[float] = []
     for i in range(1, len(closes)):
         prev = closes[i - 1]
         curr = closes[i]
@@ -74,7 +74,7 @@ def compute_tsmom(
     vol_hours: int = 72,
     target_vol_annual: float = 0.15,
     max_scale: float = 2.0,
-) -> Dict:
+) -> dict:
     """Vol-scaled TSMOM on 1h closes.
 
     Parameters
@@ -113,7 +113,7 @@ def compute_tsmom(
         }
     formation_return = (p_end - p_start) / p_start
 
-    rets = _returns_from_closes(closes_1h[-vol_hours - 1:])
+    rets = _returns_from_closes(closes_1h[-vol_hours - 1 :])
     realized_vol_h = _std(rets)
     realized_vol_annual = realized_vol_h * _HOURLY_ANNUALIZATION
 
@@ -154,8 +154,8 @@ def compute_tsmom(
 
 
 def tsmom_portfolio(
-    closes_by_symbol: Dict[str, Sequence[float]],
+    closes_by_symbol: dict[str, Sequence[float]],
     **kwargs,
-) -> Dict[str, Dict]:
+) -> dict[str, dict]:
     """Convenience: run TSMOM across a universe. Returns `{symbol: compute_tsmom(...)}`."""
     return {sym: compute_tsmom(closes, **kwargs) for sym, closes in closes_by_symbol.items()}

@@ -10,10 +10,11 @@ Hurst, gives a 2D regime map:
 
 Normalized to [0, 1] so it composes with other layer scores cleanly.
 """
+
 from __future__ import annotations
 
 import math
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -25,7 +26,7 @@ def _shannon(probs: np.ndarray) -> float:
     return float(-(p * np.log2(p)).sum())
 
 
-def sign_entropy(returns: Sequence[float], k_bins: int = 3) -> Optional[float]:
+def sign_entropy(returns: Sequence[float], k_bins: int = 3) -> float | None:
     """Normalized entropy of return *signs* (down/flat/up) over the window.
 
     k_bins=3 (down/flat/up). Flat bucket uses tolerance = 0.1·σ to avoid
@@ -47,7 +48,7 @@ def sign_entropy(returns: Sequence[float], k_bins: int = 3) -> Optional[float]:
     return float(H / H_max) if H_max > 0 else 0.0
 
 
-def entropy_score(H_norm: Optional[float]) -> float:
+def entropy_score(H_norm: float | None) -> float:
     """Map normalized entropy ∈ [0,1] to alpha layer ∈ [-1,+1].
 
     Low entropy = structure = +1 (trending or coherent). High entropy = chop = -1.

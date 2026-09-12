@@ -17,20 +17,16 @@ Algorithm:
 8. Classify zone type (support/resistance/magnet/void/absorption)
 """
 
-import time
 import logging
+import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
-
-import numpy as np
 
 from backend.config import (
+    BIN_SIZE_USD,
     EXCHANGE_WEIGHTS,
     FUZZY_TOLERANCE,
-    ZONE_TIERS,
     PERSISTENCE_HOURS,
-    BIN_SIZE_USD,
-    ZONE_TYPES,
+    ZONE_TIERS,
 )
 
 logger = logging.getLogger("nexus.golden_zone")
@@ -39,6 +35,7 @@ logger = logging.getLogger("nexus.golden_zone")
 @dataclass
 class LiquidityCluster:
     """A detected liquidity cluster on a single exchange."""
+
     exchange: str
     price: float
     bid_depth: float  # USD value of bids at this level
@@ -51,15 +48,16 @@ class LiquidityCluster:
 @dataclass
 class GoldenZone:
     """A validated multi-exchange liquidity zone."""
+
     price_low: float
     price_high: float
     price_center: float
     zone_type: str  # support, resistance, magnet, void, absorption
     tier: str  # bronze, silver, golden, platinum
     score: float
-    exchanges: List[str]
+    exchanges: list[str]
     exchange_count: int
-    clusters: List[LiquidityCluster]
+    clusters: list[LiquidityCluster]
     first_seen: float
     last_seen: float
     persistent: bool  # True if held for PERSISTENCE_HOURS
@@ -113,8 +111,8 @@ class GoldenZoneEngine:
     def __init__(self, symbol: str = "BTCUSDT"):
         self.symbol = symbol
         self._bin_size = BIN_SIZE_USD.get(symbol, BIN_SIZE_USD["DEFAULT"])
-        self._exchange_books: Dict[str, dict] = {}  # {exchange: {"bids": [...], "asks": [...]}}
-        self._zone_history: Dict[str, GoldenZone] = {}  # {zone_key: GoldenZone}
+        self._exchange_books: dict[str, dict] = {}  # {exchange: {"bids": [...], "asks": [...]}}
+        self._zone_history: dict[str, GoldenZone] = {}  # {zone_key: GoldenZone}
         self._top_n_bins = 20  # Top N bins per exchange to consider
 
     def update_order_book(self, exchange: str, order_book: dict):
@@ -122,12 +120,12 @@ class GoldenZoneEngine:
         if order_book and ("bids" in order_book or "asks" in order_book):
             self._exchange_books[exchange] = order_book
 
-    def _bin_order_book(self, exchange: str) -> Dict[float, LiquidityCluster]:
+    def _bin_order_book(self, exchange: str) -> dict[float, LiquidityCluster]:
         """Bin an exchange's order book into price buckets."""
         book = self._exchange_books.get(exchange, {})
         bids = book.get("bids", [])
         asks = book.get("asks", [])
-        bins: Dict[float, dict] = {}
+        bins: dict[float, dict] = {}
 
         for price, qty in bids:
             if price <= 0:
@@ -157,14 +155,14 @@ class GoldenZoneEngine:
             )
         return clusters
 
-    def _get_top_bins(self, clusters: Dict[float, LiquidityCluster]) -> List[LiquidityCluster]:
+    def _get_top_bins(self, clusters: dict[float, LiquidityCluster]) -> list[LiquidityCluster]:
         """Get the top N bins by total depth."""
         sorted_clusters = sorted(
             clusters.values(),
             key=lambda c: c.bid_depth + c.ask_depth,
             reverse=True,
         )
-        return sorted_clusters[:self._top_n_bins]
+        return sorted_clusters[: self._top_n_bins]
 
     def _fuzzy_match(self, price_a: float, price_b: float) -> bool:
         """Check if two prices are within FUZZY_TOLERANCE (±0.05%)."""
@@ -202,7 +200,7 @@ class GoldenZoneEngine:
         """Generate a unique key for a zone based on its center price."""
         return f"{self.symbol}_{price_center:.2f}"
 
-    def detect_zones(self) -> List[GoldenZone]:
+    def detect_zones(self) -> list[GoldenZone]:
         """
         Run full Golden Zone detection across all available exchanges.
         Returns list of detected zones sorted by score (highest first).
@@ -211,7 +209,7 @@ class GoldenZoneEngine:
             return []
 
         # Step 1-2: Bin each exchange's order book, get top clusters
-        exchange_top_bins: Dict[str, List[LiquidityCluster]] = {}
+        exchange_top_bins: dict[str, list[LiquidityCluster]] = {}
         for exchange in self._exchange_books:
             clusters = self._bin_order_book(exchange)
             top = self._get_top_bins(clusters)
@@ -226,7 +224,7 @@ class GoldenZoneEngine:
         anchor_exchange = "binance" if "binance" in exchange_top_bins else list(exchange_top_bins.keys())[0]
         anchor_bins = exchange_top_bins[anchor_exchange]
 
-        zones: List[GoldenZone] = []
+        zones: list[GoldenZone] = []
         now = time.time()
 
         for anchor_cluster in anchor_bins:
@@ -298,10 +296,7 @@ class GoldenZoneEngine:
                 zones.append(zone)
 
         # Prune stale zones (not seen in 4 hours)
-        stale_keys = [
-            k for k, z in self._zone_history.items()
-            if now - z.last_seen > 4 * 3600
-        ]
+        stale_keys = [k for k, z in self._zone_history.items() if now - z.last_seen > 4 * 3600]
         for k in stale_keys:
             del self._zone_history[k]
 
@@ -309,13 +304,10 @@ class GoldenZoneEngine:
         zones.sort(key=lambda z: z.score, reverse=True)
         return zones
 
-    def get_persistent_zones(self) -> List[GoldenZone]:
+    def get_persistent_zones(self) -> list[GoldenZone]:
         """Get only zones that have passed the persistence filter."""
         return [z for z in self.detect_zones() if z.persistent]
 
-    def get_golden_plus_zones(self) -> List[GoldenZone]:
+    def get_golden_plus_zones(self) -> list[GoldenZone]:
         """Get only golden and platinum tier zones."""
-        return [
-            z for z in self.detect_zones()
-            if z.tier in ("golden", "platinum")
-        ]
+        return [z for z in self.detect_zones() if z.tier in ("golden", "platinum")]

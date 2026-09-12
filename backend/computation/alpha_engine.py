@@ -12,7 +12,7 @@ import statistics
 import time
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 try:
     # Regime classifier - regime-conditional factor loading (P0-1).
@@ -23,7 +23,7 @@ except ImportError:  # pragma: no cover - local-dev fallback
     try:
         from . import regime as _regime_module  # type: ignore
         from .regime import RegimeClassifier  # type: ignore
-    except Exception:
+    except Exception:  # noqa: BLE001
         _regime_module = None  # type: ignore
         RegimeClassifier = None  # type: ignore
 
@@ -33,6 +33,7 @@ logger = logging.getLogger("nexus.alpha_engine")
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AlphaSignal:
@@ -62,6 +63,7 @@ class AlphaSignal:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _clamp(value: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, value))
@@ -93,7 +95,7 @@ def _ema(values: list[float], span: int) -> float:
 # ---------------------------------------------------------------------------
 
 # Default signal weights for composite scoring (regime-neutral baseline)
-SIGNAL_WEIGHTS: Dict[str, float] = {
+SIGNAL_WEIGHTS: dict[str, float] = {
     "ofi": 0.18,
     "vwap_deviation": 0.12,
     "funding_arb": 0.10,
@@ -121,40 +123,75 @@ assert abs(sum(SIGNAL_WEIGHTS.values()) - 1.0) < 1e-6, "Signal weights must sum 
 #   funding_carry  (P1-1) - contrarian to annualized funding crowding
 #   tsmom          (P1-3) - vol-scaled 12h/1h time-series momentum
 #   oi_momentum    (P1-5) - OI rate-of-change z-score
-WEIGHTS_BY_REGIME: Dict[str, Dict[str, float]] = {
+WEIGHTS_BY_REGIME: dict[str, dict[str, float]] = {
     "trending_bull": {
-        "ofi": 0.18, "vwap_deviation": 0.04, "funding_arb": 0.06,
-        "cross_exchange_spread": 0.06, "liquidation_cascade": 0.10,
-        "delta_divergence": 0.10, "smart_money_flow": 0.14, "vol_regime": 0.08,
-        "tsmom": 0.10, "oi_momentum": 0.06, "funding_carry": 0.04,
+        "ofi": 0.18,
+        "vwap_deviation": 0.04,
+        "funding_arb": 0.06,
+        "cross_exchange_spread": 0.06,
+        "liquidation_cascade": 0.10,
+        "delta_divergence": 0.10,
+        "smart_money_flow": 0.14,
+        "vol_regime": 0.08,
+        "tsmom": 0.10,
+        "oi_momentum": 0.06,
+        "funding_carry": 0.04,
         "squeeze": 0.04,
     },
     "trending_bear": {
-        "ofi": 0.18, "vwap_deviation": 0.04, "funding_arb": 0.06,
-        "cross_exchange_spread": 0.06, "liquidation_cascade": 0.10,
-        "delta_divergence": 0.10, "smart_money_flow": 0.14, "vol_regime": 0.08,
-        "tsmom": 0.10, "oi_momentum": 0.06, "funding_carry": 0.04,
+        "ofi": 0.18,
+        "vwap_deviation": 0.04,
+        "funding_arb": 0.06,
+        "cross_exchange_spread": 0.06,
+        "liquidation_cascade": 0.10,
+        "delta_divergence": 0.10,
+        "smart_money_flow": 0.14,
+        "vol_regime": 0.08,
+        "tsmom": 0.10,
+        "oi_momentum": 0.06,
+        "funding_carry": 0.04,
         "squeeze": 0.04,
     },
     "ranging": {
-        "ofi": 0.10, "vwap_deviation": 0.12, "funding_arb": 0.10,
-        "cross_exchange_spread": 0.10, "liquidation_cascade": 0.06,
-        "delta_divergence": 0.10, "smart_money_flow": 0.08, "vol_regime": 0.08,
-        "tsmom": 0.04, "oi_momentum": 0.04, "funding_carry": 0.10,
+        "ofi": 0.10,
+        "vwap_deviation": 0.12,
+        "funding_arb": 0.10,
+        "cross_exchange_spread": 0.10,
+        "liquidation_cascade": 0.06,
+        "delta_divergence": 0.10,
+        "smart_money_flow": 0.08,
+        "vol_regime": 0.08,
+        "tsmom": 0.04,
+        "oi_momentum": 0.04,
+        "funding_carry": 0.10,
         "squeeze": 0.08,
     },
     "volatile": {
-        "ofi": 0.12, "vwap_deviation": 0.08, "funding_arb": 0.08,
-        "cross_exchange_spread": 0.08, "liquidation_cascade": 0.10,
-        "delta_divergence": 0.07, "smart_money_flow": 0.11, "vol_regime": 0.08,
-        "tsmom": 0.06, "oi_momentum": 0.06, "funding_carry": 0.06,
+        "ofi": 0.12,
+        "vwap_deviation": 0.08,
+        "funding_arb": 0.08,
+        "cross_exchange_spread": 0.08,
+        "liquidation_cascade": 0.10,
+        "delta_divergence": 0.07,
+        "smart_money_flow": 0.11,
+        "vol_regime": 0.08,
+        "tsmom": 0.06,
+        "oi_momentum": 0.06,
+        "funding_carry": 0.06,
         "squeeze": 0.10,
     },
     "low_liq": {
-        "ofi": 0.06, "vwap_deviation": 0.08, "funding_arb": 0.10,
-        "cross_exchange_spread": 0.10, "liquidation_cascade": 0.08,
-        "delta_divergence": 0.08, "smart_money_flow": 0.10, "vol_regime": 0.10,
-        "tsmom": 0.04, "oi_momentum": 0.04, "funding_carry": 0.10,
+        "ofi": 0.06,
+        "vwap_deviation": 0.08,
+        "funding_arb": 0.10,
+        "cross_exchange_spread": 0.10,
+        "liquidation_cascade": 0.08,
+        "delta_divergence": 0.08,
+        "smart_money_flow": 0.10,
+        "vol_regime": 0.10,
+        "tsmom": 0.04,
+        "oi_momentum": 0.04,
+        "funding_carry": 0.10,
         "squeeze": 0.12,
     },
     # Fallback (8-factor legacy). New P1 factors (incl. squeeze) get zero
@@ -165,9 +202,7 @@ WEIGHTS_BY_REGIME: Dict[str, Dict[str, float]] = {
 # Sanity check each regime profile sums to 1.
 for _regime_name, _profile in WEIGHTS_BY_REGIME.items():
     _total = sum(_profile.values())
-    assert abs(_total - 1.0) < 1e-6, (
-        f"Regime '{_regime_name}' weights must sum to 1, got {_total:.6f}"
-    )
+    assert abs(_total - 1.0) < 1e-6, f"Regime '{_regime_name}' weights must sum to 1, got {_total:.6f}"
 
 
 # ---------------------------------------------------------------------------
@@ -178,9 +213,7 @@ for _regime_name, _profile in WEIGHTS_BY_REGIME.items():
 # (see backend/computation/regime.py) so that every consumer - this engine, the
 # matrix router and the /api/alpha and /api/brief routes - reads the same
 # conditioned label. Re-exported here because this is where callers look for it.
-set_regime_conditioner = (
-    _regime_module.set_conditioner if _regime_module is not None else (lambda _fn: None)
-)
+set_regime_conditioner = _regime_module.set_conditioner if _regime_module is not None else (lambda _fn: None)
 
 
 class AlphaEngine:
@@ -197,7 +230,7 @@ class AlphaEngine:
         symbol: str,
         binance_data: Any = None,
         *,
-        weights: Optional[Dict[str, float]] = None,
+        weights: dict[str, float] | None = None,
     ):
         self.symbol = symbol.upper()
         self.binance_data = binance_data
@@ -210,16 +243,16 @@ class AlphaEngine:
         # Regime classifier for regime-conditional factor loading (P0-1).
         # Lives for the life of the engine instance; safe to reuse across cycles.
         self._regime_classifier = RegimeClassifier() if RegimeClassifier is not None else None
-        self._last_regime: Dict[str, Any] = {"regime": "insufficient_data", "confidence": 0.0}
+        self._last_regime: dict[str, Any] = {"regime": "insufficient_data", "confidence": 0.0}
 
         # Internal rolling stores
         self._ofi_history: deque[float] = deque(maxlen=300)
-        self._vwap_prices: deque[Tuple[float, float]] = deque(maxlen=10_000)
-        self._spread_history: deque[Dict[str, float]] = deque(maxlen=300)
+        self._vwap_prices: deque[tuple[float, float]] = deque(maxlen=10_000)
+        self._spread_history: deque[dict[str, float]] = deque(maxlen=300)
         self._vol_history: deque[float] = deque(maxlen=500)
 
         # Cache last composite
-        self._last_composite: Optional[dict] = None
+        self._last_composite: dict | None = None
 
         logger.info("AlphaEngine initialised for %s", self.symbol)
 
@@ -227,7 +260,7 @@ class AlphaEngine:
     # Regime-conditional weight selection (P0-1)
     # ------------------------------------------------------------------
 
-    def _classify_regime(self, klines: Optional[List[Dict[str, Any]]]) -> Dict[str, Any]:
+    def _classify_regime(self, klines: list[dict[str, Any]] | None) -> dict[str, Any]:
         """Classify current regime from provided klines; cache last known.
 
         *klines* is an iterable of dicts with keys {close, volume, high, low}.
@@ -249,7 +282,7 @@ class AlphaEngine:
             logger.exception("regime classification failed for %s", self.symbol)
             return self._last_regime
 
-    def _select_weights(self, regime_label: str) -> Dict[str, float]:
+    def _select_weights(self, regime_label: str) -> dict[str, float]:
         """Pick weight profile for the current regime, honoring pinned weights."""
         if self._weights_pinned:
             return self._weights
@@ -262,7 +295,7 @@ class AlphaEngine:
     # Data accessors (thin helpers over BinanceFuturesData)
     # ------------------------------------------------------------------
 
-    def _get_order_book(self) -> Optional[dict]:
+    def _get_order_book(self) -> dict | None:
         if self.binance_data is None:
             return None
         return self.binance_data.order_books.get(self.symbol)
@@ -272,7 +305,7 @@ class AlphaEngine:
             return deque()
         return self.binance_data.agg_trades.get(self.symbol, deque())
 
-    def _get_mark_price_info(self) -> Optional[dict]:
+    def _get_mark_price_info(self) -> dict | None:
         if self.binance_data is None:
             return None
         return self.binance_data.mark_prices.get(self.symbol)
@@ -326,8 +359,12 @@ class AlphaEngine:
         total = bid_pressure + ask_pressure
         if total < 1e-12:
             return AlphaSignal(
-                name="ofi", direction="neutral", strength=0.0,
-                confidence=0.0, reasoning="Zero liquidity", timeframe="scalp",
+                name="ofi",
+                direction="neutral",
+                strength=0.0,
+                confidence=0.0,
+                reasoning="Zero liquidity",
+                timeframe="scalp",
             )
 
         imbalance = (bid_pressure - ask_pressure) / total  # range [-1, 1]
@@ -370,8 +407,12 @@ class AlphaEngine:
         trades = self._get_agg_trades()
         if len(trades) < 20:
             return AlphaSignal(
-                name="vwap_deviation", direction="neutral", strength=0.0,
-                confidence=0.0, reasoning="Insufficient trade data", timeframe="intraday",
+                name="vwap_deviation",
+                direction="neutral",
+                strength=0.0,
+                confidence=0.0,
+                reasoning="Insufficient trade data",
+                timeframe="intraday",
             )
 
         # Compute VWAP over recent trades
@@ -387,8 +428,12 @@ class AlphaEngine:
 
         if v_sum < 1e-12:
             return AlphaSignal(
-                name="vwap_deviation", direction="neutral", strength=0.0,
-                confidence=0.0, reasoning="Zero volume", timeframe="intraday",
+                name="vwap_deviation",
+                direction="neutral",
+                strength=0.0,
+                confidence=0.0,
+                reasoning="Zero volume",
+                timeframe="intraday",
             )
 
         vwap = pv_sum / v_sum
@@ -411,7 +456,9 @@ class AlphaEngine:
             direction = "long"  # below VWAP, expect reversion
 
         strength = _clamp(abs(z_dev) * 20.0, 0.0, 100.0)
-        confidence = _clamp(min(len(prices) / 500.0, 1.0) * (0.5 + 0.5 * min(abs(z_dev) / 3.0, 1.0)), 0.0, 1.0)
+        confidence = _clamp(
+            min(len(prices) / 500.0, 1.0) * (0.5 + 0.5 * min(abs(z_dev) / 3.0, 1.0)), 0.0, 1.0
+        )
 
         return AlphaSignal(
             name="vwap_deviation",
@@ -430,7 +477,7 @@ class AlphaEngine:
     # 3. Funding Rate Arbitrage
     # ==================================================================
 
-    def compute_funding_arb(self, funding_data: Optional[dict] = None) -> AlphaSignal:
+    def compute_funding_arb(self, funding_data: dict | None = None) -> AlphaSignal:
         """
         Detect extreme funding and signal mean reversion.
 
@@ -447,8 +494,12 @@ class AlphaEngine:
             mp = self._get_mark_price_info()
             if mp is None:
                 return AlphaSignal(
-                    name="funding_arb", direction="neutral", strength=0.0,
-                    confidence=0.0, reasoning="No funding data", timeframe="swing",
+                    name="funding_arb",
+                    direction="neutral",
+                    strength=0.0,
+                    confidence=0.0,
+                    reasoning="No funding data",
+                    timeframe="swing",
                 )
             funding_data = {
                 "weighted_rate": mp.get("funding_rate", 0.0),
@@ -468,8 +519,12 @@ class AlphaEngine:
 
         if abs_rate < 0.0001:
             return AlphaSignal(
-                name="funding_arb", direction="neutral", strength=0.0,
-                confidence=0.4, reasoning=f"Funding neutral: {rate*100:.4f}%", timeframe="swing",
+                name="funding_arb",
+                direction="neutral",
+                strength=0.0,
+                confidence=0.4,
+                reasoning=f"Funding neutral: {rate * 100:.4f}%",
+                timeframe="swing",
             )
 
         # Positive funding => longs pay shorts => bearish mean reversion
@@ -492,8 +547,8 @@ class AlphaEngine:
             strength_raw=rate,
             confidence=confidence,
             reasoning=(
-                f"Funding rate={rate*100:.4f}%, annualised={funding_data.get('annualized', 0):.1f}%, "
-                f"cross-exchange spread={spread*100:.4f}%"
+                f"Funding rate={rate * 100:.4f}%, annualised={funding_data.get('annualized', 0):.1f}%, "
+                f"cross-exchange spread={spread * 100:.4f}%"
             ),
             timeframe="swing",
         )
@@ -502,7 +557,7 @@ class AlphaEngine:
     # 4. Cross-Exchange Spread
     # ==================================================================
 
-    def compute_cross_exchange_spread(self, all_data: Optional[dict] = None) -> AlphaSignal:
+    def compute_cross_exchange_spread(self, all_data: dict | None = None) -> AlphaSignal:
         """
         Detect price dislocations between exchanges.
 
@@ -515,15 +570,23 @@ class AlphaEngine:
         """
         if all_data is None or len(all_data) < 2:
             return AlphaSignal(
-                name="cross_exchange_spread", direction="neutral", strength=0.0,
-                confidence=0.0, reasoning="Insufficient cross-exchange data", timeframe="scalp",
+                name="cross_exchange_spread",
+                direction="neutral",
+                strength=0.0,
+                confidence=0.0,
+                reasoning="Insufficient cross-exchange data",
+                timeframe="scalp",
             )
 
         prices = {k: v.get("mid_price", 0) for k, v in all_data.items() if v.get("mid_price", 0) > 0}
         if len(prices) < 2:
             return AlphaSignal(
-                name="cross_exchange_spread", direction="neutral", strength=0.0,
-                confidence=0.0, reasoning="Too few valid prices", timeframe="scalp",
+                name="cross_exchange_spread",
+                direction="neutral",
+                strength=0.0,
+                confidence=0.0,
+                reasoning="Too few valid prices",
+                timeframe="scalp",
             )
 
         price_list = list(prices.values())
@@ -571,8 +634,8 @@ class AlphaEngine:
 
     def compute_liquidation_cascade(
         self,
-        oi_data: Optional[dict] = None,
-        funding_data: Optional[dict] = None,
+        oi_data: dict | None = None,
+        funding_data: dict | None = None,
     ) -> AlphaSignal:
         """
         Estimate liquidation cascade risk.
@@ -586,7 +649,7 @@ class AlphaEngine:
         """
         liqs = self._get_liquidations()
         mp_info = self._get_mark_price_info()
-        mark_price = mp_info.get("mark_price", 0) if mp_info else 0
+        mark_price = mp_info.get("mark_price", 0) if mp_info else 0  # noqa: F841
         funding_rate = mp_info.get("funding_rate", 0) if mp_info else 0
 
         if oi_data:
@@ -594,7 +657,7 @@ class AlphaEngine:
             oi_change = oi_data.get("oi_change_pct", 0)
             ls_ratio = oi_data.get("long_short_ratio", 1.0)
         else:
-            oi_usd = 0
+            oi_usd = 0  # noqa: F841
             oi_change = 0
             ls_ratio = 1.0
 
@@ -604,9 +667,10 @@ class AlphaEngine:
         liq_usd_total = sum(liq.get("usd_value", liq["price"] * liq["qty"]) for liq in recent_liqs)
         long_liq_usd = sum(
             liq.get("usd_value", liq["price"] * liq["qty"])
-            for liq in recent_liqs if liq.get("side", "") == "SELL"
+            for liq in recent_liqs
+            if liq.get("side", "") == "SELL"
         )
-        short_liq_usd = liq_usd_total - long_liq_usd
+        short_liq_usd = liq_usd_total - long_liq_usd  # noqa: F841
 
         # Score components
         cascade_score = 0.0
@@ -620,7 +684,7 @@ class AlphaEngine:
         # Extreme funding => one side is crowded
         if abs(funding_rate) > 0.0003:
             cascade_score += 15.0
-            reasons.append(f"Extreme funding {funding_rate*100:.4f}%")
+            reasons.append(f"Extreme funding {funding_rate * 100:.4f}%")
 
         # Lopsided L/S ratio
         if ls_ratio > 1.5 or ls_ratio < 0.67:
@@ -643,9 +707,12 @@ class AlphaEngine:
 
         strength = _clamp(cascade_score, 0.0, 100.0)
         confidence = _clamp(
-            0.2 + 0.3 * (1 if oi_data else 0) + 0.3 * min(len(recent_liqs) / 10, 1.0)
+            0.2
+            + 0.3 * (1 if oi_data else 0)
+            + 0.3 * min(len(recent_liqs) / 10, 1.0)
             + 0.2 * min(abs(funding_rate) / 0.0005, 1.0),
-            0.0, 1.0,
+            0.0,
+            1.0,
         )
 
         return AlphaSignal(
@@ -662,7 +729,7 @@ class AlphaEngine:
     # 6. Delta Divergence (Price vs CVD)
     # ==================================================================
 
-    def compute_delta_divergence(self, cvd_data: Optional[dict] = None) -> AlphaSignal:
+    def compute_delta_divergence(self, cvd_data: dict | None = None) -> AlphaSignal:
         """
         Detect price vs cumulative volume delta divergence.
 
@@ -680,8 +747,12 @@ class AlphaEngine:
         trades = self._get_agg_trades()
         if cvd_data is None and len(trades) < 50:
             return AlphaSignal(
-                name="delta_divergence", direction="neutral", strength=0.0,
-                confidence=0.0, reasoning="Insufficient data for divergence", timeframe="intraday",
+                name="delta_divergence",
+                direction="neutral",
+                strength=0.0,
+                confidence=0.0,
+                reasoning="Insufficient data for divergence",
+                timeframe="intraday",
             )
 
         # Build CVD locally if not provided
@@ -704,8 +775,12 @@ class AlphaEngine:
             first_half = trade_list[:mid]
             second_half = trade_list[mid:]
 
-            cvd_first = sum(-t["price"] * t["qty"] if t["is_buyer_maker"] else t["price"] * t["qty"] for t in first_half)
-            cvd_second = sum(-t["price"] * t["qty"] if t["is_buyer_maker"] else t["price"] * t["qty"] for t in second_half)
+            cvd_first = sum(
+                -t["price"] * t["qty"] if t["is_buyer_maker"] else t["price"] * t["qty"] for t in first_half
+            )
+            cvd_second = sum(
+                -t["price"] * t["qty"] if t["is_buyer_maker"] else t["price"] * t["qty"] for t in second_half
+            )
 
             price_first = statistics.mean([t["price"] for t in first_half]) if first_half else 0
             price_second = statistics.mean([t["price"] for t in second_half]) if second_half else 0
@@ -740,10 +815,15 @@ class AlphaEngine:
             divergence_magnitude = 0.0
 
         strength = _clamp(divergence_magnitude * 10.0, 0.0, 100.0) if direction != "neutral" else 0.0
-        confidence = _clamp(
-            0.3 + 0.4 * min(divergence_magnitude / 5.0, 1.0) + 0.3 * min(len(trades) / 1000, 1.0),
-            0.0, 1.0,
-        ) if direction != "neutral" else 0.1
+        confidence = (
+            _clamp(
+                0.3 + 0.4 * min(divergence_magnitude / 5.0, 1.0) + 0.3 * min(len(trades) / 1000, 1.0),
+                0.0,
+                1.0,
+            )
+            if direction != "neutral"
+            else 0.1
+        )
 
         return AlphaSignal(
             name="delta_divergence",
@@ -769,8 +849,12 @@ class AlphaEngine:
 
         if len(trades) < 30:
             return AlphaSignal(
-                name="smart_money_flow", direction="neutral", strength=0.0,
-                confidence=0.0, reasoning="Insufficient trade data", timeframe="intraday",
+                name="smart_money_flow",
+                direction="neutral",
+                strength=0.0,
+                confidence=0.0,
+                reasoning="Insufficient trade data",
+                timeframe="intraday",
             )
 
         trade_list = list(trades)
@@ -797,8 +881,12 @@ class AlphaEngine:
         total_large = large_buy_usd + large_sell_usd
         if total_large < 1e-9:
             return AlphaSignal(
-                name="smart_money_flow", direction="neutral", strength=0.0,
-                confidence=0.1, reasoning="No significant large trades", timeframe="intraday",
+                name="smart_money_flow",
+                direction="neutral",
+                strength=0.0,
+                confidence=0.1,
+                reasoning="No significant large trades",
+                timeframe="intraday",
             )
 
         # Net large flow
@@ -828,7 +916,8 @@ class AlphaEngine:
         strength = _clamp(abs(combined) * 80.0, 0.0, 100.0)
         confidence = _clamp(
             0.2 + 0.5 * min(large_count / 50.0, 1.0) + 0.3 * abs(combined),
-            0.0, 1.0,
+            0.0,
+            1.0,
         )
 
         return AlphaSignal(
@@ -848,7 +937,7 @@ class AlphaEngine:
     # 8. Volatility Regime Shift
     # ==================================================================
 
-    def compute_vol_regime(self, deribit_data: Optional[dict] = None) -> AlphaSignal:
+    def compute_vol_regime(self, deribit_data: dict | None = None) -> AlphaSignal:
         """
         Detect transitions between volatility regimes.
 
@@ -861,8 +950,12 @@ class AlphaEngine:
         trades = self._get_agg_trades()
         if len(trades) < 30:
             return AlphaSignal(
-                name="vol_regime", direction="neutral", strength=0.0,
-                confidence=0.0, reasoning="Insufficient data for vol analysis", timeframe="swing",
+                name="vol_regime",
+                direction="neutral",
+                strength=0.0,
+                confidence=0.0,
+                reasoning="Insufficient data for vol analysis",
+                timeframe="swing",
             )
 
         # Compute realized vol from log returns
@@ -877,8 +970,12 @@ class AlphaEngine:
 
         if len(log_returns) < 10:
             return AlphaSignal(
-                name="vol_regime", direction="neutral", strength=0.0,
-                confidence=0.0, reasoning="Not enough returns for vol calc", timeframe="swing",
+                name="vol_regime",
+                direction="neutral",
+                strength=0.0,
+                confidence=0.0,
+                reasoning="Not enough returns for vol calc",
+                timeframe="swing",
             )
 
         rv = _safe_stdev(log_returns, 5) * math.sqrt(len(log_returns))  # period vol
@@ -886,7 +983,9 @@ class AlphaEngine:
 
         # Vol regime classification
         recent_vol = statistics.mean(list(self._vol_history)[-20:]) if len(self._vol_history) >= 5 else rv
-        older_vol = statistics.mean(list(self._vol_history)[-100:-20]) if len(self._vol_history) >= 50 else recent_vol
+        older_vol = (
+            statistics.mean(list(self._vol_history)[-100:-20]) if len(self._vol_history) >= 50 else recent_vol
+        )
         vol_change = (recent_vol - older_vol) / older_vol if older_vol > 1e-12 else 0.0
 
         # Compare RV to IV if Deribit data available
@@ -900,26 +999,32 @@ class AlphaEngine:
         # Regime shift = vol expansion/compression
         if vol_change > 0.5:
             direction = "neutral"  # vol expanding = uncertain direction, but important signal
-            reasoning = f"Vol EXPANDING: recent={recent_vol:.6f} vs older={older_vol:.6f} (+{vol_change*100:.0f}%)"
+            reasoning = (
+                f"Vol EXPANDING: recent={recent_vol:.6f} vs older={older_vol:.6f} (+{vol_change * 100:.0f}%)"
+            )
         elif vol_change < -0.3:
             direction = "neutral"
-            reasoning = f"Vol COMPRESSING: recent={recent_vol:.6f} vs older={older_vol:.6f} ({vol_change*100:.0f}%)"
+            reasoning = (
+                f"Vol COMPRESSING: recent={recent_vol:.6f} vs older={older_vol:.6f} ({vol_change * 100:.0f}%)"
+            )
         else:
             direction = "neutral"
             reasoning = f"Vol stable: {recent_vol:.6f}"
 
         # VRP signal: high IV vs low RV = sell vol (usually short gamma)
         if vrp > 0.2 and iv > 0:
-            reasoning += f" | IV premium {vrp*100:.0f}% (sell vol bias)"
+            reasoning += f" | IV premium {vrp * 100:.0f}% (sell vol bias)"
         elif vrp < -0.2 and iv > 0:
             reasoning += " | RV > IV (buy vol bias)"
 
         strength = _clamp(abs(vol_change) * 80.0, 0.0, 100.0)
         confidence = _clamp(
-            0.2 + 0.4 * min(len(self._vol_history) / 100.0, 1.0)
+            0.2
+            + 0.4 * min(len(self._vol_history) / 100.0, 1.0)
             + 0.2 * (1.0 if iv > 0 else 0.0)
             + 0.2 * min(abs(vol_change), 1.0),
-            0.0, 1.0,
+            0.0,
+            1.0,
         )
 
         return AlphaSignal(
@@ -939,7 +1044,7 @@ class AlphaEngine:
     @staticmethod
     def _score_to_signal(
         name: str,
-        payload: Optional[Dict[str, Any]],
+        payload: dict[str, Any] | None,
         *,
         timeframe: str,
         reason_prefix: str,
@@ -954,8 +1059,11 @@ class AlphaEngine:
         """
         if not payload:
             return AlphaSignal(
-                name=name, direction="neutral", strength=0.0,
-                confidence=0.0, reasoning=f"{reason_prefix}: no data",
+                name=name,
+                direction="neutral",
+                strength=0.0,
+                confidence=0.0,
+                reasoning=f"{reason_prefix}: no data",
                 timeframe=timeframe,
             )
         try:
@@ -973,13 +1081,18 @@ class AlphaEngine:
 
         # Summarize a few diagnostic fields for the reasoning trace.
         diag_bits: list[str] = []
-        for key in ("annualized_carry_pct", "scale", "zscore", "roc_pct",
-                    "realized_vol_annual", "direction", "interpretation"):
+        for key in (
+            "annualized_carry_pct",
+            "scale",
+            "zscore",
+            "roc_pct",
+            "realized_vol_annual",
+            "direction",
+            "interpretation",
+        ):
             if key in payload and payload[key] is not None:
                 diag_bits.append(f"{key}={payload[key]}")
-        reasoning = f"{reason_prefix}: score={raw:+.3f}" + (
-            "; " + ", ".join(diag_bits) if diag_bits else ""
-        )
+        reasoning = f"{reason_prefix}: score={raw:+.3f}" + ("; " + ", ".join(diag_bits) if diag_bits else "")
 
         return AlphaSignal(
             name=name,
@@ -991,28 +1104,34 @@ class AlphaEngine:
             timeframe=timeframe,
         )
 
-    def compute_funding_carry(self, carry_data: Optional[Dict[str, Any]]) -> AlphaSignal:
+    def compute_funding_carry(self, carry_data: dict[str, Any] | None) -> AlphaSignal:
         """Adapter for `FundingTracker.carry_signal()` output (P1-1)."""
         return self._score_to_signal(
-            "funding_carry", carry_data, timeframe="swing",
+            "funding_carry",
+            carry_data,
+            timeframe="swing",
             reason_prefix="Funding carry",
         )
 
-    def compute_tsmom(self, tsmom_data: Optional[Dict[str, Any]]) -> AlphaSignal:
+    def compute_tsmom(self, tsmom_data: dict[str, Any] | None) -> AlphaSignal:
         """Adapter for `factors.tsmom.compute_tsmom()` output (P1-3)."""
         return self._score_to_signal(
-            "tsmom", tsmom_data, timeframe="intraday",
+            "tsmom",
+            tsmom_data,
+            timeframe="intraday",
             reason_prefix="TSMOM",
         )
 
-    def compute_oi_momentum(self, oi_momentum_data: Optional[Dict[str, Any]]) -> AlphaSignal:
+    def compute_oi_momentum(self, oi_momentum_data: dict[str, Any] | None) -> AlphaSignal:
         """Adapter for `OITracker.roc_zscore()` output (P1-5)."""
         return self._score_to_signal(
-            "oi_momentum", oi_momentum_data, timeframe="intraday",
+            "oi_momentum",
+            oi_momentum_data,
+            timeframe="intraday",
             reason_prefix="OI-momentum",
         )
 
-    def compute_squeeze(self, squeeze_data: Optional[Dict[str, Any]]) -> AlphaSignal:
+    def compute_squeeze(self, squeeze_data: dict[str, Any] | None) -> AlphaSignal:
         """Adapter for `SqueezeRiskMeter.compute()` output (P1-A).
 
         SqueezeRiskMeter returns ``long_squeeze_risk_pct`` /
@@ -1041,7 +1160,10 @@ class AlphaEngine:
             ),
         }
         return self._score_to_signal(
-            "squeeze", adapted, timeframe="intraday", reason_prefix="Squeeze",
+            "squeeze",
+            adapted,
+            timeframe="intraday",
+            reason_prefix="Squeeze",
         )
 
     # ==================================================================
@@ -1050,17 +1172,17 @@ class AlphaEngine:
 
     def generate_composite(
         self,
-        funding_data: Optional[dict] = None,
-        all_exchange_data: Optional[dict] = None,
-        oi_data: Optional[dict] = None,
-        cvd_data: Optional[dict] = None,
-        deribit_data: Optional[dict] = None,
-        klines: Optional[List[Dict[str, Any]]] = None,
+        funding_data: dict | None = None,
+        all_exchange_data: dict | None = None,
+        oi_data: dict | None = None,
+        cvd_data: dict | None = None,
+        deribit_data: dict | None = None,
+        klines: list[dict[str, Any]] | None = None,
         *,
-        funding_carry_data: Optional[Dict[str, Any]] = None,
-        tsmom_data: Optional[Dict[str, Any]] = None,
-        oi_momentum_data: Optional[Dict[str, Any]] = None,
-        squeeze_data: Optional[Dict[str, Any]] = None,
+        funding_carry_data: dict[str, Any] | None = None,
+        tsmom_data: dict[str, Any] | None = None,
+        oi_momentum_data: dict[str, Any] | None = None,
+        squeeze_data: dict[str, Any] | None = None,
     ) -> dict:
         """
         Compute all individual signals and combine into a single composite.

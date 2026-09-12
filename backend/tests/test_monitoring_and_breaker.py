@@ -8,15 +8,14 @@ Plan clause:
 
 import time
 
-from backend.monitoring.latency_slo import LatencyTracker, LatencySLO
+from backend.monitoring.latency_slo import LatencySLO, LatencyTracker
 from backend.monitoring.staleness import StalenessDetector
 from backend.risk.circuit_breaker import CircuitBreaker
 
 
 def test_latency_tracker_flags_budget_breach():
     tracker = LatencyTracker(
-        slos=[LatencySLO(stream="binance_trade", budget_ms=250.0,
-                         breach_window=10, breach_threshold=5)],
+        slos=[LatencySLO(stream="binance_trade", budget_ms=250.0, breach_window=10, breach_threshold=5)],
     )
     # 10 samples, 6 of which exceed the budget - should trip.
     for _ in range(4):
@@ -50,8 +49,12 @@ def test_staleness_detector_flags_idle_feed():
 def test_staleness_ingests_gap_report():
     det = StalenessDetector()
     mock_report = {
-        "binance": {"connected": True, "last_event_time": time.time() - 5.0,
-                    "seconds_since_last_event": 5.0, "gap_log": []},
+        "binance": {
+            "connected": True,
+            "last_event_time": time.time() - 5.0,
+            "seconds_since_last_event": 5.0,
+            "gap_log": [],
+        },
     }
     det.ingest_gap_report(mock_report)
     assert "binance" in det._arrivals
@@ -66,10 +69,16 @@ def test_circuit_breaker_event_triggers():
     # Reset to try another trigger
     cb2 = CircuitBreaker()
     # WS outage via mocked gap_report
-    tripped = cb2.on_ws_gap_report({
-        "binance": {"connected": True, "last_event_time": 0,
-                    "seconds_since_last_event": 120.0, "gap_log": []},
-    })
+    tripped = cb2.on_ws_gap_report(
+        {
+            "binance": {
+                "connected": True,
+                "last_event_time": 0,
+                "seconds_since_last_event": 120.0,
+                "gap_log": [],
+            },
+        }
+    )
     assert tripped is True
     assert cb2.state.trigger_reason.startswith("WS stream")
 

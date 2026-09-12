@@ -18,8 +18,9 @@ Ch. 7. Embargo rationale: Ch. 7 §3.2.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, asdict
-from typing import Any, Callable, Dict, List, Protocol, Sequence
+from collections.abc import Callable, Sequence
+from dataclasses import asdict, dataclass
+from typing import Any, Protocol
 
 
 class _HasIndex(Protocol):
@@ -61,14 +62,14 @@ def _sharpe(returns: Sequence[float], annualization: float = math.sqrt(365)) -> 
 def walk_forward(
     timestamps: Sequence[float],
     fit: Callable[[Sequence[int]], Any],
-    score: Callable[[Any, Sequence[int]], List[float]],
+    score: Callable[[Any, Sequence[int]], list[float]],
     *,
     train_min_days: float = 90.0,
     test_days: float = 30.0,
     step_days: float = 7.0,
     embargo_days: float = 5.0,
     annualization: float = math.sqrt(365),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Execute anchored walk-forward validation.
 
     Parameters
@@ -99,8 +100,8 @@ def walk_forward(
     t0 = timestamps[0]
     t_end = timestamps[-1]
 
-    folds: List[Fold] = []
-    oos_all: List[float] = []
+    folds: list[Fold] = []
+    oos_all: list[float] = []
     train_end_t = t0 + train_min_days * day_s
 
     fold_idx = 0
@@ -122,24 +123,27 @@ def walk_forward(
         mean_r = sum(test_returns) / len(test_returns) if test_returns else 0.0
         fold_std = (
             math.sqrt(sum((r - mean_r) ** 2 for r in test_returns) / max(len(test_returns) - 1, 1))
-            if len(test_returns) >= 2 else 0.0
+            if len(test_returns) >= 2
+            else 0.0
         )
         hit = sum(1 for r in test_returns if r > 0) / len(test_returns) if test_returns else 0.0
 
-        folds.append(Fold(
-            fold_idx=fold_idx,
-            train_start=t0,
-            train_end=train_end_t,
-            test_start=test_start_t,
-            test_end=test_end_t,
-            n_train=len(train_idx),
-            n_test=len(test_idx),
-            sharpe=_sharpe(test_returns, annualization),
-            mean_return=mean_r,
-            std_return=fold_std,
-            hit_rate=hit,
-            pnl_sum=sum(test_returns),
-        ))
+        folds.append(
+            Fold(
+                fold_idx=fold_idx,
+                train_start=t0,
+                train_end=train_end_t,
+                test_start=test_start_t,
+                test_end=test_end_t,
+                n_train=len(train_idx),
+                n_test=len(test_idx),
+                sharpe=_sharpe(test_returns, annualization),
+                mean_return=mean_r,
+                std_return=fold_std,
+                hit_rate=hit,
+                pnl_sum=sum(test_returns),
+            )
+        )
 
         fold_idx += 1
         train_end_t += step_days * day_s

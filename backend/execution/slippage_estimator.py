@@ -26,15 +26,15 @@ plus goodness-of-fit. The slope maps 1-to-1 to the `eta` parameter in
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence
 
 
 @dataclass
 class SlippageFit:
     n: int
-    alpha_bps: float          # intercept
-    eta: float                # slope on sqrt(participation)
+    alpha_bps: float  # intercept
+    eta: float  # slope on sqrt(participation)
     r_squared: float
     residual_std_bps: float
 
@@ -47,10 +47,10 @@ def _signed_slippage_bps(fill_price: float, mid: float, side: str) -> float:
     return sign * (fill_price - mid) / mid * 10_000.0
 
 
-def fit_slippage(trades: Sequence[Dict]) -> Optional[SlippageFit]:
+def fit_slippage(trades: Sequence[dict]) -> SlippageFit | None:
     """OLS fit: slippage_bps ~ alpha + eta · sqrt(participation)."""
-    xs: List[float] = []
-    ys: List[float] = []
+    xs: list[float] = []
+    ys: list[float] = []
     for t in trades:
         notional = float(t.get("notional", 0.0))
         adv = float(t.get("adv_notional", 0.0))
@@ -58,9 +58,7 @@ def fit_slippage(trades: Sequence[Dict]) -> Optional[SlippageFit]:
             continue
         participation = min(1.0, notional / adv)
         xs.append(math.sqrt(participation))
-        ys.append(_signed_slippage_bps(
-            float(t["fill_price"]), float(t["mid_at_send"]), str(t["side"])
-        ))
+        ys.append(_signed_slippage_bps(float(t["fill_price"]), float(t["mid_at_send"]), str(t["side"])))
 
     n = len(xs)
     if n < 10:
@@ -68,7 +66,7 @@ def fit_slippage(trades: Sequence[Dict]) -> Optional[SlippageFit]:
 
     mean_x = sum(xs) / n
     mean_y = sum(ys) / n
-    sxy = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys))
+    sxy = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys))  # noqa: B905
     sxx = sum((x - mean_x) ** 2 for x in xs)
     if sxx <= 1e-12:
         return None
@@ -76,7 +74,7 @@ def fit_slippage(trades: Sequence[Dict]) -> Optional[SlippageFit]:
     alpha = mean_y - eta * mean_x
 
     preds = [alpha + eta * x for x in xs]
-    ss_res = sum((y - p) ** 2 for y, p in zip(ys, preds))
+    ss_res = sum((y - p) ** 2 for y, p in zip(ys, preds))  # noqa: B905
     ss_tot = sum((y - mean_y) ** 2 for y in ys)
     r2 = 1.0 - ss_res / ss_tot if ss_tot > 1e-12 else 0.0
     resid_std = math.sqrt(ss_res / max(n - 2, 1))

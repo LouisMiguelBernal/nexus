@@ -4,7 +4,6 @@ Accounts for cross-margin, isolated margin, and portfolio margin modes.
 """
 
 import logging
-from typing import Dict
 
 logger = logging.getLogger("nexus.liquidation")
 
@@ -23,7 +22,7 @@ def estimate_liquidation_price(
     maintenance_margin_rate: float = 0.004,  # Binance default for BTC
     wallet_balance: float = 0.0,  # For cross/portfolio margin
     total_position_margin: float = 0.0,  # Margin allocated to this position
-) -> Dict:
+) -> dict:
     """
     Estimate liquidation price for a leveraged position.
 
@@ -48,7 +47,11 @@ def estimate_liquidation_price(
             liq_price = entry_price * (1 + 1 / leverage - mmr)
     else:
         # Cross/Portfolio: effective leverage is lower due to shared collateral
-        position_notional = entry_price * (total_position_margin * leverage) / entry_price if total_position_margin > 0 else entry_price
+        position_notional = (
+            entry_price * (total_position_margin * leverage) / entry_price
+            if total_position_margin > 0
+            else entry_price
+        )
         effective_margin_ratio = wallet_balance / max(position_notional, 1)
 
         if side == "LONG":
@@ -75,7 +78,7 @@ def compute_leverage_utilisation(
     total_collateral: float,
     total_position_notional: float,
     maintenance_margin_total: float,
-) -> Dict:
+) -> dict:
     """
     Compute portfolio-level leverage utilisation.
 
@@ -101,9 +104,12 @@ def compute_leverage_utilisation(
         "liquidation_buffer_pct": round(liquidation_buffer * 100, 2),
         "max_additional_position_usd": round(max_additional, 2),
         "health": (
-            "critical" if margin_ratio > 0.8
-            else "warning" if margin_ratio > 0.6
-            else "elevated" if margin_ratio > 0.4
+            "critical"
+            if margin_ratio > 0.8
+            else "warning"
+            if margin_ratio > 0.6
+            else "elevated"
+            if margin_ratio > 0.4
             else "healthy"
         ),
     }

@@ -24,15 +24,13 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Dict, Optional
-
 
 # Default fee schedule in basis points. Override per-symbol at runtime.
 _DEFAULT_FEES_BPS = {
     "binance": {"taker": 4.0, "maker": 2.0},
-    "okx":     {"taker": 5.0, "maker": 2.0},
-    "mexc":    {"taker": 5.0, "maker": 0.0},
-    "blofin":  {"taker": 6.0, "maker": 2.0},
+    "okx": {"taker": 5.0, "maker": 2.0},
+    "mexc": {"taker": 5.0, "maker": 0.0},
+    "blofin": {"taker": 6.0, "maker": 2.0},
 }
 
 # Impact coefficient. η=10 on a sqrt model ≈ 3 bps at 1% ADV participation
@@ -53,8 +51,8 @@ class CostEstimate:
 class CostModel:
     def __init__(
         self,
-        fees_bps: Optional[Dict[str, Dict[str, float]]] = None,
-        impact_coefficients: Optional[Dict[str, float]] = None,
+        fees_bps: dict[str, dict[str, float]] | None = None,
+        impact_coefficients: dict[str, float] | None = None,
         default_eta: float = _DEFAULT_IMPACT_ETA,
     ):
         self.fees_bps = fees_bps or dict(_DEFAULT_FEES_BPS)

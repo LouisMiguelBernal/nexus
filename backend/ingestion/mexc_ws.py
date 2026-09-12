@@ -20,9 +20,8 @@ aggregates correctly with Binance / OKX.
 import logging
 import time
 from collections import defaultdict, deque
-from typing import Dict, List, Optional
 
-from backend.config import WS_MEXC, DEFAULT_SYMBOLS, MEXC_CONTRACT_SIZE
+from backend.config import DEFAULT_SYMBOLS, MEXC_CONTRACT_SIZE, WS_MEXC
 from backend.ingestion.ws_manager import WSConnection
 
 logger = logging.getLogger("nexus.mexc_ws")
@@ -47,10 +46,10 @@ def _from_mexc(contract: str) -> str:
 
 class MEXCData:
     def __init__(self):
-        self.order_books: Dict[str, dict] = {}
-        self.trades: Dict[str, deque] = defaultdict(lambda: deque(maxlen=5000))
-        self.liquidations: Dict[str, deque] = defaultdict(lambda: deque(maxlen=500))
-        self.last_update: Dict[str, float] = {}
+        self.order_books: dict[str, dict] = {}
+        self.trades: dict[str, deque] = defaultdict(lambda: deque(maxlen=5000))
+        self.liquidations: dict[str, deque] = defaultdict(lambda: deque(maxlen=500))
+        self.last_update: dict[str, float] = {}
 
     def _contract_size(self, symbol: str) -> float:
         return MEXC_CONTRACT_SIZE.get(symbol, MEXC_CONTRACT_SIZE.get("DEFAULT", 1.0))
@@ -89,12 +88,14 @@ class MEXCData:
             return
         if price <= 0 or vol <= 0:
             return
-        self.trades[symbol].append({
-            "price": price,
-            "qty": vol,
-            "side": "buy" if side_code == 1 else "sell",
-            "time": int(data.get("t", time.time() * 1000)),
-        })
+        self.trades[symbol].append(
+            {
+                "price": price,
+                "qty": vol,
+                "side": "buy" if side_code == 1 else "sell",
+                "time": int(data.get("t", time.time() * 1000)),
+            }
+        )
         self.last_update[f"{symbol}_trades"] = time.time()
 
 
@@ -128,20 +129,24 @@ async def _handle_mexc_message(name: str, data: dict):
 
 
 def create_mexc_connection(
-    symbols: Optional[List[str]] = None,
+    symbols: list[str] | None = None,
 ) -> WSConnection:
     symbols = symbols or DEFAULT_SYMBOLS
     messages: list[dict] = []
     for sym in symbols:
         contract = _to_mexc(sym)
-        messages.append({
-            "method": "sub.depth.full",
-            "param": {"symbol": contract, "limit": 20},
-        })
-        messages.append({
-            "method": "sub.deal",
-            "param": {"symbol": contract},
-        })
+        messages.append(
+            {
+                "method": "sub.depth.full",
+                "param": {"symbol": contract, "limit": 20},
+            }
+        )
+        messages.append(
+            {
+                "method": "sub.deal",
+                "param": {"symbol": contract},
+            }
+        )
     return WSConnection(
         name="mexc",
         url=WS_MEXC,

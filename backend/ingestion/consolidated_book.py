@@ -14,15 +14,14 @@ state - it does not mutate venue buffers.
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from backend.config import BIN_SIZE_USD, EXCHANGE_WEIGHTS
 from backend.ingestion.binance_ws import binance_data
-from backend.ingestion.okx_ws import okx_data
 from backend.ingestion.mexc_ws import mexc_data
+from backend.ingestion.okx_ws import okx_data
 
-
-_VENUES: List[Tuple[str, Any]] = [
+_VENUES: list[tuple[str, Any]] = [
     ("binance", binance_data),
     ("okx", okx_data),
     ("mexc", mexc_data),
@@ -39,16 +38,17 @@ def _bin_price(price: float, size: float) -> float:
     return round(price / size) * size
 
 
-def _book_levels(book: Optional[dict], side: str) -> List[List[float]]:
+def _book_levels(book: dict | None, side: str) -> list[list[float]]:
     if not book:
         return []
     levels = book.get(side) or []
-    out: List[List[float]] = []
+    out: list[list[float]] = []
     for lv in levels:
         if not lv or len(lv) < 2:
             continue
         try:
-            p = float(lv[0]); q = float(lv[1])
+            p = float(lv[0])
+            q = float(lv[1])
         except (TypeError, ValueError):
             continue
         if p > 0 and q > 0:
@@ -59,8 +59,8 @@ def _book_levels(book: Optional[dict], side: str) -> List[List[float]]:
 def _merge_side(
     symbol: str,
     side: str,
-    venue_weight_override: Optional[Dict[str, float]] = None,
-) -> List[Dict[str, Any]]:
+    venue_weight_override: dict[str, float] | None = None,
+) -> list[dict[str, Any]]:
     """Bin and merge a single side across venues.
 
     Returns: list of {price, size, weighted_size, sources: {venue: size}}
@@ -68,7 +68,7 @@ def _merge_side(
     bin_size = _bin_size(symbol)
     weights = venue_weight_override if venue_weight_override is not None else EXCHANGE_WEIGHTS
     # bin_price -> { 'size': float, 'weighted_size': float, 'sources': {venue: size} }
-    agg: Dict[float, Dict[str, Any]] = {}
+    agg: dict[float, dict[str, Any]] = {}
 
     for name, store in _VENUES:
         book = store.order_books.get(symbol) if hasattr(store, "order_books") else None
@@ -95,8 +95,8 @@ def _merge_side(
 def merge_books(
     symbol: str,
     depth: int = 20,
-    venue_weight_override: Optional[Dict[str, float]] = None,
-) -> Dict[str, Any]:
+    venue_weight_override: dict[str, float] | None = None,
+) -> dict[str, Any]:
     """Build the consolidated book for `symbol`.
 
     Parameters
@@ -111,9 +111,7 @@ def merge_books(
     bids = _merge_side(sym, "bids", venue_weight_override)[:depth]
     asks = _merge_side(sym, "asks", venue_weight_override)[:depth]
 
-    contributors = sorted({
-        v for row in (bids + asks) for v in row["sources"].keys()
-    })
+    contributors = sorted({v for row in (bids + asks) for v in row["sources"].keys()})
     best_bid = bids[0]["price"] if bids else None
     best_ask = asks[0]["price"] if asks else None
     mid = (best_bid + best_ask) / 2.0 if (best_bid and best_ask) else None

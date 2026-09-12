@@ -6,7 +6,6 @@ Reference: https://github.com/BarendPotijk/deribit_historical_trades
 
 import logging
 import time
-from typing import Dict, List, Optional
 
 import httpx
 
@@ -18,32 +17,38 @@ logger = logging.getLogger("nexus.deribit")
 class DeribitFeed:
     """Fetch options data and historical trades from Deribit public API."""
 
-    async def get_instruments(self, currency: str = "BTC", kind: str = "option") -> List[Dict]:
+    async def get_instruments(self, currency: str = "BTC", kind: str = "option") -> list[dict]:
         """Get all active option instruments."""
         try:
             async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.get(f"{DERIBIT_BASE}/get_instruments", params={
-                    "currency": currency,
-                    "kind": kind,
-                    "expired": "false",
-                })
+                resp = await client.get(
+                    f"{DERIBIT_BASE}/get_instruments",
+                    params={
+                        "currency": currency,
+                        "kind": kind,
+                        "expired": "false",
+                    },
+                )
                 data = resp.json()
                 return data.get("result", [])
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Deribit instruments error: {e}")
             return []
 
-    async def get_book_summary(self, currency: str = "BTC") -> List[Dict]:
+    async def get_book_summary(self, currency: str = "BTC") -> list[dict]:
         """Get book summary for all options."""
         try:
             async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.get(f"{DERIBIT_BASE}/get_book_summary_by_currency", params={
-                    "currency": currency,
-                    "kind": "option",
-                })
+                resp = await client.get(
+                    f"{DERIBIT_BASE}/get_book_summary_by_currency",
+                    params={
+                        "currency": currency,
+                        "kind": "option",
+                    },
+                )
                 data = resp.json()
                 return data.get("result", [])
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Deribit book summary error: {e}")
             return []
 
@@ -51,9 +56,9 @@ class DeribitFeed:
         self,
         instrument_name: str = "BTC-PERPETUAL",
         count: int = 100,
-        start_timestamp: Optional[int] = None,
-        end_timestamp: Optional[int] = None,
-    ) -> List[Dict]:
+        start_timestamp: int | None = None,
+        end_timestamp: int | None = None,
+    ) -> list[dict]:
         """
         Fetch historical trades from Deribit.
         Uses get_last_trades_by_instrument_and_time for time-ranged queries,
@@ -84,19 +89,22 @@ class DeribitFeed:
                     )
                 data = resp.json()
                 trades = data.get("result", {}).get("trades", [])
-                return [{
-                    "trade_id": t.get("trade_id"),
-                    "instrument": t.get("instrument_name"),
-                    "price": t.get("price"),
-                    "amount": t.get("amount"),
-                    "direction": t.get("direction"),
-                    "timestamp": t.get("timestamp"),
-                    "index_price": t.get("index_price"),
-                    "mark_price": t.get("mark_price"),
-                    "iv": t.get("iv"),  # Implied volatility (options)
-                    "tick_direction": t.get("tick_direction"),
-                } for t in trades]
-        except Exception as e:
+                return [
+                    {
+                        "trade_id": t.get("trade_id"),
+                        "instrument": t.get("instrument_name"),
+                        "price": t.get("price"),
+                        "amount": t.get("amount"),
+                        "direction": t.get("direction"),
+                        "timestamp": t.get("timestamp"),
+                        "index_price": t.get("index_price"),
+                        "mark_price": t.get("mark_price"),
+                        "iv": t.get("iv"),  # Implied volatility (options)
+                        "tick_direction": t.get("tick_direction"),
+                    }
+                    for t in trades
+                ]
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Deribit trades error: {e}")
             return []
 
@@ -107,7 +115,7 @@ class DeribitFeed:
         end_timestamp: int = 0,
         batch_size: int = 1000,
         max_batches: int = 10,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Paginated historical trade fetch (inspired by BarendPotijk approach).
         Walks backward from end_timestamp collecting trades in batches.
@@ -120,7 +128,7 @@ class DeribitFeed:
         all_trades = []
         current_end = end_timestamp
 
-        for batch in range(max_batches):
+        for batch in range(max_batches):  # noqa: B007
             trades = await self.get_last_trades(
                 instrument_name=instrument_name,
                 count=batch_size,
@@ -140,14 +148,17 @@ class DeribitFeed:
         logger.info(f"Deribit historical: {len(all_trades)} trades for {instrument_name}")
         return all_trades
 
-    async def get_order_book(self, instrument_name: str = "BTC-PERPETUAL", depth: int = 20) -> Optional[Dict]:
+    async def get_order_book(self, instrument_name: str = "BTC-PERPETUAL", depth: int = 20) -> dict | None:
         """Get order book for any Deribit instrument."""
         try:
             async with httpx.AsyncClient(timeout=10) as client:
-                resp = await client.get(f"{DERIBIT_BASE}/get_order_book", params={
-                    "instrument_name": instrument_name,
-                    "depth": depth,
-                })
+                resp = await client.get(
+                    f"{DERIBIT_BASE}/get_order_book",
+                    params={
+                        "instrument_name": instrument_name,
+                        "depth": depth,
+                    },
+                )
                 data = resp.json()
                 result = data.get("result", {})
                 return {
@@ -159,11 +170,11 @@ class DeribitFeed:
                     "open_interest": result.get("open_interest"),
                     "timestamp": result.get("timestamp"),
                 }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Deribit order book error: {e}")
             return None
 
-    async def compute_put_call_ratio(self, currency: str = "BTC") -> Optional[Dict]:
+    async def compute_put_call_ratio(self, currency: str = "BTC") -> dict | None:
         """Compute aggregate put/call ratio from open interest."""
         instruments = await self.get_instruments(currency)
         if not instruments:
@@ -184,13 +195,13 @@ class DeribitFeed:
             "sentiment": "bearish" if ratio > 1.2 else "bullish" if ratio < 0.7 else "neutral",
         }
 
-    async def compute_max_pain(self, currency: str = "BTC") -> Optional[Dict]:
+    async def compute_max_pain(self, currency: str = "BTC") -> dict | None:
         """Compute max pain price (strike where total option value is minimized)."""
         instruments = await self.get_instruments(currency)
         if not instruments:
             return None
 
-        strike_oi: Dict[float, float] = {}
+        strike_oi: dict[float, float] = {}
         for inst in instruments:
             strike = inst.get("strike")
             oi = inst.get("open_interest", 0)
@@ -207,19 +218,22 @@ class DeribitFeed:
             "total_strikes": len(strike_oi),
         }
 
-    async def get_dvol(self, currency: str = "BTC", hours: int = 24) -> Optional[Dict]:
+    async def get_dvol(self, currency: str = "BTC", hours: int = 24) -> dict | None:
         """Fetch Deribit volatility index (DVOL) - Deribit's BVIV/EVIV equivalent.
         Returns latest index value plus trailing series over ``hours`` hours."""
         try:
             end = int(time.time() * 1000)
             start = end - hours * 3600 * 1000
             async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.get(f"{DERIBIT_BASE}/get_volatility_index_data", params={
-                    "currency": currency,
-                    "start_timestamp": start,
-                    "end_timestamp": end,
-                    "resolution": "3600",
-                })
+                resp = await client.get(
+                    f"{DERIBIT_BASE}/get_volatility_index_data",
+                    params={
+                        "currency": currency,
+                        "start_timestamp": start,
+                        "end_timestamp": end,
+                        "resolution": "3600",
+                    },
+                )
                 data = resp.json()
                 rows = data.get("result", {}).get("data", []) or []
                 # Each row: [ts, open, high, low, close]
@@ -232,21 +246,24 @@ class DeribitFeed:
                     "latest": float(latest[4]),
                     "series": series,
                 }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Deribit DVOL error: {e}")
             return None
 
-    async def get_funding_rate(self, instrument: str = "BTC-PERPETUAL") -> Optional[Dict]:
+    async def get_funding_rate(self, instrument: str = "BTC-PERPETUAL") -> dict | None:
         """Get current funding rate for perpetual."""
         try:
             async with httpx.AsyncClient(timeout=10) as client:
-                resp = await client.get(f"{DERIBIT_BASE}/get_funding_rate_value", params={
-                    "instrument_name": instrument,
-                    "start_timestamp": int((time.time() - 28800) * 1000),  # 8h ago
-                    "end_timestamp": int(time.time() * 1000),
-                })
+                resp = await client.get(
+                    f"{DERIBIT_BASE}/get_funding_rate_value",
+                    params={
+                        "instrument_name": instrument,
+                        "start_timestamp": int((time.time() - 28800) * 1000),  # 8h ago
+                        "end_timestamp": int(time.time() * 1000),
+                    },
+                )
                 data = resp.json()
                 return {"funding_rate": data.get("result"), "instrument": instrument}
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Deribit funding error: {e}")
             return None

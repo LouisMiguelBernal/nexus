@@ -4,7 +4,6 @@ Sends alerts to configured chat. Free, no limit.
 """
 
 import logging
-from typing import Optional
 
 import httpx
 
@@ -48,7 +47,7 @@ class TelegramBot:
                 else:
                     logger.error(f"Telegram error {resp.status_code}: {resp.text[:200]}")
                     return False
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Telegram send failed: {e}")
             return False
 

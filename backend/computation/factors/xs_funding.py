@@ -35,10 +35,9 @@ membership so callers can pick whichever fits their execution regime.
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional
 
 
-def _std(xs: List[float]) -> float:
+def _std(xs: list[float]) -> float:
     n = len(xs)
     if n < 2:
         return 0.0
@@ -48,11 +47,11 @@ def _std(xs: List[float]) -> float:
 
 
 def compute_xs_funding(
-    term_structures: Dict[str, Dict],
+    term_structures: dict[str, dict],
     *,
     shrinkage_k: float = 1.0,
     quintile_cutoff: float = 0.20,
-) -> Dict:
+) -> dict:
     """Cross-sectional funding carry ranking.
 
     Parameters
@@ -78,7 +77,7 @@ def compute_xs_funding(
       "reason":        str (when not actionable),
     }
     """
-    carries: List[tuple[str, float]] = []
+    carries: list[tuple[str, float]] = []
     for sym, ts in term_structures.items():
         try:
             c = float(ts.get("realized_annualized_carry", 0.0))
@@ -102,7 +101,7 @@ def compute_xs_funding(
     mean_c = sum(values) / n
     std_c = _std(values)
 
-    scores: Dict[str, Dict] = {}
+    scores: dict[str, dict] = {}
     for sym, c in carries:
         z = (c - mean_c) / std_c if std_c > 1e-12 else 0.0
         # Contrarian: high carry → short. tanh saturates extreme z.

@@ -13,15 +13,15 @@ now it's plumbing that opens the door.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List
 
 
 @dataclass
 class ZoneBand:
     price_low: float
     price_high: float
-    zone_type: str      # "support" | "resistance" | …
+    zone_type: str  # "support" | "resistance" | …
     tier: str
     score: float = 0.0
 
@@ -32,7 +32,7 @@ class ZoneResult:
     touches: int = 0
     bounces: int = 0
     breaks: int = 0
-    touch_times: List[int] = field(default_factory=list)
+    touch_times: list[int] = field(default_factory=list)
 
     @property
     def hit_rate(self) -> float:
@@ -41,11 +41,11 @@ class ZoneResult:
 
 
 def backtest_zones(
-    candles: Iterable[Dict],
+    candles: Iterable[dict],
     zones: Iterable[ZoneBand],
     reaction_bars: int = 6,
     bounce_pct: float = 0.8,
-) -> Dict:
+) -> dict:
     """Replay ``candles`` (each {time, open, high, low, close}) against ``zones``.
 
     A "touch" occurs when a candle's wick pierces the band.
@@ -92,7 +92,9 @@ def backtest_zones(
     total_touches = sum(r.touches for r in results)
     total_bounces = sum(r.bounces for r in results)
     total_breaks = sum(r.breaks for r in results)
-    aggregate_hit_rate = (total_bounces / (total_bounces + total_breaks)) if (total_bounces + total_breaks) else 0.0
+    aggregate_hit_rate = (
+        (total_bounces / (total_bounces + total_breaks)) if (total_bounces + total_breaks) else 0.0
+    )
 
     return {
         "candles": len(candles),

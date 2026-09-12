@@ -12,6 +12,7 @@ REMOVED (paid/unavailable):
 
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Load .env from project root
@@ -160,30 +161,21 @@ BLOFIN_DEMO = True  # ALWAYS True until Phase 6
 
 # OKX - read-only market data + (future) execution
 # Accept multiple env spellings the user may have placed in .env.
-OKX_API_KEY = (
-    os.getenv("OKX_API_KEY", "")
-    or os.getenv("okx_apikey", "")
-    or os.getenv("OKX_APIKEY", "")
-)
+OKX_API_KEY = os.getenv("OKX_API_KEY", "") or os.getenv("okx_apikey", "") or os.getenv("OKX_APIKEY", "")
 OKX_API_SECRET = (
     os.getenv("OKX_API_SECRET", "")
     or os.getenv("okx_secretkey", "")
     or os.getenv("OKX_SECRET_KEY", "")
     or os.getenv("OKX_SECRET", "")
 )
-OKX_API_PASSPHRASE = (
-    os.getenv("OKX_API_PASSPHRASE", "")
-    or os.getenv("OKX_PASSPHRASE", "")
-)
+OKX_API_PASSPHRASE = os.getenv("OKX_API_PASSPHRASE", "") or os.getenv("OKX_PASSPHRASE", "")
 OKX_KEY_NAME = os.getenv("okx_API_key_name", "") or os.getenv("OKX_API_KEY_NAME", "")
 OKX_PERMISSIONS = os.getenv("okx_Permissions", "Read") or os.getenv("OKX_PERMISSIONS", "Read")
 
 # MEXC - read-only market data (key set has Read scope only)
 MEXC_API_KEY = os.getenv("MEXC_API_KEY", "")
 MEXC_API_SECRET = (
-    os.getenv("MEXC_SECRET_KEY", "")
-    or os.getenv("MEXC_API_SECRET", "")
-    or os.getenv("MEXC_SECRET", "")
+    os.getenv("MEXC_SECRET_KEY", "") or os.getenv("MEXC_API_SECRET", "") or os.getenv("MEXC_SECRET", "")
 )
 MEXC_IP = os.getenv("MEXC_IP", "")  # whitelisted IP, used by MEXC REST signed calls
 
@@ -217,9 +209,9 @@ EXCHANGE_WEIGHTS = {
 FUZZY_TOLERANCE = 0.0005  # +/-0.05% - NON-NEGOTIABLE
 
 ZONE_TIERS = {
-    "bronze":   {"exchanges": 1, "weight": 0.3, "action": "monitor_only"},
-    "silver":   {"exchanges": 2, "weight": 0.6, "action": "alert_on_approach"},
-    "golden":   {"exchanges": 3, "weight": 1.0, "action": "full_alert_and_brief"},
+    "bronze": {"exchanges": 1, "weight": 0.3, "action": "monitor_only"},
+    "silver": {"exchanges": 2, "weight": 0.6, "action": "alert_on_approach"},
+    "golden": {"exchanges": 3, "weight": 1.0, "action": "full_alert_and_brief"},
     "platinum": {"exchanges": 3, "weight": 1.5, "action": "macro_gate_check_then_alert"},
     # 3-venue overlap (binance + okx + mexc) is the strongest institutional
     # consensus we can build without paid sources after retiring bybit/gate.
@@ -240,12 +232,27 @@ BIN_SIZE_USD = {
 # big bids only - institutional walls + golden zones, not $0.10 ladder noise.
 # ---------------------------------------------------------------------------
 INSTITUTIONAL_DEPTH = {
-    "BTCUSDT": {"bin_usd": 25.0,  "min_usd_per_level": 100_000.0, "max_levels_each_side": 15, "near_pct": 0.0075},
-    "ETHUSDT": {"bin_usd": 5.0,   "min_usd_per_level": 50_000.0,  "max_levels_each_side": 15, "near_pct": 0.0075},
-    "SOLUSDT": {"bin_usd": 0.5,   "min_usd_per_level": 25_000.0,  "max_levels_each_side": 15, "near_pct": 0.01},
-    "BNBUSDT": {"bin_usd": 1.0,   "min_usd_per_level": 25_000.0,  "max_levels_each_side": 15, "near_pct": 0.01},
-    "XRPUSDT": {"bin_usd": 0.005, "min_usd_per_level": 10_000.0,  "max_levels_each_side": 15, "near_pct": 0.015},
-    "DEFAULT": {"bin_usd": 0.1,   "min_usd_per_level": 10_000.0,  "max_levels_each_side": 15, "near_pct": 0.02},
+    "BTCUSDT": {
+        "bin_usd": 25.0,
+        "min_usd_per_level": 100_000.0,
+        "max_levels_each_side": 15,
+        "near_pct": 0.0075,
+    },
+    "ETHUSDT": {
+        "bin_usd": 5.0,
+        "min_usd_per_level": 50_000.0,
+        "max_levels_each_side": 15,
+        "near_pct": 0.0075,
+    },
+    "SOLUSDT": {"bin_usd": 0.5, "min_usd_per_level": 25_000.0, "max_levels_each_side": 15, "near_pct": 0.01},
+    "BNBUSDT": {"bin_usd": 1.0, "min_usd_per_level": 25_000.0, "max_levels_each_side": 15, "near_pct": 0.01},
+    "XRPUSDT": {
+        "bin_usd": 0.005,
+        "min_usd_per_level": 10_000.0,
+        "max_levels_each_side": 15,
+        "near_pct": 0.015,
+    },
+    "DEFAULT": {"bin_usd": 0.1, "min_usd_per_level": 10_000.0, "max_levels_each_side": 15, "near_pct": 0.02},
 }
 
 ZONE_TYPES = {
@@ -415,32 +422,63 @@ FRED_CSV = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
 # The cross-asset context universe, grouped the way OpenBB groups its router.
 CROSS_ASSET_UNIVERSE = {
     "index": [
-        ("^GSPC", "S&P 500"), ("^NDX", "Nasdaq 100"), ("^DJI", "Dow Jones"),
-        ("^RUT", "Russell 2000"), ("^VIX", "VIX"),
-        ("^FTSE", "FTSE 100"), ("^N225", "Nikkei 225"), ("^GDAXI", "DAX"),
+        ("^GSPC", "S&P 500"),
+        ("^NDX", "Nasdaq 100"),
+        ("^DJI", "Dow Jones"),
+        ("^RUT", "Russell 2000"),
+        ("^VIX", "VIX"),
+        ("^FTSE", "FTSE 100"),
+        ("^N225", "Nikkei 225"),
+        ("^GDAXI", "DAX"),
     ],
     "rates": [
-        ("^IRX", "US 13W"), ("^FVX", "US 5Y"), ("^TNX", "US 10Y"), ("^TYX", "US 30Y"),
-        ("TLT", "20Y+ Treasury"), ("HYG", "High Yield"),
+        ("^IRX", "US 13W"),
+        ("^FVX", "US 5Y"),
+        ("^TNX", "US 10Y"),
+        ("^TYX", "US 30Y"),
+        ("TLT", "20Y+ Treasury"),
+        ("HYG", "High Yield"),
     ],
     "currency": [
-        ("DX-Y.NYB", "Dollar Index"), ("EURUSD=X", "EUR/USD"), ("USDJPY=X", "USD/JPY"),
-        ("GBPUSD=X", "GBP/USD"), ("USDCNY=X", "USD/CNY"), ("AUDUSD=X", "AUD/USD"),
+        ("DX-Y.NYB", "Dollar Index"),
+        ("EURUSD=X", "EUR/USD"),
+        ("USDJPY=X", "USD/JPY"),
+        ("GBPUSD=X", "GBP/USD"),
+        ("USDCNY=X", "USD/CNY"),
+        ("AUDUSD=X", "AUD/USD"),
     ],
     "commodity": [
-        ("CL=F", "WTI Crude"), ("BZ=F", "Brent Crude"), ("NG=F", "Natural Gas"),
-        ("GC=F", "Gold"), ("SI=F", "Silver"), ("HG=F", "Copper"),
-        ("ZW=F", "Wheat"), ("ZC=F", "Corn"),
+        ("CL=F", "WTI Crude"),
+        ("BZ=F", "Brent Crude"),
+        ("NG=F", "Natural Gas"),
+        ("GC=F", "Gold"),
+        ("SI=F", "Silver"),
+        ("HG=F", "Copper"),
+        ("ZW=F", "Wheat"),
+        ("ZC=F", "Corn"),
     ],
     "sector": [
-        ("XLK", "Technology"), ("XLF", "Financials"), ("XLE", "Energy"),
-        ("XLV", "Health Care"), ("XLI", "Industrials"), ("XLY", "Cons Discretionary"),
-        ("XLP", "Cons Staples"), ("XLU", "Utilities"), ("XLB", "Materials"),
+        ("XLK", "Technology"),
+        ("XLF", "Financials"),
+        ("XLE", "Energy"),
+        ("XLV", "Health Care"),
+        ("XLI", "Industrials"),
+        ("XLY", "Cons Discretionary"),
+        ("XLP", "Cons Staples"),
+        ("XLU", "Utilities"),
+        ("XLB", "Materials"),
     ],
     "equity": [
-        ("AAPL", "Apple"), ("MSFT", "Microsoft"), ("NVDA", "NVIDIA"),
-        ("GOOGL", "Alphabet"), ("AMZN", "Amazon"), ("META", "Meta"),
-        ("TSLA", "Tesla"), ("COIN", "Coinbase"), ("MSTR", "Strategy"), ("MARA", "MARA"),
+        ("AAPL", "Apple"),
+        ("MSFT", "Microsoft"),
+        ("NVDA", "NVIDIA"),
+        ("GOOGL", "Alphabet"),
+        ("AMZN", "Amazon"),
+        ("META", "Meta"),
+        ("TSLA", "Tesla"),
+        ("COIN", "Coinbase"),
+        ("MSTR", "Strategy"),
+        ("MARA", "MARA"),
     ],
 }
 

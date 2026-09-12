@@ -5,7 +5,6 @@ Uses simple heuristics first; XGBoost model is Phase 5+.
 """
 
 import logging
-from typing import Dict, List
 
 import numpy as np
 
@@ -41,7 +40,7 @@ def get_conditioner():
     return _CONDITIONER
 
 
-def _condition(result: Dict) -> Dict:
+def _condition(result: dict) -> dict:
     if _CONDITIONER is None:
         return result
     try:
@@ -50,6 +49,7 @@ def _condition(result: Dict) -> Dict:
     except Exception:
         logger.exception("regime conditioner failed; using unconditioned regime")
         return result
+
 
 REGIMES = {
     "trending_bull": "Strong uptrend with expanding volume",
@@ -68,11 +68,11 @@ class RegimeClassifier:
 
     def classify(
         self,
-        closes: List[float],
-        volumes: List[float],
-        highs: List[float],
-        lows: List[float],
-    ) -> Dict:
+        closes: list[float],
+        volumes: list[float],
+        highs: list[float],
+        lows: list[float],
+    ) -> dict:
         """
         Classify regime from recent candle data.
         Expects at least 20 candles.
@@ -122,12 +122,14 @@ class RegimeClassifier:
 
         self._current_regime = regime
 
-        return _condition({
-            "regime": regime,
-            "description": REGIMES.get(regime, ""),
-            "confidence": round(confidence, 3),
-            "slope_pct": round(slope_pct, 4),
-            "atr_pct": round(atr_pct, 4),
-            "vol_expansion": round(vol_expansion, 3),
-            "price_range_pct": round(price_range, 3),
-        })
+        return _condition(
+            {
+                "regime": regime,
+                "description": REGIMES.get(regime, ""),
+                "confidence": round(confidence, 3),
+                "slope_pct": round(slope_pct, 4),
+                "atr_pct": round(atr_pct, 4),
+                "vol_expansion": round(vol_expansion, 3),
+                "price_range_pct": round(price_range, 3),
+            }
+        )

@@ -13,21 +13,22 @@ and seed.
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, asdict
-from typing import Any, Callable, Dict, List, Sequence, Tuple
+from collections.abc import Callable, Sequence
+from dataclasses import asdict, dataclass
+from typing import Any
 
 
 @dataclass
 class RegimeFold:
     fold_idx: int
-    train_indices: List[int]
-    test_indices: List[int]
-    regime_distribution_train: Dict[str, int]
-    regime_distribution_test: Dict[str, int]
+    train_indices: list[int]
+    test_indices: list[int]
+    regime_distribution_train: dict[str, int]
+    regime_distribution_test: dict[str, int]
 
 
-def _regime_counts(labels: Sequence[str], idx: Sequence[int]) -> Dict[str, int]:
-    counts: Dict[str, int] = {}
+def _regime_counts(labels: Sequence[str], idx: Sequence[int]) -> dict[str, int]:
+    counts: dict[str, int] = {}
     for i in idx:
         lbl = labels[i]
         counts[lbl] = counts.get(lbl, 0) + 1
@@ -40,7 +41,7 @@ def regime_stratified_kfold(
     k: int = 5,
     embargo: int = 10,
     seed: int = 42,
-) -> List[RegimeFold]:
+) -> list[RegimeFold]:
     """Build `k` regime-stratified folds with purge + embargo.
 
     Algorithm
@@ -56,18 +57,18 @@ def regime_stratified_kfold(
 
     rng = random.Random(seed)
 
-    groups: Dict[str, List[int]] = {}
+    groups: dict[str, list[int]] = {}
     for i, lbl in enumerate(regime_labels):
         groups.setdefault(lbl, []).append(i)
 
-    buckets: List[List[int]] = [[] for _ in range(k)]
-    for lbl, idxs in groups.items():
+    buckets: list[list[int]] = [[] for _ in range(k)]
+    for lbl, idxs in groups.items():  # noqa: B007
         shuffled = list(idxs)
         rng.shuffle(shuffled)
         for j, idx in enumerate(shuffled):
             buckets[j % k].append(idx)
 
-    folds: List[RegimeFold] = []
+    folds: list[RegimeFold] = []
     for j in range(k):
         test_set = set(buckets[j])
 
@@ -82,13 +83,15 @@ def regime_stratified_kfold(
         train = [i for i in range(n) if i not in test_set and i not in purged]
         test = sorted(test_set)
 
-        folds.append(RegimeFold(
-            fold_idx=j,
-            train_indices=train,
-            test_indices=test,
-            regime_distribution_train=_regime_counts(regime_labels, train),
-            regime_distribution_test=_regime_counts(regime_labels, test),
-        ))
+        folds.append(
+            RegimeFold(
+                fold_idx=j,
+                train_indices=train,
+                test_indices=test,
+                regime_distribution_train=_regime_counts(regime_labels, train),
+                regime_distribution_test=_regime_counts(regime_labels, test),
+            )
+        )
 
     return folds
 
@@ -96,27 +99,27 @@ def regime_stratified_kfold(
 def run_regime_stratified(
     regime_labels: Sequence[str],
     fit: Callable[[Sequence[int]], Any],
-    score: Callable[[Any, Sequence[int]], List[float]],
+    score: Callable[[Any, Sequence[int]], list[float]],
     *,
     k: int = 5,
     embargo: int = 10,
     seed: int = 42,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build folds and evaluate. Returns per-fold returns + aggregate stats."""
-    folds = regime_stratified_kfold(
-        regime_labels, k=k, embargo=embargo, seed=seed
-    )
-    all_returns: List[float] = []
-    fold_reports: List[Dict[str, Any]] = []
+    folds = regime_stratified_kfold(regime_labels, k=k, embargo=embargo, seed=seed)
+    all_returns: list[float] = []
+    fold_reports: list[dict[str, Any]] = []
     for fold in folds:
         model = fit(fold.train_indices)
         r = list(score(model, fold.test_indices))
         all_returns.extend(r)
-        fold_reports.append({
-            **asdict(fold),
-            "mean_return": (sum(r) / len(r)) if r else 0.0,
-            "n_test_returns": len(r),
-        })
+        fold_reports.append(
+            {
+                **asdict(fold),
+                "mean_return": (sum(r) / len(r)) if r else 0.0,
+                "n_test_returns": len(r),
+            }
+        )
 
     hit = sum(1 for x in all_returns if x > 0) / len(all_returns) if all_returns else 0.0
     return {

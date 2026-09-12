@@ -2,8 +2,6 @@
 Verification: P1-3 (TSMOM), P1-4 (XS funding carry), P1-5 (OI-mom).
 """
 
-import math
-
 from backend.computation.factors.tsmom import compute_tsmom, tsmom_portfolio
 from backend.computation.factors.xs_funding import compute_xs_funding
 
@@ -42,10 +40,7 @@ def test_tsmom_portfolio_maps_symbols_to_results():
 
 def test_xs_funding_ranks_and_selects_quintile_legs():
     # 10 symbols with funding carry increasing linearly.
-    ts = {
-        f"SYM{i}": {"realized_annualized_carry": -0.1 + i * 0.05}
-        for i in range(10)
-    }
+    ts = {f"SYM{i}": {"realized_annualized_carry": -0.1 + i * 0.05} for i in range(10)}
     result = compute_xs_funding(ts)
     assert result["reason"] == "OK"
     assert len(result["universe"]) == 10
@@ -62,7 +57,7 @@ def test_xs_funding_ranks_and_selects_quintile_legs():
 def test_xs_funding_scores_are_contrarian_to_crowding():
     """High positive carry ⇒ short-bias (negative score). Negative carry ⇒ long-bias."""
     ts = {
-        "HOT": {"realized_annualized_carry": 1.0},   # heavily long-crowded
+        "HOT": {"realized_annualized_carry": 1.0},  # heavily long-crowded
         "COLD": {"realized_annualized_carry": -0.5},  # short-crowded
         "MID1": {"realized_annualized_carry": 0.0},
         "MID2": {"realized_annualized_carry": 0.1},

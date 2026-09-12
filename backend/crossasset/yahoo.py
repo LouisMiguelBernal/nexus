@@ -13,12 +13,13 @@ Two tiers of endpoint, and the difference matters operationally:
 No API key on either path. Calls are registered with the shared rate guard so a
 Yahoo 429 suspends this host the same way a Binance 418 suspends fapi.
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import httpx
 
@@ -30,18 +31,18 @@ logger = logging.getLogger("nexus.crossasset.yahoo")
 YAHOO_QUERY1_HOST = "query1.finance.yahoo.com"
 YAHOO_QUERY2_HOST = "query2.finance.yahoo.com"
 
-_CRUMB: Dict[str, Any] = {"cookie": "", "crumb": "", "ts": 0.0}
+_CRUMB: dict[str, Any] = {"cookie": "", "crumb": "", "ts": 0.0}
 _CRUMB_TTL = 3600.0
 
 
-def _headers(cookie: str = "") -> Dict[str, str]:
+def _headers(cookie: str = "") -> dict[str, str]:
     h = {"User-Agent": YAHOO_UA, "Accept": "application/json,text/plain,*/*"}
     if cookie:
         h["Cookie"] = cookie
     return h
 
 
-async def _mint_credentials(client: httpx.AsyncClient) -> Tuple[str, str]:
+async def _mint_credentials(client: httpx.AsyncClient) -> tuple[str, str]:
     """
     Yahoo hands an A1/A3 cookie to anyone who asks fc.yahoo.com (it answers 404
     - the cookie is the payload), then trades that cookie for a crumb.
@@ -51,28 +52,22 @@ async def _mint_credentials(client: httpx.AsyncClient) -> Tuple[str, str]:
         seed = await client.get(
             "https://fc.yahoo.com/", headers=_headers(), follow_redirects=False, timeout=8
         )
-        parts = [
-            v.split(";")[0]
-            for k, v in seed.headers.multi_items()
-            if k.lower() == "set-cookie"
-        ]
+        parts = [v.split(";")[0] for k, v in seed.headers.multi_items() if k.lower() == "set-cookie"]
         cookie = "; ".join(p for p in parts if p)
-    except Exception as e:  # network, TLS, DNS - all non-fatal
+    except Exception as e:  # network, TLS, DNS - all non-fatal  # noqa: BLE001
         logger.debug("yahoo cookie seed failed: %s", e)
 
     if not cookie:
         raise RuntimeError("yahoo: no session cookie issued")
 
-    resp = await client.get(
-        f"{YAHOO_GATED_BASE}/v1/test/getcrumb", headers=_headers(cookie), timeout=8
-    )
+    resp = await client.get(f"{YAHOO_GATED_BASE}/v1/test/getcrumb", headers=_headers(cookie), timeout=8)
     crumb = (resp.text or "").strip()
     if resp.status_code != 200 or not crumb or "<" in crumb:
         raise RuntimeError("yahoo: crumb refused")
     return cookie, crumb
 
 
-async def _credentials(client: httpx.AsyncClient, force: bool = False) -> Tuple[str, str]:
+async def _credentials(client: httpx.AsyncClient, force: bool = False) -> tuple[str, str]:
     now = time.time()
     if not force and _CRUMB["crumb"] and (now - float(_CRUMB["ts"])) < _CRUMB_TTL:
         return str(_CRUMB["cookie"]), str(_CRUMB["crumb"])
@@ -81,7 +76,7 @@ async def _credentials(client: httpx.AsyncClient, force: bool = False) -> Tuple[
     return cookie, crumb
 
 
-async def fetch_gated(path: str, params: Optional[Dict[str, str]] = None) -> Dict:
+async def fetch_gated(path: str, params: dict[str, str] | None = None) -> dict:
     """
     GET a crumb-gated endpoint. Retries once with a freshly minted crumb on a
     401/403/404, which is how Yahoo signals a rotated or never-valid crumb.
@@ -111,15 +106,14 @@ async def fetch_gated(path: str, params: Optional[Dict[str, str]] = None) -> Dic
 # v8 chart - quotes and candles
 # ---------------------------------------------------------------------------
 
-def _num(v: Any) -> Optional[float]:
+
+def _num(v: Any) -> float | None:
     if isinstance(v, bool) or not isinstance(v, (int, float)):
         return None
     return float(v) if v == v else None  # NaN check
 
 
-async def _raw_chart(
-    client: httpx.AsyncClient, symbol: str, rng: str, interval: str
-) -> Optional[Dict]:
+async def _raw_chart(client: httpx.AsyncClient, symbol: str, rng: str, interval: str) -> dict | None:
     if rate_guard.should_skip(YAHOO_QUERY1_HOST):
         return None
     resp = await client.get(
@@ -140,7 +134,7 @@ async def _raw_chart(
 
 async def fetch_quote(
     client: httpx.AsyncClient, symbol: str, name: str = "", rng: str = "3mo"
-) -> Optional[Dict]:
+) -> dict | None:
     """
     One instrument: last, change, session state, and a closes series long
     enough for the regime classifier to fit a trend on.
@@ -183,7 +177,7 @@ async def fetch_quote(
     }
 
 
-async def fetch_quotes(pairs: List[Tuple[str, str]], rng: str = "3mo") -> List[Dict]:
+async def fetch_quotes(pairs: list[tuple[str, str]], rng: str = "3mo") -> list[dict]:
     """
     Batch of (symbol, display name). A failure drops that row rather than the
     batch - one delisted ticker must never blank the board.
@@ -194,7 +188,7 @@ async def fetch_quotes(pairs: List[Tuple[str, str]], rng: str = "3mo") -> List[D
             return_exceptions=True,
         )
 
-    out: List[Dict] = []
+    out: list[dict] = []
     for row in settled:
         if isinstance(row, dict):
             out.append(row)
@@ -203,7 +197,7 @@ async def fetch_quotes(pairs: List[Tuple[str, str]], rng: str = "3mo") -> List[D
     return out
 
 
-async def fetch_candles(symbol: str, rng: str = "6mo", interval: str = "1d") -> Dict:
+async def fetch_candles(symbol: str, rng: str = "6mo", interval: str = "1d") -> dict:
     """OHLCV series for charting. Null rows (holidays) are dropped."""
     async with httpx.AsyncClient(timeout=15) as client:
         r = await _raw_chart(client, symbol, rng, interval)
@@ -225,18 +219,20 @@ async def fetch_candles(symbol: str, rng: str = "6mo", interval: str = "1d") -> 
         close = closes[i] if i < len(closes) else None
         if not isinstance(close, (int, float)):
             continue
-        candles.append({
-            "time": int(stamps[i]),
-            "open": at(opens, i, close),
-            "high": at(highs, i, close),
-            "low": at(lows, i, close),
-            "close": close,
-            "volume": at(vols, i, 0),
-        })
+        candles.append(
+            {
+                "time": int(stamps[i]),
+                "open": at(opens, i, close),
+                "high": at(highs, i, close),
+                "low": at(lows, i, close),
+                "close": close,
+                "volume": at(vols, i, 0),
+            }
+        )
     return {"symbol": symbol, "candles": candles}
 
 
-async def search(query: str, limit: int = 10) -> List[Dict]:
+async def search(query: str, limit: int = 10) -> list[dict]:
     """Symbol lookup. Explicitly typed so the UI can keep asset classes apart."""
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.get(

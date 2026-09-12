@@ -11,7 +11,6 @@ Errors are surfaced as structured dicts rather than swallowed as prose.
 import asyncio
 import logging
 import time
-from typing import Dict, List, Optional, Tuple
 
 import httpx
 
@@ -26,42 +25,38 @@ class Gemma4:
     def __init__(self):
         self.model = OLLAMA_CONFIG["model"]
         self.endpoint = OLLAMA_CONFIG["endpoint"]
-        self.tags_endpoint = OLLAMA_CONFIG.get(
-            "tags_endpoint", "http://localhost:11434/api/tags"
-        )
-        self.fallback_models: List[str] = list(
-            OLLAMA_CONFIG.get("fallback_models", [])
-        )
+        self.tags_endpoint = OLLAMA_CONFIG.get("tags_endpoint", "http://localhost:11434/api/tags")
+        self.fallback_models: list[str] = list(OLLAMA_CONFIG.get("fallback_models", []))
         self.max_tokens = OLLAMA_CONFIG["max_tokens"]
         self.max_tokens_fallback = OLLAMA_CONFIG.get("max_tokens_fallback", 400)
         self.temperature = OLLAMA_CONFIG["temperature"]
         self.timeout = OLLAMA_CONFIG.get("timeout_seconds", 300)
         self.keep_alive = OLLAMA_CONFIG.get("keep_alive", "30m")
-        self._available: Optional[bool] = None
-        self._installed_models: List[str] = []
+        self._available: bool | None = None
+        self._installed_models: list[str] = []
         # None = never probed. Distinguishes "Ollama is down" from "Ollama is
         # up but has no models" - /api/tags returns [] for both.
-        self.server_reachable: Optional[bool] = None
-        self._status_cache: Optional[Dict] = None
+        self.server_reachable: bool | None = None
+        self._status_cache: dict | None = None
         self._status_cache_at: float = 0.0
-        self.last_error: Optional[str] = None
-        self.last_model_used: Optional[str] = None
+        self.last_error: str | None = None
+        self.last_model_used: str | None = None
 
     # ------------------------------------------------------------------
-    async def _fetch_installed(self) -> List[str]:
+    async def _fetch_installed(self) -> list[str]:
         try:
             async with httpx.AsyncClient(timeout=5) as client:
                 resp = await client.get(self.tags_endpoint)
                 data = resp.json()
                 self._installed_models = [m.get("name", "") for m in data.get("models", [])]
                 self.server_reachable = True
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.warning(f"Ollama /api/tags unreachable: {e}")
             self._installed_models = []
             self.server_reachable = False
         return self._installed_models
 
-    async def status(self, ttl: float = 10.0) -> Dict:
+    async def status(self, ttl: float = 10.0) -> dict:
         """Live probe of the whole inference chain, for /api/health.
 
         /api/health used to echo the configured model name unconditionally, so
@@ -76,7 +71,7 @@ class Gemma4:
         base = self.model.split(":")[0]
         model_installed = any(base in m for m in installed)
 
-        resident: List[str] = []
+        resident: list[str] = []
         if self.server_reachable:
             try:
                 ps_url = self.tags_endpoint.rsplit("/", 1)[0] + "/ps"
@@ -87,9 +82,7 @@ class Gemma4:
                 resident = []
 
         installed_bases = {m.split(":")[0] for m in installed}
-        missing_fallbacks = [
-            fb for fb in self.fallback_models if fb.split(":")[0] not in installed_bases
-        ]
+        missing_fallbacks = [fb for fb in self.fallback_models if fb.split(":")[0] not in installed_bases]
 
         is_resident = any(base in m for m in resident)
         if not self.server_reachable:
@@ -112,9 +105,7 @@ class Gemma4:
             # A fallback chain of models that were never pulled is the same as
             # having no fallback at all - surface it instead of hiding it.
             "missing_fallbacks": missing_fallbacks,
-            "fallbacks_available": [
-                fb for fb in self.fallback_models if fb not in missing_fallbacks
-            ],
+            "fallbacks_available": [fb for fb in self.fallback_models if fb not in missing_fallbacks],
             "endpoint": self.endpoint,
             "timeout_seconds": self.timeout,
             "keep_alive": self.keep_alive,
@@ -130,7 +121,7 @@ class Gemma4:
         self._available = any(primary_base in m for m in self._installed_models)
         return bool(self._available)
 
-    def _fallback_chain(self) -> List[str]:
+    def _fallback_chain(self) -> list[str]:
         """Return the fallback model list filtered to ones actually installed.
 
         If /api/tags hasn't been called yet we return the full configured list
@@ -149,7 +140,7 @@ class Gemma4:
         system: str,
         temperature: float,
         max_tokens: int,
-    ) -> Tuple[Optional[str], Optional[str]]:
+    ) -> tuple[str | None, str | None]:
         """Single Ollama call. Returns (response, error_reason). On success
         error_reason is None; on failure response is None."""
         payload = {
@@ -174,9 +165,7 @@ class Gemma4:
                     data = resp.json()
                     text = (data.get("response") or "").strip()
                     tokens = data.get("eval_count", 0)
-                    logger.info(
-                        f"Gemma4 ok model={model} tokens={tokens} elapsed={elapsed:.1f}s"
-                    )
+                    logger.info(f"Gemma4 ok model={model} tokens={tokens} elapsed={elapsed:.1f}s")
                     return text, None
                 body = resp.text[:300]
                 if "more system memory" in body or "out of memory" in body.lower():
@@ -192,7 +181,7 @@ class Gemma4:
         except httpx.TimeoutException:
             logger.error(f"Gemma4 timeout model={model}")
             return None, "timeout"
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"Gemma4 exception model={model}: {e}")
             return None, f"exception:{e}"
 
@@ -200,7 +189,7 @@ class Gemma4:
         self,
         prompt: str,
         system: str = "",
-        temperature: Optional[float] = None,
+        temperature: float | None = None,
     ) -> str:
         """Generate text with automatic fallback to smaller installed models
         if the primary OOMs or 500s. Returns an empty string on total failure
@@ -211,7 +200,7 @@ class Gemma4:
         if not self._installed_models:
             await self._fetch_installed()
 
-        attempts: List[Tuple[str, int]] = [(self.model, self.max_tokens)]
+        attempts: list[tuple[str, int]] = [(self.model, self.max_tokens)]
         for fb in self._fallback_chain():
             attempts.append((fb, self.max_tokens_fallback))
 
@@ -248,9 +237,7 @@ class Gemma4:
         off the critical path so the first GENERATE AI BRIEF is warm."""
         if not self._installed_models:
             await self._fetch_installed()
-        text, err = await self._call_once(
-            self.model, "ok", "", 0.0, 1
-        )
+        text, err = await self._call_once(self.model, "ok", "", 0.0, 1)
         if err:
             logger.warning(f"Gemma4 warmup failed model={self.model} reason={err}")
             return False
@@ -258,7 +245,7 @@ class Gemma4:
         return True
 
     # ------------------------------------------------------------------
-    async def synthesize_brief(self, signals: Dict) -> str:
+    async def synthesize_brief(self, signals: dict) -> str:
         system_prompt = (
             "You are Nexus, an institutional crypto derivatives trading assistant. "
             "Produce tight, data-dense briefs for a leverage-focused trader. "
@@ -282,9 +269,7 @@ Outlook: 2 sentence market view.
 Rules: Under 220 words total. Specific numbers. No markdown characters. No lists - use flowing sentences. Start directly with "Zones:"."""
         return await self.generate(prompt, system=system_prompt)
 
-    async def synthesize_news(
-        self, headlines: list, sentiment: Optional[Dict] = None
-    ) -> str:
+    async def synthesize_news(self, headlines: list, sentiment: dict | None = None) -> str:
         """Distill recent headlines into a 2-4 sentence narrative paragraph."""
         if not headlines:
             return ""
@@ -307,13 +292,10 @@ Rules: Under 220 words total. Specific numbers. No markdown characters. No lists
             "trader should care about. Plain prose only. No markdown, no bullets, "
             "no headings, no preamble - just the paragraph."
         )
-        prompt = (
-            f"Recent headlines:\n{numbered}{sent_line}\n\n"
-            "Write the synthesis paragraph now."
-        )
+        prompt = f"Recent headlines:\n{numbered}{sent_line}\n\nWrite the synthesis paragraph now."
         return await self.generate(prompt, system=system_prompt, temperature=0.4)
 
-    async def analyze_zone(self, zone_data: Dict, market_context: Dict) -> str:
+    async def analyze_zone(self, zone_data: dict, market_context: dict) -> str:
         system_prompt = (
             "You are a crypto derivatives analyst. Analyze this liquidity zone "
             "and explain what it means for a leveraged trader. Be specific about "
@@ -329,7 +311,7 @@ Explain: What is this zone? Why does it matter? What leverage is safe here? What
         return await self.generate(prompt, system=system_prompt, temperature=0.3)
 
 
-def _format_signals(data: Dict, indent: int = 0) -> str:
+def _format_signals(data: dict, indent: int = 0) -> str:
     lines = []
     prefix = "  " * indent
     for key, value in data.items():

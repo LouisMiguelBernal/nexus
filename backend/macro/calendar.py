@@ -6,8 +6,7 @@ Fetches upcoming macro events and classifies them by impact tier.
 import logging
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional
+from datetime import UTC, datetime
 
 import httpx
 
@@ -18,7 +17,7 @@ logger = logging.getLogger("nexus.calendar")
 # Static event schedule - updated periodically from FRED + investing.com
 # In production, this is populated from scraping or API calls.
 # For now, a classification lookup for event names.
-EVENT_TIER_MAP: Dict[str, str] = {}
+EVENT_TIER_MAP: dict[str, str] = {}
 for tier_name, tier_cfg in MACRO_GATE.items():
     for event in tier_cfg["events"]:
         EVENT_TIER_MAP[event.lower()] = tier_name
@@ -30,9 +29,9 @@ class MacroEvent:
     tier: str  # Tier1_Critical, Tier2_High, etc.
     timestamp: float  # UTC epoch
     description: str = ""
-    actual: Optional[float] = None
-    forecast: Optional[float] = None
-    previous: Optional[float] = None
+    actual: float | None = None
+    forecast: float | None = None
+    previous: float | None = None
 
     @property
     def minutes_until(self) -> float:
@@ -57,7 +56,7 @@ class MacroEvent:
             "name": self.name,
             "tier": self.tier,
             "timestamp": self.timestamp,
-            "datetime_utc": datetime.fromtimestamp(self.timestamp, tz=timezone.utc).isoformat(),
+            "datetime_utc": datetime.fromtimestamp(self.timestamp, tz=UTC).isoformat(),
             "minutes_until": round(self.minutes_until, 1),
             "in_danger_window": self.in_danger_window,
             "danger_window_hours": self.danger_window_hours,
@@ -72,11 +71,17 @@ class EconomicCalendar:
     """Manages upcoming economic events."""
 
     def __init__(self):
-        self._events: List[MacroEvent] = []
+        self._events: list[MacroEvent] = []
         self._last_fetch: float = 0
 
-    def add_event(self, name: str, timestamp: float, description: str = "",
-                  forecast: Optional[float] = None, previous: Optional[float] = None):
+    def add_event(
+        self,
+        name: str,
+        timestamp: float,
+        description: str = "",
+        forecast: float | None = None,
+        previous: float | None = None,
+    ):
         """Add a macro event with automatic tier classification."""
         name_lower = name.lower().replace(" ", "_")
         tier = "Tier4_Low"
@@ -100,33 +105,36 @@ class EconomicCalendar:
         cutoff = time.time() - 86400
         self._events = [e for e in self._events if e.timestamp > cutoff]
 
-    def get_upcoming(self, hours: int = 48) -> List[MacroEvent]:
+    def get_upcoming(self, hours: int = 48) -> list[MacroEvent]:
         """Get events within the next N hours."""
         cutoff = time.time() + hours * 3600
         return [e for e in self._events if time.time() <= e.timestamp <= cutoff]
 
-    def get_next_n(self, n: int = 5) -> List[MacroEvent]:
+    def get_next_n(self, n: int = 5) -> list[MacroEvent]:
         """Get next N upcoming events."""
         future = [e for e in self._events if not e.is_past]
         return future[:n]
 
-    def get_active_danger_windows(self) -> List[MacroEvent]:
+    def get_active_danger_windows(self) -> list[MacroEvent]:
         """Get events currently in their danger window."""
         return [e for e in self._events if e.in_danger_window]
 
-    async def fetch_fred_data(self, series_id: str) -> Optional[Dict]:
+    async def fetch_fred_data(self, series_id: str) -> dict | None:
         """Fetch latest data point from FRED."""
         if not FRED_API_KEY:
             return None
         try:
             async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.get(FRED_BASE, params={
-                    "series_id": series_id,
-                    "api_key": FRED_API_KEY,
-                    "file_type": "json",
-                    "sort_order": "desc",
-                    "limit": 1,
-                })
+                resp = await client.get(
+                    FRED_BASE,
+                    params={
+                        "series_id": series_id,
+                        "api_key": FRED_API_KEY,
+                        "file_type": "json",
+                        "sort_order": "desc",
+                        "limit": 1,
+                    },
+                )
                 data = resp.json()
                 observations = data.get("observations", [])
                 if observations:
@@ -134,13 +142,13 @@ class EconomicCalendar:
                         "value": observations[0].get("value"),
                         "date": observations[0].get("date"),
                     }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"FRED fetch error for {series_id}: {e}")
         return None
 
-    async def fetch_macro_snapshot(self) -> Dict:
+    async def fetch_macro_snapshot(self) -> dict:
         """Fetch current values for all tracked FRED series."""
-        import asyncio
+
         results = {}
         tasks = {name: self.fetch_fred_data(sid) for name, sid in FRED_SERIES.items()}
         for name, coro in tasks.items():

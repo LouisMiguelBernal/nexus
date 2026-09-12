@@ -6,7 +6,6 @@ NO signal bypasses this gate. NO manual override.
 
 import logging
 import time
-from typing import Dict, Optional
 
 from backend.config import GEO_GATE, MACRO_GATE
 from backend.macro.calendar import EconomicCalendar, MacroEvent
@@ -19,19 +18,19 @@ class GateStatus:
 
     def __init__(self):
         self.is_restricted = False
-        self.active_tier: Optional[str] = None
-        self.active_event: Optional[str] = None
+        self.active_tier: str | None = None
+        self.active_event: str | None = None
         self.confidence_threshold: float = 0.65
         self.max_position_pct: float = 0.02
         self.leverage_cap: int = 10
         self.new_positions_allowed: bool = True
-        self.minutes_until_event: Optional[float] = None
-        self.minutes_until_clear: Optional[float] = None
+        self.minutes_until_event: float | None = None
+        self.minutes_until_clear: float | None = None
         # Geopolitical overlay (backend/geo). None = no geo source reported,
         # which is "unknown", not "safe" - the gate simply stays calendar-only.
-        self.geo_score: Optional[float] = None
+        self.geo_score: float | None = None
         self.geo_band: str = "unknown"
-        self.geo_tier: Optional[str] = None
+        self.geo_tier: str | None = None
         # Which inputs actually constrained this status.
         self.sources: list = []
 
@@ -67,8 +66,7 @@ class MacroGate:
         # so the gate never reaches into backend.geo and never blocks on it.
         self._geo: dict = {"score": None, "band": "unknown", "reason": None}
 
-    def set_geo_risk(self, score: Optional[float], band: str = "unknown",
-                     reason: Optional[str] = None) -> None:
+    def set_geo_risk(self, score: float | None, band: str = "unknown", reason: str | None = None) -> None:
         """
         Publish the current geopolitical risk reading (0-100).
 
@@ -105,7 +103,7 @@ class MacroGate:
             return status
 
         # Find the most restrictive active event
-        most_restrictive: Optional[MacroEvent] = None
+        most_restrictive: MacroEvent | None = None
         most_restrictive_tier_rank = 99
 
         tier_rank = {
@@ -144,7 +142,7 @@ class MacroGate:
         logger.warning(
             f"MACRO GATE ACTIVE: {most_restrictive.name} ({most_restrictive.tier}) "
             f"| Threshold: {status.confidence_threshold} "
-            f"| Max position: {status.max_position_pct*100}% "
+            f"| Max position: {status.max_position_pct * 100}% "
             f"| Leverage cap: {status.leverage_cap}x"
         )
 
@@ -175,14 +173,10 @@ class MacroGate:
 
         status.geo_tier = band_cfg["tier"]
         status.is_restricted = True
-        status.confidence_threshold = max(
-            status.confidence_threshold, band_cfg["confidence_threshold"]
-        )
+        status.confidence_threshold = max(status.confidence_threshold, band_cfg["confidence_threshold"])
         status.max_position_pct = min(status.max_position_pct, band_cfg["max_position_pct"])
         status.leverage_cap = min(status.leverage_cap, band_cfg["leverage_cap"])
-        status.new_positions_allowed = (
-            status.new_positions_allowed and band_cfg["new_positions_allowed"]
-        )
+        status.new_positions_allowed = status.new_positions_allowed and band_cfg["new_positions_allowed"]
         if "geo" not in status.sources:
             status.sources.append("geo")
 
@@ -194,10 +188,12 @@ class MacroGate:
             status.active_event = f"Geopolitical risk {status.geo_band} ({score:.0f}/100)"
 
         logger.warning(
-            "GEO GATE ACTIVE: score %.0f (%s) | Threshold: %s | Max position: %s%% "
-            "| Leverage cap: %sx",
-            score, status.geo_band, status.confidence_threshold,
-            status.max_position_pct * 100, status.leverage_cap,
+            "GEO GATE ACTIVE: score %.0f (%s) | Threshold: %s | Max position: %s%% | Leverage cap: %sx",
+            score,
+            status.geo_band,
+            status.confidence_threshold,
+            status.max_position_pct * 100,
+            status.leverage_cap,
         )
 
     def can_open_position(self) -> bool:
@@ -205,8 +201,9 @@ class MacroGate:
         status = self.evaluate()
         return status.new_positions_allowed
 
-    def get_adjusted_params(self, base_confidence: float, base_position_pct: float,
-                            base_leverage: int) -> Dict:
+    def get_adjusted_params(
+        self, base_confidence: float, base_position_pct: float, base_leverage: int
+    ) -> dict:
         """
         Adjust trading parameters based on current gate status.
         Returns modified confidence threshold, position size, and leverage.

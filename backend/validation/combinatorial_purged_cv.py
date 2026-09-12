@@ -17,15 +17,16 @@ from __future__ import annotations
 
 import itertools
 import math
-from dataclasses import dataclass, asdict
-from typing import Any, Callable, Dict, List, Sequence
+from collections.abc import Callable, Sequence
+from dataclasses import asdict, dataclass
+from typing import Any
 
 
 @dataclass
 class CPCVPath:
     path_idx: int
-    test_groups: List[int]
-    oos_returns: List[float]
+    test_groups: list[int]
+    oos_returns: list[float]
     sharpe: float
 
 
@@ -44,13 +45,13 @@ def _sharpe(returns: Sequence[float], annualization: float = math.sqrt(365)) -> 
 def combinatorial_purged_cv(
     n_samples: int,
     fit: Callable[[Sequence[int]], Any],
-    score: Callable[[Any, Sequence[int]], List[float]],
+    score: Callable[[Any, Sequence[int]], list[float]],
     *,
     n_groups: int = 6,
     n_test_groups: int = 2,
     embargo: int = 10,
     annualization: float = math.sqrt(365),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run CPCV.
 
     Parameters
@@ -71,14 +72,15 @@ def combinatorial_purged_cv(
         return {"paths": [], "n_paths": 0, "reason": "too few samples"}
 
     group_size = n_samples // n_groups
-    boundaries = [(g * group_size, (g + 1) * group_size if g < n_groups - 1 else n_samples)
-                  for g in range(n_groups)]
+    boundaries = [
+        (g * group_size, (g + 1) * group_size if g < n_groups - 1 else n_samples) for g in range(n_groups)
+    ]
 
-    paths: List[CPCVPath] = []
+    paths: list[CPCVPath] = []
     combos = list(itertools.combinations(range(n_groups), n_test_groups))
 
     for p_idx, test_groups in enumerate(combos):
-        test_idx: List[int] = []
+        test_idx: list[int] = []
         for g in test_groups:
             s, e = boundaries[g]
             test_idx.extend(range(s, e))
@@ -94,12 +96,14 @@ def combinatorial_purged_cv(
 
         model = fit(train_idx)
         oos = list(score(model, test_idx))
-        paths.append(CPCVPath(
-            path_idx=p_idx,
-            test_groups=list(test_groups),
-            oos_returns=oos,
-            sharpe=_sharpe(oos, annualization),
-        ))
+        paths.append(
+            CPCVPath(
+                path_idx=p_idx,
+                test_groups=list(test_groups),
+                oos_returns=oos,
+                sharpe=_sharpe(oos, annualization),
+            )
+        )
 
     sharpes = [p.sharpe for p in paths]
     mean_s = sum(sharpes) / len(sharpes) if sharpes else 0.0

@@ -23,13 +23,13 @@ callers simply never trip the guard, so their polling is unaffected.
 Thread-safe: the aggTrade poller runs fetches in a ThreadPoolExecutor, so the
 registry is guarded by a lock.
 """
+
 from __future__ import annotations
 
 import logging
 import re
 import threading
 import time
-from typing import Optional
 
 logger = logging.getLogger("nexus.rate_guard")
 
@@ -92,11 +92,13 @@ def _apply_cooldown(host: str, until_ts: float, reason: str) -> None:
         _cooldown_until[host] = until_ts
     logger.warning(
         "rate_guard: %s suspended for %ds (%s)",
-        host, int(max(0.0, until_ts - _now())), reason,
+        host,
+        int(max(0.0, until_ts - _now())),
+        reason,
     )
 
 
-def _parse_deadline(body_text: str) -> Optional[float]:
+def _parse_deadline(body_text: str) -> float | None:
     m = _BANNED_UNTIL_RE.search(body_text or "")
     if not m:
         return None
@@ -130,7 +132,7 @@ def record_response(host: str, status_code: int, body_text: str = "") -> bool:
     with _lock:
         step = _backoff_step.get(host, 0)
         _backoff_step[host] = step + 1
-    delay = min(_BACKOFF_BASE_S * (2 ** step), _BACKOFF_MAX_S)
+    delay = min(_BACKOFF_BASE_S * (2**step), _BACKOFF_MAX_S)
     _apply_cooldown(host, _now() + delay, f"HTTP {status_code} backoff #{step + 1}")
     return True
 
@@ -149,7 +151,7 @@ def record_success(host: str) -> None:
             _backoff_step[host] = 0
 
 
-def reset(host: Optional[str] = None) -> None:
+def reset(host: str | None = None) -> None:
     """Clear cooldown state. ``None`` clears everything (test/ops hook)."""
     with _lock:
         if host is None:

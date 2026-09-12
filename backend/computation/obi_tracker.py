@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import time
 from collections import deque
-from typing import Any, Deque, Dict, List, Optional
+from typing import Any
 
 
 class OBITracker:
@@ -44,16 +44,16 @@ class OBITracker:
         self.max_samples = max_samples
         # Each sample: (t_unix, obi_notional, bid_notional, ask_notional, mid)
         # bid_notional / ask_notional are Σ p·q (USD), NOT raw qty.
-        self._samples: Deque[tuple] = deque(maxlen=max_samples)
+        self._samples: deque[tuple] = deque(maxlen=max_samples)
         # Parallel quantity-only series so consumers can compare a notional
         # imbalance against the raw size imbalance - useful for distinguishing
         # large-price vs large-qty wall behaviours.
         # tuple: (t_unix, obi_qty, bid_qty, ask_qty)
-        self._qty_samples: Deque[tuple] = deque(maxlen=max_samples)
+        self._qty_samples: deque[tuple] = deque(maxlen=max_samples)
         # VPIN-bucket-aligned OBI snapshots (P1-6).
-        self._vpin_aligned: Deque[Dict[str, Any]] = deque(maxlen=256)
+        self._vpin_aligned: deque[dict[str, Any]] = deque(maxlen=256)
 
-    def update(self, order_book: Optional[dict]) -> Optional[Dict]:
+    def update(self, order_book: dict | None) -> dict | None:
         """Call on every tick or on a timer. Returns the latest sample dict or None."""
         if not order_book:
             return None
@@ -83,11 +83,11 @@ class OBITracker:
         self._qty_samples.append((t, obi_qty, bid_qty, ask_qty))
         return {
             "time": t,
-            "obi": obi,                    # primary (notional) - back-compat key
+            "obi": obi,  # primary (notional) - back-compat key
             "obi_notional": obi,
             "obi_qty": obi_qty,
-            "bid_vol": bid_notional,       # back-compat
-            "ask_vol": ask_notional,       # back-compat
+            "bid_vol": bid_notional,  # back-compat
+            "ask_vol": ask_notional,  # back-compat
             "bid_notional": bid_notional,
             "ask_notional": ask_notional,
             "bid_qty": bid_qty,
@@ -99,7 +99,7 @@ class OBITracker:
     # VPIN-bucket alignment (P1-6)
     # ------------------------------------------------------------------
 
-    def sample_on_vpin_close(self, vpin_bucket: Dict[str, Any]) -> Optional[Dict]:
+    def sample_on_vpin_close(self, vpin_bucket: dict[str, Any]) -> dict | None:
         """Stamp the latest OBI onto a VPIN bucket close event.
 
         `vpin_bucket` is the dict returned by `VPINTracker.add_trade()` when
@@ -122,17 +122,17 @@ class OBITracker:
         self._vpin_aligned.append(snap)
         return snap
 
-    def vpin_aligned_series(self, limit: int = 64) -> List[Dict[str, Any]]:
+    def vpin_aligned_series(self, limit: int = 64) -> list[dict[str, Any]]:
         return list(self._vpin_aligned)[-limit:]
 
     # ------------------------------------------------------------------
-    def latest(self) -> Optional[Dict]:
+    def latest(self) -> dict | None:
         if not self._samples:
             return None
         t, obi, bv, av, mid = self._samples[-1]
         return {"time": t, "obi": obi, "bid_vol": bv, "ask_vol": av, "mid": mid}
 
-    def series(self, limit: int = 240) -> List[Dict]:
+    def series(self, limit: int = 240) -> list[dict]:
         """Return the last ``limit`` samples, oldest first."""
         if not self._samples:
             return []
@@ -142,7 +142,7 @@ class OBITracker:
             for (t, obi, bv, av, mid) in data
         ]
 
-    def summary(self, window: int = 120) -> Dict:
+    def summary(self, window: int = 120) -> dict:
         """Aggregate stats over the last ``window`` samples.
 
         Returns dual notional/qty stats. The legacy ``latest``/``mean``/``std``
@@ -167,14 +167,18 @@ class OBITracker:
         vals = [s[1] for s in list(self._samples)[-window:]]
         mean = sum(vals) / len(vals)
         var = sum((v - mean) ** 2 for v in vals) / len(vals)
-        std = var ** 0.5
+        std = var**0.5
         latest = vals[-1]
 
         def _bias(x: float) -> str:
-            if x >= 0.2: return "strong_bid"
-            if x >= 0.05: return "bid"
-            if x <= -0.2: return "strong_ask"
-            if x <= -0.05: return "ask"
+            if x >= 0.2:
+                return "strong_bid"
+            if x >= 0.05:
+                return "bid"
+            if x <= -0.2:
+                return "strong_ask"
+            if x <= -0.05:
+                return "ask"
             return "balanced"
 
         # Quantity series (matched window).
@@ -183,7 +187,7 @@ class OBITracker:
             qvals = [s[1] for s in list(self._qty_samples)[-qwindow:]]
             qmean = sum(qvals) / len(qvals)
             qvar = sum((v - qmean) ** 2 for v in qvals) / len(qvals)
-            qstd = qvar ** 0.5
+            qstd = qvar**0.5
             qlatest = qvals[-1]
         else:
             qmean = qstd = qlatest = 0.0
@@ -204,7 +208,7 @@ class OBITracker:
             "bias_qty": _bias(qlatest),
         }
 
-    def with_vpin_context(self, vpin_result: Optional[Any] = None, window: int = 120) -> Dict:
+    def with_vpin_context(self, vpin_result: Any | None = None, window: int = 120) -> dict:
         """Summary merged with a VPINTracker snapshot for cross-event analysis.
 
         ``vpin_result`` is the result of ``VPINTracker.snapshot()``. When None
@@ -213,21 +217,25 @@ class OBITracker:
         """
         out = dict(self.summary(window=window))
         if vpin_result is not None:
-            out.update({
-                "vpin_running": getattr(vpin_result, "running", None),
-                "vpin_last_bucket": getattr(vpin_result, "last_bucket", None),
-                "vpin_toxic": getattr(vpin_result, "toxic", None),
-                "vpin_window": getattr(vpin_result, "window", None),
-                "vpin_bucket_target_notional": getattr(vpin_result, "bucket_target_notional", None),
-                "vpin_buckets_closed": getattr(vpin_result, "buckets_closed", None),
-            })
+            out.update(
+                {
+                    "vpin_running": getattr(vpin_result, "running", None),
+                    "vpin_last_bucket": getattr(vpin_result, "last_bucket", None),
+                    "vpin_toxic": getattr(vpin_result, "toxic", None),
+                    "vpin_window": getattr(vpin_result, "window", None),
+                    "vpin_bucket_target_notional": getattr(vpin_result, "bucket_target_notional", None),
+                    "vpin_buckets_closed": getattr(vpin_result, "buckets_closed", None),
+                }
+            )
         else:
-            out.update({
-                "vpin_running": None,
-                "vpin_last_bucket": None,
-                "vpin_toxic": None,
-                "vpin_window": None,
-                "vpin_bucket_target_notional": None,
-                "vpin_buckets_closed": None,
-            })
+            out.update(
+                {
+                    "vpin_running": None,
+                    "vpin_last_bucket": None,
+                    "vpin_toxic": None,
+                    "vpin_window": None,
+                    "vpin_bucket_target_notional": None,
+                    "vpin_buckets_closed": None,
+                }
+            )
         return out

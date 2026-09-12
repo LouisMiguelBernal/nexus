@@ -9,12 +9,13 @@ For each symbol we keep a tiny buffer of recent trades (last 5s, in CVDComputer
 format), and on each tick call AbsorptionDetector.analyze_window() once. The
 last non-None result is cached on the detector for endpoint reads.
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import time
-from typing import Mapping
+from collections.abc import Mapping
 
 from backend.computation.absorption import AbsorptionDetector
 
@@ -57,7 +58,9 @@ async def absorption_sample_loop(
                 price_end = trades[-1]["price"]
                 try:
                     result = det.analyze_window(
-                        trades, price_start=price_start, price_end=price_end,
+                        trades,
+                        price_start=price_start,
+                        price_end=price_end,
                         window_seconds=int(interval_s),
                     )
                 except Exception as exc:  # noqa: BLE001

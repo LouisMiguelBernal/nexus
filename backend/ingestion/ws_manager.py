@@ -18,7 +18,8 @@ import json
 import logging
 import ssl
 import time
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 import websockets
 from websockets.exceptions import ConnectionClosed
@@ -28,6 +29,7 @@ from websockets.exceptions import ConnectionClosed
 # Permissive: for networks with SSL interception (corporate firewalls, antivirus)
 try:
     import certifi
+
     _ssl_strict = ssl.create_default_context(cafile=certifi.where())
 except ImportError:
     _ssl_strict = ssl.create_default_context()
@@ -46,12 +48,12 @@ class WSConnection:
         self,
         name: str,
         url: str,
-        subscribe_msg: Optional[dict | list] = None,
-        on_message: Optional[Callable] = None,
+        subscribe_msg: dict | list | None = None,
+        on_message: Callable | None = None,
         max_retries: int = 50,
         retry_delay: float = 2.0,
-        on_gap: Optional[Callable[[str, float, float], Awaitable[Any]]] = None,
-        app_ping_msg: Optional[dict] = None,
+        on_gap: Callable[[str, float, float], Awaitable[Any]] | None = None,
+        app_ping_msg: dict | None = None,
         app_ping_interval: float = 25.0,
     ):
         self.name = name
@@ -69,22 +71,22 @@ class WSConnection:
         # every ~60s on top of WS-level pings, otherwise the server drops).
         self.app_ping_msg = app_ping_msg
         self.app_ping_interval = app_ping_interval
-        self._ping_task: Optional[asyncio.Task] = None
+        self._ping_task: asyncio.Task | None = None
 
         # --- Gap-fill tracking (P0-4) ---------------------------------
         # Monotonic wall-clock of the last message we successfully processed
         # for this stream. Used by consumers to size a REST backfill window
         # on reconnect.
-        self._last_event_time: Optional[float] = None
+        self._last_event_time: float | None = None
         # Wall-clock at the moment the current connection went down (set in
         # the disconnect branches, cleared on successful reconnect).
-        self._disconnect_started_at: Optional[float] = None
+        self._disconnect_started_at: float | None = None
         # Gap-fill callback: await on_gap(name, gap_start_ts, gap_end_ts)
         # *after* a successful reconnect so the caller can REST-backfill and
         # emit a `gap_filled` event downstream.
         self.on_gap = on_gap
         # Rolling log of gap events (bounded) for /api/health exposure.
-        self._gap_log: List[Dict[str, float]] = []
+        self._gap_log: list[dict[str, float]] = []
         self._gap_log_cap = 64
 
     def _get_ssl(self):
@@ -155,6 +157,7 @@ class WSConnection:
 
                     # Application-layer keepalive (MEXC etc.)
                     if self.app_ping_msg:
+
                         async def _app_ping():
                             try:
                                 while self._running and self._ws is not None:
@@ -163,10 +166,11 @@ class WSConnection:
                                         return
                                     try:
                                         await ws.send(json.dumps(self.app_ping_msg))
-                                    except Exception:
+                                    except Exception:  # noqa: BLE001
                                         return
                             except asyncio.CancelledError:
                                 pass
+
                         self._ping_task = asyncio.create_task(_app_ping())
 
                     async for raw in ws:
@@ -201,12 +205,15 @@ class WSConnection:
                     self._retries = 0  # reset retries since we're trying a new approach
                     continue
                 logger.error(f"[{self.name}] SSL error even in permissive mode: {e}")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 if self._disconnect_started_at is None:
                     self._disconnect_started_at = time.time()
                 err_msg = str(e)
-                if ("CERTIFICATE_VERIFY_FAILED" in err_msg or "untrusted" in err_msg.lower()
-                        or "blocking-page" in err_msg.lower()):
+                if (
+                    "CERTIFICATE_VERIFY_FAILED" in err_msg
+                    or "untrusted" in err_msg.lower()
+                    or "blocking-page" in err_msg.lower()
+                ):
                     if not self._use_permissive_ssl:
                         logger.warning(
                             f"[{self.name}] SSL interception detected. "
@@ -246,18 +253,18 @@ class WSConnection:
     # ------------------------------------------------------------------
 
     @property
-    def last_event_time(self) -> Optional[float]:
+    def last_event_time(self) -> float | None:
         """Wall-clock of the last successfully processed message, or None."""
         return self._last_event_time
 
     @property
-    def seconds_since_last_event(self) -> Optional[float]:
+    def seconds_since_last_event(self) -> float | None:
         if self._last_event_time is None:
             return None
         return time.time() - self._last_event_time
 
     @property
-    def gap_log(self) -> List[Dict[str, float]]:
+    def gap_log(self) -> list[dict[str, float]]:
         """Bounded log of recent (start, end, duration_s) gap events."""
         return list(self._gap_log)
 
@@ -266,8 +273,8 @@ class WSManager:
     """Manages multiple concurrent WebSocket connections."""
 
     def __init__(self):
-        self._connections: Dict[str, WSConnection] = {}
-        self._tasks: Dict[str, asyncio.Task] = {}
+        self._connections: dict[str, WSConnection] = {}
+        self._tasks: dict[str, asyncio.Task] = {}
 
     def add(self, conn: WSConnection):
         self._connections[conn.name] = conn
@@ -279,9 +286,9 @@ class WSManager:
             logger.info(f"Started WS task: {name}")
 
     async def stop_all(self):
-        for name, conn in self._connections.items():
+        for name, conn in self._connections.items():  # noqa: B007
             await conn.disconnect()
-        for name, task in self._tasks.items():
+        for name, task in self._tasks.items():  # noqa: B007
             task.cancel()
             try:
                 await task
@@ -300,24 +307,22 @@ class WSManager:
             logger.info(f"Restarted WS: {name}")
 
     @property
-    def status(self) -> Dict[str, bool]:
-        return {
-            name: conn._ws is not None and conn._running
-            for name, conn in self._connections.items()
-        }
+    def status(self) -> dict[str, bool]:
+        return {name: conn._ws is not None and conn._running for name, conn in self._connections.items()}
 
     # ------------------------------------------------------------------
     # Gap-fill introspection (P0-4)
     # ------------------------------------------------------------------
 
-    def gap_report(self, name: Optional[str] = None) -> Dict[str, Any]:
+    def gap_report(self, name: str | None = None) -> dict[str, Any]:
         """Report last-event staleness + historical gap log per connection.
 
         Consumers (main.py /api/health, monitoring.staleness, etc.) call this
         to decide whether a REST backfill is needed. Empty `gap_log` with a
         non-None `last_event_time` = clean session.
         """
-        def _one(conn: WSConnection) -> Dict[str, Any]:
+
+        def _one(conn: WSConnection) -> dict[str, Any]:
             return {
                 "connected": conn._ws is not None and conn._running,
                 "last_event_time": conn.last_event_time,

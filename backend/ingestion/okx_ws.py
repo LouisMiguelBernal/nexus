@@ -6,9 +6,8 @@ Secondary source: order book, trades, liquidations.
 import logging
 import time
 from collections import defaultdict, deque
-from typing import Dict, List, Optional
 
-from backend.config import WS_OKX, DEFAULT_SYMBOLS
+from backend.config import DEFAULT_SYMBOLS, WS_OKX
 from backend.ingestion.ws_manager import WSConnection
 
 logger = logging.getLogger("nexus.okx_ws")
@@ -33,10 +32,10 @@ def _from_okx_inst(inst_id: str) -> str:
 
 class OKXData:
     def __init__(self):
-        self.order_books: Dict[str, dict] = {}
-        self.trades: Dict[str, deque] = defaultdict(lambda: deque(maxlen=5000))
-        self.liquidations: Dict[str, deque] = defaultdict(lambda: deque(maxlen=500))
-        self.last_update: Dict[str, float] = {}
+        self.order_books: dict[str, dict] = {}
+        self.trades: dict[str, deque] = defaultdict(lambda: deque(maxlen=5000))
+        self.liquidations: dict[str, deque] = defaultdict(lambda: deque(maxlen=500))
+        self.last_update: dict[str, float] = {}
 
     def update_order_book(self, symbol: str, data: dict):
         self.order_books[symbol] = {
@@ -46,23 +45,27 @@ class OKXData:
         self.last_update[f"{symbol}_ob"] = time.time()
 
     def update_trade(self, symbol: str, data: dict):
-        self.trades[symbol].append({
-            "price": float(data.get("px", 0)),
-            "qty": float(data.get("sz", 0)),
-            "side": data.get("side", ""),
-            "time": int(data.get("ts", time.time() * 1000)),
-        })
+        self.trades[symbol].append(
+            {
+                "price": float(data.get("px", 0)),
+                "qty": float(data.get("sz", 0)),
+                "side": data.get("side", ""),
+                "time": int(data.get("ts", time.time() * 1000)),
+            }
+        )
         self.last_update[f"{symbol}_trades"] = time.time()
 
     def update_liquidation(self, symbol: str, data: dict):
         details = data.get("details", [{}])[0] if data.get("details") else {}
-        self.liquidations[symbol].append({
-            "symbol": symbol,
-            "side": details.get("side", ""),
-            "price": float(details.get("bkPx", 0)),
-            "qty": float(details.get("sz", 0)),
-            "time": int(details.get("ts", time.time() * 1000)),
-        })
+        self.liquidations[symbol].append(
+            {
+                "symbol": symbol,
+                "side": details.get("side", ""),
+                "price": float(details.get("bkPx", 0)),
+                "qty": float(details.get("sz", 0)),
+                "time": int(details.get("ts", time.time() * 1000)),
+            }
+        )
         self.last_update[f"{symbol}_liq"] = time.time()
 
 
@@ -86,17 +89,19 @@ async def _handle_okx_message(name: str, data: dict):
 
 
 def create_okx_connection(
-    symbols: Optional[List[str]] = None,
+    symbols: list[str] | None = None,
 ) -> WSConnection:
     symbols = symbols or DEFAULT_SYMBOLS
     args = []
     for sym in symbols:
         inst = _to_okx_inst(sym)
-        args.extend([
-            {"channel": "books5", "instId": inst},
-            {"channel": "trades", "instId": inst},
-            {"channel": "liquidation-orders", "instType": "SWAP"},
-        ])
+        args.extend(
+            [
+                {"channel": "books5", "instId": inst},
+                {"channel": "trades", "instId": inst},
+                {"channel": "liquidation-orders", "instType": "SWAP"},
+            ]
+        )
     subscribe_msg = {"op": "subscribe", "args": args}
     return WSConnection(
         name="okx",

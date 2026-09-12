@@ -4,7 +4,6 @@ Computes rolling correlation between crypto assets for portfolio risk.
 """
 
 import logging
-from typing import Dict, List
 
 import numpy as np
 
@@ -12,9 +11,9 @@ logger = logging.getLogger("nexus.correlation")
 
 
 def compute_correlation_matrix(
-    returns_by_symbol: Dict[str, List[float]],
+    returns_by_symbol: dict[str, list[float]],
     window: int = 30,
-) -> Dict:
+) -> dict:
     """
     Compute pairwise correlation matrix from daily returns.
 
@@ -31,9 +30,7 @@ def compute_correlation_matrix(
     if min_len < window:
         return {"error": f"Insufficient data: {min_len} < {window} required"}
 
-    matrix_data = np.array([
-        returns_by_symbol[s][-window:] for s in symbols
-    ])
+    matrix_data = np.array([returns_by_symbol[s][-window:] for s in symbols])
 
     corr_matrix = np.corrcoef(matrix_data)
 

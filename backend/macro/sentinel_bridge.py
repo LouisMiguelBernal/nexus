@@ -6,7 +6,7 @@ This bridge is additive - do NOT rebuild SENTINEL.
 """
 
 import logging
-from typing import Dict, Any
+from typing import Any
 
 logger = logging.getLogger("nexus.sentinel_bridge")
 
@@ -20,7 +20,7 @@ class SentinelBridge:
         self.calendar = calendar
         logger.info("SentinelBridge initialized")
 
-    def process_update(self, data: Dict[str, Any]) -> bool:
+    def process_update(self, data: dict[str, Any]) -> bool:
         """
         Process an incoming SENTINEL macro update.
         """
@@ -44,6 +44,6 @@ class SentinelBridge:
             # Could integrate with alerts here, e.g.
             # self.calendar.add_event(f"Via SENTINEL | Context: {market_context}")
             return True
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(f"SENTINEL bridge error: {e}")
             return False

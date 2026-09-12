@@ -17,12 +17,13 @@ Everything served here is tagged ``asset_class: cross_asset`` at the source.
 Nexus trades USDT-M perps; nothing on this router is a tradable symbol, and no
 response from it may be routed into a perp code path.
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -34,8 +35,15 @@ logger = logging.getLogger("nexus.api.world")
 
 # Range -> interval. Yahoo rejects mismatched pairs (5y at 5m granularity).
 _INTERVAL_FOR = {
-    "1d": "5m", "5d": "15m", "1mo": "1d", "3mo": "1d", "6mo": "1d",
-    "1y": "1d", "2y": "1wk", "5y": "1wk", "max": "1mo",
+    "1d": "5m",
+    "5d": "15m",
+    "1mo": "1d",
+    "3mo": "1d",
+    "6mo": "1d",
+    "1y": "1d",
+    "2y": "1wk",
+    "5y": "1wk",
+    "max": "1mo",
 }
 
 
@@ -51,8 +59,8 @@ def make_router(*, state) -> APIRouter:
     """
     router = APIRouter(prefix="/api/world", tags=["world"])
 
-    _cache: Dict[str, Tuple[float, Any]] = {}
-    _locks: Dict[str, asyncio.Lock] = {}
+    _cache: dict[str, tuple[float, Any]] = {}
+    _locks: dict[str, asyncio.Lock] = {}
 
     async def cached(key: str, ttl: float, factory):
         """TTL cache + single-flight for the on-demand routes."""
@@ -70,7 +78,7 @@ def make_router(*, state) -> APIRouter:
             _cache[key] = (time.time(), value)
             return value
 
-    def _age(section: str) -> Optional[float]:
+    def _age(section: str) -> float | None:
         ts = (getattr(state, "updated_at", None) or {}).get(section)
         return round(time.time() - ts, 1) if ts else None
 
@@ -115,7 +123,7 @@ def make_router(*, state) -> APIRouter:
     # -----------------------------------------------------------------------
 
     @router.get("/chart/{symbol}")
-    async def chart(symbol: str, range: str = Query("6mo"), interval: Optional[str] = None):
+    async def chart(symbol: str, range: str = Query("6mo"), interval: str | None = None):
         if range not in _INTERVAL_FOR:
             raise HTTPException(400, f"unsupported range {range}")
         resolved = interval or _INTERVAL_FOR[range]
@@ -125,16 +133,14 @@ def make_router(*, state) -> APIRouter:
 
     @router.get("/fundamentals/{symbol}")
     async def fundamentals(symbol: str):
-        return await cached(
-            f"fund:{symbol}", 900.0, lambda: xa_equity.fetch_fundamentals(symbol)
-        )
+        return await cached(f"fund:{symbol}", 900.0, lambda: xa_equity.fetch_fundamentals(symbol))
 
     @router.get("/screener")
     async def screener(id: str = Query("most_actives"), count: int = Query(40, le=100)):
         return await cached(f"screen:{id}:{count}", 180.0, lambda: xa_equity.fetch_screen(id, count))
 
     @router.get("/options/{symbol}")
-    async def options(symbol: str, expiry: Optional[int] = None):
+    async def options(symbol: str, expiry: int | None = None):
         return await cached(
             f"opt:{symbol}:{expiry or 'front'}", 60.0, lambda: xa_equity.fetch_chain(symbol, expiry)
         )
@@ -143,9 +149,7 @@ def make_router(*, state) -> APIRouter:
     async def search(q: str = Query(..., min_length=1), limit: int = Query(10, le=25)):
         if len(q.strip()) < 1:
             return {"q": q, "results": []}
-        results = await cached(
-            f"search:{q.lower()}:{limit}", 600.0, lambda: xa_yahoo.search(q, limit)
-        )
+        results = await cached(f"search:{q.lower()}:{limit}", 600.0, lambda: xa_yahoo.search(q, limit))
         return {"q": q, "results": results}
 
     return router

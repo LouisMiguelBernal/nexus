@@ -26,36 +26,76 @@ Verdict
   RANGING        abs(composite)<10
   NEUTRAL        otherwise
 """
+
 from __future__ import annotations
 
 import math
 import statistics
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
-from typing import Dict, Iterable, List, Optional
-
 
 # ---------------------------------------------------------------------------
 # Default layer weights (regime-neutral baseline)
 # ---------------------------------------------------------------------------
-DEFAULT_WEIGHTS: Dict[str, float] = {
-    "trend":  0.18,
-    "flow":   0.20,
-    "oi":     0.14,
-    "basis":  0.10,
-    "vol":    0.12,
-    "liq":    0.14,
+DEFAULT_WEIGHTS: dict[str, float] = {
+    "trend": 0.18,
+    "flow": 0.20,
+    "oi": 0.14,
+    "basis": 0.10,
+    "vol": 0.12,
+    "liq": 0.14,
     "dealer": 0.12,
 }
 assert abs(sum(DEFAULT_WEIGHTS.values()) - 1.0) < 1e-9
 
 
 # Per-regime overrides - must contain only keys from DEFAULT_WEIGHTS.
-WEIGHTS_BY_REGIME: Dict[str, Dict[str, float]] = {
-    "trending_up":   {"trend": 0.28, "flow": 0.22, "oi": 0.16, "basis": 0.06, "vol": 0.08, "liq": 0.10, "dealer": 0.10},
-    "trending_down": {"trend": 0.28, "flow": 0.22, "oi": 0.16, "basis": 0.06, "vol": 0.08, "liq": 0.10, "dealer": 0.10},
-    "ranging":       {"trend": 0.08, "flow": 0.18, "oi": 0.12, "basis": 0.16, "vol": 0.16, "liq": 0.16, "dealer": 0.14},
-    "volatile":      {"trend": 0.10, "flow": 0.18, "oi": 0.14, "basis": 0.10, "vol": 0.18, "liq": 0.18, "dealer": 0.12},
-    "low_liq":       {"trend": 0.10, "flow": 0.14, "oi": 0.10, "basis": 0.18, "vol": 0.14, "liq": 0.14, "dealer": 0.20},
+WEIGHTS_BY_REGIME: dict[str, dict[str, float]] = {
+    "trending_up": {
+        "trend": 0.28,
+        "flow": 0.22,
+        "oi": 0.16,
+        "basis": 0.06,
+        "vol": 0.08,
+        "liq": 0.10,
+        "dealer": 0.10,
+    },
+    "trending_down": {
+        "trend": 0.28,
+        "flow": 0.22,
+        "oi": 0.16,
+        "basis": 0.06,
+        "vol": 0.08,
+        "liq": 0.10,
+        "dealer": 0.10,
+    },
+    "ranging": {
+        "trend": 0.08,
+        "flow": 0.18,
+        "oi": 0.12,
+        "basis": 0.16,
+        "vol": 0.16,
+        "liq": 0.16,
+        "dealer": 0.14,
+    },
+    "volatile": {
+        "trend": 0.10,
+        "flow": 0.18,
+        "oi": 0.14,
+        "basis": 0.10,
+        "vol": 0.18,
+        "liq": 0.18,
+        "dealer": 0.12,
+    },
+    "low_liq": {
+        "trend": 0.10,
+        "flow": 0.14,
+        "oi": 0.10,
+        "basis": 0.18,
+        "vol": 0.14,
+        "liq": 0.14,
+        "dealer": 0.20,
+    },
 }
 for _r, _w in WEIGHTS_BY_REGIME.items():
     s = sum(_w.values())
@@ -67,31 +107,31 @@ class Layer:
     """One scored layer ∈ [-1, +1] with provenance."""
 
     value: float
-    source: str = "direct"   # "direct" | "proxy" | "none"
+    source: str = "direct"  # "direct" | "proxy" | "none"
     confidence: float = 1.0  # [0, 1]
     note: str = ""
 
-    def clamp(self) -> "Layer":
+    def clamp(self) -> Layer:
         self.value = max(-1.0, min(1.0, float(self.value)))
         self.confidence = max(0.0, min(1.0, float(self.confidence)))
         return self
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         return asdict(self)
 
 
 @dataclass
 class Composite:
-    score: float                           # [-100, +100]
+    score: float  # [-100, +100]
     verdict: str
-    confidence: float                      # [0, 100]
-    agreement: float                       # [0, 100]
-    venue_agreement: float                 # [0, 100]
-    layers: Dict[str, Dict] = field(default_factory=dict)
-    weights_used: Dict[str, float] = field(default_factory=dict)
+    confidence: float  # [0, 100]
+    agreement: float  # [0, 100]
+    venue_agreement: float  # [0, 100]
+    layers: dict[str, dict] = field(default_factory=dict)
+    weights_used: dict[str, float] = field(default_factory=dict)
     regime: str = "unknown"
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         return asdict(self)
 
 
@@ -102,13 +142,14 @@ class Composite:
 # composite renormalises across whatever is present.
 # ---------------------------------------------------------------------------
 
-def _z(x: Optional[float], scale: float) -> Optional[float]:
+
+def _z(x: float | None, scale: float) -> float | None:
     if x is None or not math.isfinite(x):
         return None
     return x / max(scale, 1e-9)
 
 
-def _tanh_blend(parts: Iterable[Optional[float]], gain: float = 1.0) -> Optional[float]:
+def _tanh_blend(parts: Iterable[float | None], gain: float = 1.0) -> float | None:
     vals = [v for v in parts if v is not None and math.isfinite(v)]
     if not vals:
         return None
@@ -117,9 +158,9 @@ def _tanh_blend(parts: Iterable[Optional[float]], gain: float = 1.0) -> Optional
 
 def layer_trend(
     *,
-    ema50_slope_pct: Optional[float],   # %/bar
-    adx: Optional[float],
-    hurst_signed: Optional[float],      # already in [-1,+1] from hurst_score
+    ema50_slope_pct: float | None,  # %/bar
+    adx: float | None,
+    hurst_signed: float | None,  # already in [-1,+1] from hurst_score
 ) -> Layer:
     inputs = [
         _z(ema50_slope_pct, 0.5),
@@ -135,12 +176,12 @@ def layer_trend(
 
 def layer_flow(
     *,
-    cvd_1h_z: Optional[float],
-    obi: Optional[float],         # already [-1,+1]
-    vpin: Optional[float],        # [0,1]; we want low VPIN = clean = positive
-    flow_ratio: Optional[float],  # [0,1]; >0.5 = buy-heavy
+    cvd_1h_z: float | None,
+    obi: float | None,  # already [-1,+1]
+    vpin: float | None,  # [0,1]; we want low VPIN = clean = positive
+    flow_ratio: float | None,  # [0,1]; >0.5 = buy-heavy
 ) -> Layer:
-    parts: list[Optional[float]] = []
+    parts: list[float | None] = []
     parts.append(cvd_1h_z if cvd_1h_z is not None else None)
     parts.append(obi)
     if vpin is not None and math.isfinite(vpin):
@@ -156,8 +197,8 @@ def layer_flow(
 
 def layer_oi(
     *,
-    oi_change_pct: Optional[float],
-    funding_persistence: Optional[float],  # [-1,+1] persistence of sign
+    oi_change_pct: float | None,
+    funding_persistence: float | None,  # [-1,+1] persistence of sign
 ) -> Layer:
     parts = [_z(oi_change_pct, 1.5), funding_persistence]
     v = _tanh_blend(parts, gain=1.0)
@@ -169,15 +210,15 @@ def layer_oi(
 
 def layer_basis(
     *,
-    basis_pct: Optional[float],
-    basis_dispersion: Optional[float],  # stdev across venues (penalty)
+    basis_pct: float | None,
+    basis_dispersion: float | None,  # stdev across venues (penalty)
 ) -> Layer:
     if basis_pct is None or not math.isfinite(basis_pct):
         return Layer(0.0, source="none", confidence=0.0, note="no basis")
     raw = math.tanh(basis_pct / 0.4)  # 0.4% → tanh ≈ 0.76
     if basis_dispersion is not None and math.isfinite(basis_dispersion):
         penalty = min(1.0, basis_dispersion / 0.3)
-        raw *= (1.0 - 0.5 * penalty)
+        raw *= 1.0 - 0.5 * penalty
         conf = 1.0 - 0.5 * penalty
     else:
         conf = 0.7
@@ -186,12 +227,12 @@ def layer_basis(
 
 def layer_vol(
     *,
-    bb_width_pct: Optional[float],   # current BB width
-    bb_width_avg: Optional[float],   # rolling avg for compression
-    atr_pct: Optional[float],        # current ATR%
-    atr_avg: Optional[float],        # rolling avg
+    bb_width_pct: float | None,  # current BB width
+    bb_width_avg: float | None,  # rolling avg for compression
+    atr_pct: float | None,  # current ATR%
+    atr_avg: float | None,  # rolling avg
 ) -> Layer:
-    parts: list[Optional[float]] = []
+    parts: list[float | None] = []
     if bb_width_pct is not None and bb_width_avg and bb_width_avg > 0:
         # Compression (current < avg) = positive (loaded spring)
         parts.append((bb_width_avg - bb_width_pct) / bb_width_avg)
@@ -208,9 +249,9 @@ def layer_vol(
 
 def layer_liq(
     *,
-    long_liq_usd: Optional[float],
-    short_liq_usd: Optional[float],
-    liq_vacuum: Optional[float],  # pretrade liquidity vacuum score
+    long_liq_usd: float | None,
+    short_liq_usd: float | None,
+    liq_vacuum: float | None,  # pretrade liquidity vacuum score
 ) -> Layer:
     if long_liq_usd is None and short_liq_usd is None:
         return Layer(0.0, source="none", confidence=0.0, note="no liq inputs")
@@ -223,14 +264,14 @@ def layer_liq(
     imbalance = (S - L) / total
     raw = math.tanh(imbalance * 1.5)
     if liq_vacuum is not None and math.isfinite(liq_vacuum):
-        raw *= (1.0 - 0.3 * max(0.0, min(1.0, liq_vacuum)))
+        raw *= 1.0 - 0.3 * max(0.0, min(1.0, liq_vacuum))
     return Layer(raw, source="direct", confidence=0.85).clamp()
 
 
 def layer_dealer(
     *,
-    gex_proxy: Optional[float],     # [-1,+1] from fallbacks.infer_gex_proxy
-    funding_skew: Optional[float],  # term-structure skew
+    gex_proxy: float | None,  # [-1,+1] from fallbacks.infer_gex_proxy
+    funding_skew: float | None,  # term-structure skew
 ) -> Layer:
     parts = [gex_proxy, funding_skew]
     v = _tanh_blend(parts, gain=1.0)
@@ -246,7 +287,8 @@ def layer_dealer(
 # Composite assembler
 # ---------------------------------------------------------------------------
 
-def _verdict(score: float, layers: Dict[str, Layer]) -> str:
+
+def _verdict(score: float, layers: dict[str, Layer]) -> str:
     L = lambda k: layers[k].value if k in layers else 0.0  # noqa: E731
     if L("liq") > 0.6 and L("flow") > 0.4:
         return "SHORT SQUEEZE RISK"
@@ -268,7 +310,7 @@ def _verdict(score: float, layers: Dict[str, Layer]) -> str:
 
 
 def assemble(
-    layers: Dict[str, Layer],
+    layers: dict[str, Layer],
     *,
     regime: str = "unknown",
     venue_agreement_pct: float = 100.0,
@@ -281,10 +323,14 @@ def assemble(
     present = {k: v for k, v in layers.items() if v.source != "none" or v.confidence > 0}
     if not present:
         return Composite(
-            score=0.0, verdict="NO DATA", confidence=0.0,
-            agreement=0.0, venue_agreement=venue_agreement_pct,
+            score=0.0,
+            verdict="NO DATA",
+            confidence=0.0,
+            agreement=0.0,
+            venue_agreement=venue_agreement_pct,
             layers={k: v.to_dict() for k, v in layers.items()},
-            weights_used={}, regime=regime,
+            weights_used={},
+            regime=regime,
         )
 
     # Renormalise the subset.

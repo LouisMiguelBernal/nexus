@@ -15,8 +15,12 @@ def test_classical_kelly_still_works_without_vol_or_corr():
     """Backward compatibility: pre-P0 callers with only (win/loss/lev/coll) work."""
     sizer = KellySizer()
     out = sizer.compute(
-        win_rate=0.55, avg_win=0.03, avg_loss=0.02,
-        leverage=5, total_collateral=10_000, allocated_margin=0,
+        win_rate=0.55,
+        avg_win=0.03,
+        avg_loss=0.02,
+        leverage=5,
+        total_collateral=10_000,
+        allocated_margin=0,
     )
     assert out["reason"] == "OK"
     assert out["b_source"] == "static_avg_loss"
@@ -28,14 +32,24 @@ def test_vol_adjusted_b_shrinks_kelly_in_high_vol_regime():
     raw kelly_final *before* the max_position_pct cap clips both)."""
     sizer = KellySizer()
     low_vol = sizer.compute(
-        win_rate=0.65, avg_win=0.03, avg_loss=0.02,
-        leverage=5, total_collateral=10_000, allocated_margin=0,
-        atr_pct=0.005, realized_vol_24h=0.005,
+        win_rate=0.65,
+        avg_win=0.03,
+        avg_loss=0.02,
+        leverage=5,
+        total_collateral=10_000,
+        allocated_margin=0,
+        atr_pct=0.005,
+        realized_vol_24h=0.005,
     )
     high_vol = sizer.compute(
-        win_rate=0.65, avg_win=0.03, avg_loss=0.02,
-        leverage=5, total_collateral=10_000, allocated_margin=0,
-        atr_pct=0.03, realized_vol_24h=0.03,
+        win_rate=0.65,
+        avg_win=0.03,
+        avg_loss=0.02,
+        leverage=5,
+        total_collateral=10_000,
+        allocated_margin=0,
+        atr_pct=0.03,
+        realized_vol_24h=0.03,
     )
     assert low_vol["b_source"] == "vol_adjusted"
     assert high_vol["b_source"] == "vol_adjusted"
@@ -53,12 +67,20 @@ def test_correlation_scaling_shrinks_to_below_30pct_at_rho_09():
     """
     sizer = KellySizer()
     baseline = sizer.compute(
-        win_rate=0.60, avg_win=0.04, avg_loss=0.02,
-        leverage=5, total_collateral=10_000, allocated_margin=0,
+        win_rate=0.60,
+        avg_win=0.04,
+        avg_loss=0.02,
+        leverage=5,
+        total_collateral=10_000,
+        allocated_margin=0,
     )
     scaled = sizer.compute(
-        win_rate=0.60, avg_win=0.04, avg_loss=0.02,
-        leverage=5, total_collateral=10_000, allocated_margin=0,
+        win_rate=0.60,
+        avg_win=0.04,
+        avg_loss=0.02,
+        leverage=5,
+        total_collateral=10_000,
+        allocated_margin=0,
         symbol="BTCUSDT",
         open_positions=["ETHUSDT"],
         correlations={"BTCUSDT/ETHUSDT": 0.9},
@@ -86,8 +108,12 @@ def test_max_abs_correlation_handles_both_orderings_and_missing_pairs():
 def test_correlation_never_pushes_sizing_negative():
     sizer = KellySizer()
     out = sizer.compute(
-        win_rate=0.60, avg_win=0.04, avg_loss=0.02,
-        leverage=5, total_collateral=10_000, allocated_margin=0,
+        win_rate=0.60,
+        avg_win=0.04,
+        avg_loss=0.02,
+        leverage=5,
+        total_collateral=10_000,
+        allocated_margin=0,
         symbol="BTCUSDT",
         open_positions=["ETHUSDT"],
         correlations={"BTCUSDT/ETHUSDT": 1.5},  # nonsense positive, spoof-y

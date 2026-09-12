@@ -24,10 +24,10 @@ Direction is still decided by the crypto tape. Macro conditions the prior; it
 does not get a vote on the trade. That asymmetry is deliberate - cross-asset
 data is daily-resolution and lags perp microstructure by hours.
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional
 
 import numpy as np
 
@@ -37,17 +37,17 @@ VALID_REGIMES = ("trending_bull", "trending_bear", "ranging", "volatile", "low_l
 
 # Each axis maps to -1 (risk-off) .. +1 (risk-on) before weighting.
 RORO_WEIGHTS = {
-    "equity_trend": 0.22,   # SPX slope - the base risk signal
-    "vol_level": 0.20,      # VIX absolute level
-    "vol_change": 0.12,     # VIX direction
-    "dollar_trend": 0.18,   # DXY - the dominant crypto beta driver
-    "credit": 0.15,         # HYG - stress shows here before equities
-    "rates_change": 0.08,   # US10Y velocity, not level
-    "cyclicals": 0.05,      # copper/gold ratio
+    "equity_trend": 0.22,  # SPX slope - the base risk signal
+    "vol_level": 0.20,  # VIX absolute level
+    "vol_change": 0.12,  # VIX direction
+    "dollar_trend": 0.18,  # DXY - the dominant crypto beta driver
+    "credit": 0.15,  # HYG - stress shows here before equities
+    "rates_change": 0.08,  # US10Y velocity, not level
+    "cyclicals": 0.05,  # copper/gold ratio
 }
 
 
-def _slope_pct(closes: List[float], window: int = 20) -> Optional[float]:
+def _slope_pct(closes: list[float], window: int = 20) -> float | None:
     """Least-squares slope over the window, as % of mean price per bar."""
     if not closes or len(closes) < max(5, window // 2):
         return None
@@ -61,7 +61,7 @@ def _slope_pct(closes: List[float], window: int = 20) -> Optional[float]:
     return slope / mean * 100.0
 
 
-def _pct_change(closes: List[float], bars: int = 5) -> Optional[float]:
+def _pct_change(closes: list[float], bars: int = 5) -> float | None:
     if not closes or len(closes) <= bars:
         return None
     past = closes[-1 - bars]
@@ -70,14 +70,14 @@ def _pct_change(closes: List[float], bars: int = 5) -> Optional[float]:
     return (closes[-1] - past) / past * 100.0
 
 
-def _squash(value: Optional[float], scale: float) -> Optional[float]:
+def _squash(value: float | None, scale: float) -> float | None:
     """Bounded, monotone map to -1..+1. `scale` is the value that reaches ~0.76."""
     if value is None:
         return None
     return float(np.tanh(value / scale))
 
 
-def risk_appetite(quotes: Dict[str, Dict]) -> Dict:
+def risk_appetite(quotes: dict[str, dict]) -> dict:
     """
     Risk-on / risk-off from the macro proxies.
 
@@ -86,10 +86,11 @@ def risk_appetite(quotes: Dict[str, Dict]) -> Dict:
     ``crossasset.yahoo.fetch_quote`` row. Missing proxies drop out and the
     weights renormalise - a partial board still produces a usable score.
     """
-    def closes(key: str) -> List[float]:
+
+    def closes(key: str) -> list[float]:
         return (quotes.get(key) or {}).get("closes") or []
 
-    axes: Dict[str, Optional[float]] = {}
+    axes: dict[str, float | None] = {}
 
     axes["equity_trend"] = _squash(_slope_pct(closes("spx")), 0.25)
 
@@ -99,22 +100,16 @@ def risk_appetite(quotes: Dict[str, Dict]) -> Dict:
         axes["vol_level"] = float(np.tanh((20.0 - float(vix_last)) / 8.0))
     else:
         axes["vol_level"] = None
-    axes["vol_change"] = _squash(
-        -(_pct_change(closes("vix"), 5) or 0.0) if closes("vix") else None, 15.0
-    )
+    axes["vol_change"] = _squash(-(_pct_change(closes("vix"), 5) or 0.0) if closes("vix") else None, 15.0)
 
     # A rising dollar is risk-off for a crypto book: invert the sign.
-    axes["dollar_trend"] = _squash(
-        -(_slope_pct(closes("dxy")) or 0.0) if closes("dxy") else None, 0.12
-    )
+    axes["dollar_trend"] = _squash(-(_slope_pct(closes("dxy")) or 0.0) if closes("dxy") else None, 0.12)
     axes["credit"] = _squash(_slope_pct(closes("hyg")), 0.10)
 
     # Rates: velocity, not level. A fast repricing in either direction is the
     # stress signal; a high but stable 10Y is already in the price.
     us10y_move = _pct_change(closes("us10y"), 5)
-    axes["rates_change"] = (
-        float(-np.tanh(abs(us10y_move) / 6.0)) if us10y_move is not None else None
-    )
+    axes["rates_change"] = float(-np.tanh(abs(us10y_move) / 6.0)) if us10y_move is not None else None
 
     copper, gold = closes("copper"), closes("gold")
     if len(copper) >= 21 and len(gold) >= 21:
@@ -153,7 +148,7 @@ def risk_appetite(quotes: Dict[str, Dict]) -> Dict:
     }
 
 
-def macro_stress(quotes: Dict[str, Dict], roro: Dict) -> Dict:
+def macro_stress(quotes: dict[str, dict], roro: dict) -> dict:
     """
     A 0-100 stress reading used to tip the regime toward ``volatile``.
 
@@ -190,7 +185,7 @@ def macro_stress(quotes: Dict[str, Dict], roro: Dict) -> Dict:
     return {"score": round(score, 1), "level": level}
 
 
-def adjust_regime(crypto_regime: Dict, quotes: Dict[str, Dict]) -> Dict:
+def adjust_regime(crypto_regime: dict, quotes: dict[str, dict]) -> dict:
     """
     Condition the crypto regime on cross-asset state.
 
@@ -248,15 +243,17 @@ def adjust_regime(crypto_regime: Dict, quotes: Dict[str, Dict]) -> Dict:
         if alignment < -0.35:
             delta = -0.15  # macro leaning hard the other way
         elif alignment > 0.35:
-            delta = 0.05   # corroboration is worth less than contradiction costs
+            delta = 0.05  # corroboration is worth less than contradiction costs
         confidence = max(0.05, min(0.95, confidence + delta))
 
     out["regime"] = regime
     out["confidence"] = round(confidence, 3)
-    out["cross_asset"].update({
-        "applied": True,
-        "tipped_from": tipped_from,
-        "alignment": round(alignment, 3),
-        "confidence_delta": round(delta, 3),
-    })
+    out["cross_asset"].update(
+        {
+            "applied": True,
+            "tipped_from": tipped_from,
+            "alignment": round(alignment, 3),
+            "confidence_delta": round(delta, 3),
+        }
+    )
     return out

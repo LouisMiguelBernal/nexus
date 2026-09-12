@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import time
 from collections import deque
-from typing import Deque, Dict, Optional
 
 
 class TapeSpeedTracker:
@@ -21,15 +20,15 @@ class TapeSpeedTracker:
         self.window_seconds = window_seconds
         self.max_samples = max_samples
         # Trade timestamps (unix seconds) - keep just enough for a 60s look-back
-        self._ts: Deque[float] = deque(maxlen=20_000)
+        self._ts: deque[float] = deque(maxlen=20_000)
         # Sampled tps history: (t, tps)
-        self._samples: Deque[tuple] = deque(maxlen=max_samples)
+        self._samples: deque[tuple] = deque(maxlen=max_samples)
 
     def record(self, timestamp_s: float) -> None:
         """Record that a trade occurred at ``timestamp_s`` (unix seconds)."""
         self._ts.append(float(timestamp_s))
 
-    def sample(self) -> Optional[Dict]:
+    def sample(self) -> dict | None:
         """Compute current trades/sec over the trailing window and append a sample.
         Returns the sample dict or None when there's no data yet."""
         now = time.time()
@@ -42,7 +41,7 @@ class TapeSpeedTracker:
         self._samples.append((now, tps))
         return {"time": now, "tps": round(tps, 2), "count": count, "window": self.window_seconds}
 
-    def latest(self) -> Optional[Dict]:
+    def latest(self) -> dict | None:
         if not self._samples:
             return None
         t, tps = self._samples[-1]
@@ -52,13 +51,13 @@ class TapeSpeedTracker:
         data = list(self._samples)[-limit:]
         return [{"time": t, "tps": round(tps, 2)} for t, tps in data]
 
-    def summary(self) -> Dict:
+    def summary(self) -> dict:
         if not self._samples:
             return {"count": 0, "latest": None, "mean": None, "std": None, "burst": False}
         vals = [s[1] for s in self._samples]
         mean = sum(vals) / len(vals)
         var = sum((v - mean) ** 2 for v in vals) / len(vals)
-        std = var ** 0.5
+        std = var**0.5
         latest = vals[-1]
         burst = bool(std > 0 and (latest - mean) > 2 * std and latest > 1)
         return {

@@ -12,21 +12,21 @@ from __future__ import annotations
 
 import time
 from collections import deque
-from typing import Any, Deque, Dict, Optional
+from typing import Any
 
 
 class StalenessDetector:
     def __init__(self, multiplier: float = 3.0, sample_cap: int = 128):
         self.multiplier = float(multiplier)
-        self._arrivals: Dict[str, Deque[float]] = {}
+        self._arrivals: dict[str, deque[float]] = {}
         self._sample_cap = int(sample_cap)
 
-    def record_arrival(self, stream: str, ts: Optional[float] = None) -> None:
+    def record_arrival(self, stream: str, ts: float | None = None) -> None:
         t = time.time() if ts is None else float(ts)
         dq = self._arrivals.setdefault(stream, deque(maxlen=self._sample_cap))
         dq.append(t)
 
-    def _median_inter_arrival(self, stream: str) -> Optional[float]:
+    def _median_inter_arrival(self, stream: str) -> float | None:
         dq = self._arrivals.get(stream)
         if not dq or len(dq) < 3:
             return None
@@ -36,9 +36,9 @@ class StalenessDetector:
         m = len(gaps)
         if m == 0:
             return None
-        return (gaps[m // 2] if m % 2 == 1 else 0.5 * (gaps[m // 2 - 1] + gaps[m // 2]))
+        return gaps[m // 2] if m % 2 == 1 else 0.5 * (gaps[m // 2 - 1] + gaps[m // 2])
 
-    def check(self, stream: str) -> Dict[str, Any]:
+    def check(self, stream: str) -> dict[str, Any]:
         dq = self._arrivals.get(stream)
         if not dq:
             return {"stream": stream, "stale": False, "reason": "no samples"}
@@ -63,10 +63,10 @@ class StalenessDetector:
             "multiplier": self.multiplier,
         }
 
-    def check_all(self) -> Dict[str, Dict[str, Any]]:
+    def check_all(self) -> dict[str, dict[str, Any]]:
         return {s: self.check(s) for s in self._arrivals.keys()}
 
-    def ingest_gap_report(self, gap_report: Dict[str, Any]) -> None:
+    def ingest_gap_report(self, gap_report: dict[str, Any]) -> None:
         """Pull `last_event_time` values from `WSManager.gap_report()` and
         register them as synthetic arrivals. Lets monitoring run off the
         same ground-truth timestamps the ingestion layer already records."""

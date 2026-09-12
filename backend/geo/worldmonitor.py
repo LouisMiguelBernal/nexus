@@ -21,12 +21,13 @@ Three facts govern how this module behaves:
 
 Operation paths come from their published sandbox index, not from guesswork.
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
 
@@ -43,7 +44,7 @@ from backend.config import (
 
 logger = logging.getLogger("nexus.geo.worldmonitor")
 
-_CACHE: Dict[str, Any] = {"data": None, "ts": 0.0}
+_CACHE: dict[str, Any] = {"data": None, "ts": 0.0}
 _TTL = 1800.0
 
 # After a failure, stop asking for a while. An unreachable optional upstream
@@ -57,7 +58,7 @@ _SANDBOX_FIXTURES = {
 }
 
 
-def _headers() -> Dict[str, str]:
+def _headers() -> dict[str, str]:
     # Their policy challenges default library user agents with a 403.
     h = {"User-Agent": WORLDMONITOR_UA, "Accept": "application/json"}
     if WORLDMONITOR_API_KEY:
@@ -65,7 +66,7 @@ def _headers() -> Dict[str, str]:
     return h
 
 
-def status() -> Dict[str, Any]:
+def status() -> dict[str, Any]:
     """Why the enrichment is or is not running. Surfaced in the UI."""
     if not WORLDMONITOR_ENABLED:
         return {"mode": "disabled", "reason": "WORLDMONITOR_ENABLED=0"}
@@ -76,7 +77,7 @@ def status() -> Dict[str, Any]:
     return {"mode": "live", "reason": None}
 
 
-async def _call(client: httpx.AsyncClient, op: str, params: Optional[Dict[str, str]] = None) -> Optional[Dict]:
+async def _call(client: httpx.AsyncClient, op: str, params: dict[str, str] | None = None) -> dict | None:
     """One operation. Sandbox mode unwraps the fixture's response envelope."""
     if WORLDMONITOR_SANDBOX:
         url = _SANDBOX_FIXTURES.get(op)
@@ -97,7 +98,7 @@ async def _call(client: httpx.AsyncClient, op: str, params: Optional[Dict[str, s
     return resp.json()
 
 
-def _country_row(body: Dict) -> Optional[Dict]:
+def _country_row(body: dict) -> dict | None:
     """Flatten their CII envelope into one row."""
     cii = body.get("cii") or {}
     score = cii.get("combinedScore")
@@ -117,22 +118,24 @@ def _country_row(body: Dict) -> Optional[Dict]:
     }
 
 
-def _chokepoint_rows(body: Dict) -> List[Dict]:
+def _chokepoint_rows(body: dict) -> list[dict]:
     rows = []
     for c in body.get("chokepoints") or []:
         if not isinstance(c, dict):
             continue
-        rows.append({
-            "name": c.get("name") or c.get("id") or "chokepoint",
-            "congestion": c.get("congestionLevel"),
-            "active_warnings": c.get("activeWarnings"),
-            "ais_disruptions": c.get("aisDisruptions"),
-            "affected_routes": c.get("affectedRoutes") or [],
-        })
+        rows.append(
+            {
+                "name": c.get("name") or c.get("id") or "chokepoint",
+                "congestion": c.get("congestionLevel"),
+                "active_warnings": c.get("activeWarnings"),
+                "ais_disruptions": c.get("aisDisruptions"),
+                "affected_routes": c.get("affectedRoutes") or [],
+            }
+        )
     return rows
 
 
-async def fetch_instability() -> Dict:
+async def fetch_instability() -> dict:
     """
     Country instability + chokepoint status, or ``{"available": False}``.
 
@@ -161,13 +164,15 @@ async def fetch_instability() -> Dict:
                 # would return the same sample ten times.
                 country_bodies = [await _call(client, "country_risk")]
             else:
-                country_bodies = list(await asyncio.gather(
-                    *(
-                        _call(client, "country_risk", {"country_code": code})
-                        for code in WORLDMONITOR_COUNTRIES
-                    ),
-                    return_exceptions=True,
-                ))
+                country_bodies = list(
+                    await asyncio.gather(
+                        *(
+                            _call(client, "country_risk", {"country_code": code})
+                            for code in WORLDMONITOR_COUNTRIES
+                        ),
+                        return_exceptions=True,
+                    )
+                )
 
         countries = []
         for body in country_bodies:
@@ -191,14 +196,12 @@ async def fetch_instability() -> Dict:
             "countries": top,
             "chokepoints": chokepoints,
             "peak_score": top[0]["score"] if top else None,
-            "mean_top5": (
-                round(sum(c["score"] for c in top[:5]) / min(5, len(top)), 2) if top else None
-            ),
+            "mean_top5": (round(sum(c["score"] for c in top[:5]) / min(5, len(top)), 2) if top else None),
         }
         _CACHE.update({"data": result, "ts": now})
         return result
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.debug("worldmonitor enrichment failed: %s", e)
 
     _COOLDOWN_UNTIL = now + _COOLDOWN

@@ -20,6 +20,7 @@ When WS recovers (trade arrives < 5 s old) the poller automatically pauses
 that symbol until the WS goes silent again. No double-counting because we
 filter by `last_seen_id` per symbol.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -29,8 +30,8 @@ import ssl
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
-from typing import Iterable, Optional
 
 from backend.config import BINANCE_FUTURES_BASE, BINANCE_FUTURES_ENDPOINTS
 from backend.ingestion.binance_ws import binance_data
@@ -54,13 +55,14 @@ POLL_INTERVAL_S = 2.0
 TRADES_PER_REQUEST = 100
 
 
-def _fetch_sync(url: str) -> Optional[list]:
+def _fetch_sync(url: str) -> list | None:
     """REST GET with strict→permissive SSL fallback (matches kline pattern).
 
     On an HTTP 418/429 the ban deadline is registered with the shared rate
     guard so the loop suspends instead of extending the ban.
     """
-    def _attempt(ctx=None) -> Optional[list]:
+
+    def _attempt(ctx=None) -> list | None:
         req = urllib.request.Request(url, headers={"User-Agent": "Nexus/0.3"})
         with urllib.request.urlopen(req, timeout=8, context=ctx) as resp:
             return json.loads(resp.read())
@@ -71,11 +73,11 @@ def _fetch_sync(url: str) -> Optional[list]:
         # Read the body so the guard can parse "banned until <epoch>".
         try:
             body = http_err.read().decode("utf-8", "replace")
-        except Exception:
+        except Exception:  # noqa: BLE001
             body = ""
         if note_http_error(BINANCE_FUTURES_HOST, http_err.code, body):
             return None  # rate-limited - do not retry, let the loop back off
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
     try:
         ctx = ssl.create_default_context()
@@ -85,7 +87,7 @@ def _fetch_sync(url: str) -> Optional[list]:
     except urllib.error.HTTPError as http_err:
         try:
             body = http_err.read().decode("utf-8", "replace")
-        except Exception:
+        except Exception:  # noqa: BLE001
             body = ""
         note_http_error(BINANCE_FUTURES_HOST, http_err.code, body)
         return None
@@ -94,7 +96,7 @@ def _fetch_sync(url: str) -> Optional[list]:
         return None
 
 
-async def _fetch_async(url: str, executor: ThreadPoolExecutor) -> Optional[list]:
+async def _fetch_async(url: str, executor: ThreadPoolExecutor) -> list | None:
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(executor, _fetch_sync, url)
 
@@ -184,13 +186,15 @@ async def agg_trade_rest_loop(symbols: Iterable[str]) -> None:
                 tasks.append(_poll_one(sym, executor))
             if tasks:
                 results = await asyncio.gather(*tasks, return_exceptions=True)
-                for sym, res in zip(polled, results):
+                for sym, res in zip(polled, results):  # noqa: B905
                     if isinstance(res, Exception):
                         consecutive_failures[sym] = consecutive_failures.get(sym, 0) + 1
                         if consecutive_failures[sym] in (1, 5, 25):
                             logger.warning(
                                 "aggTrade REST %s err (#%d): %s",
-                                sym, consecutive_failures[sym], res,
+                                sym,
+                                consecutive_failures[sym],
+                                res,
                             )
                     elif isinstance(res, int) and res > 0:
                         logger.debug("aggTrade REST %s: +%d trades", sym, res)

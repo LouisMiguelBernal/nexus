@@ -18,11 +18,12 @@ from __future__ import annotations
 import gzip
 import json
 import time
+from collections.abc import Awaitable, Callable, Iterable, Iterator
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Dict, Iterable, Iterator, List, Optional
+from typing import Any
 
 
-def iter_archive(path: str | Path) -> Iterator[Dict[str, Any]]:
+def iter_archive(path: str | Path) -> Iterator[dict[str, Any]]:
     """Stream events from a JSONL(.gz) archive, oldest → newest."""
     p = Path(path)
     opener = gzip.open if str(p).endswith(".gz") else open
@@ -39,12 +40,12 @@ def iter_archive(path: str | Path) -> Iterator[Dict[str, Any]]:
 
 async def replay(
     archives: Iterable[str | Path],
-    on_event: Callable[[str, Dict[str, Any]], Awaitable[Any]],
+    on_event: Callable[[str, dict[str, Any]], Awaitable[Any]],
     *,
     speed: float = 0.0,
-    max_events: Optional[int] = None,
-    stream_filter: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+    max_events: int | None = None,
+    stream_filter: list[str] | None = None,
+) -> dict[str, Any]:
     """Async replay - dispatches events to `on_event(stream, data)`.
 
     Parameters
@@ -66,7 +67,7 @@ async def replay(
     delivered = 0
     dropped = 0
     t_wall_start = time.time()
-    t_event_start: Optional[float] = None
+    t_event_start: float | None = None
 
     for archive in archives:
         for ev in iter_archive(archive):

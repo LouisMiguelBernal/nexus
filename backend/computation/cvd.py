@@ -5,12 +5,9 @@ buyer_maker=True → sell pressure (passive buyer)
 buyer_maker=False → buy pressure (aggressive buyer / taker)
 """
 
-import time
 import logging
+import time
 from collections import deque
-from typing import Dict, List, Optional, Tuple
-
-import numpy as np
 
 logger = logging.getLogger("nexus.cvd")
 
@@ -31,13 +28,15 @@ class CVDComputer:
         """
         usd_value = price * qty
         delta = -usd_value if is_buyer_maker else usd_value
-        self._deltas.append({
-            "delta": delta,
-            "price": price,
-            "qty": qty,
-            "usd": usd_value,
-            "ts": timestamp_ms,
-        })
+        self._deltas.append(
+            {
+                "delta": delta,
+                "price": price,
+                "qty": qty,
+                "usd": usd_value,
+                "ts": timestamp_ms,
+            }
+        )
 
     def ingest_trades_batch(self, trades: list):
         """Ingest multiple trades from the data store."""
@@ -49,7 +48,7 @@ class CVDComputer:
                 timestamp_ms=t["time"],
             )
 
-    def get_cvd(self, timeframe_minutes: int = 60) -> Dict:
+    def get_cvd(self, timeframe_minutes: int = 60) -> dict:
         """
         Compute CVD for a given timeframe window.
         Returns cumulative delta, buy volume, sell volume, net.
@@ -59,15 +58,27 @@ class CVDComputer:
         zeros) from "no data" (cold start / stalled feed).
         """
         if not self._deltas:
-            return {"cvd": None, "buy_volume": None, "sell_volume": None,
-                    "net_delta": None, "trade_count": 0, "available": False}
+            return {
+                "cvd": None,
+                "buy_volume": None,
+                "sell_volume": None,
+                "net_delta": None,
+                "trade_count": 0,
+                "available": False,
+            }
 
         cutoff = (time.time() - timeframe_minutes * 60) * 1000
         relevant = [d for d in self._deltas if d["ts"] >= cutoff]
 
         if not relevant:
-            return {"cvd": None, "buy_volume": None, "sell_volume": None,
-                    "net_delta": None, "trade_count": 0, "available": False}
+            return {
+                "cvd": None,
+                "buy_volume": None,
+                "sell_volume": None,
+                "net_delta": None,
+                "trade_count": 0,
+                "available": False,
+            }
 
         buy_vol = sum(d["usd"] for d in relevant if d["delta"] > 0)
         sell_vol = sum(d["usd"] for d in relevant if d["delta"] < 0)
@@ -82,7 +93,7 @@ class CVDComputer:
             "available": True,
         }
 
-    def get_multi_timeframe(self) -> Dict[str, Dict]:
+    def get_multi_timeframe(self) -> dict[str, dict]:
         """Get CVD across multiple timeframes."""
         return {
             "5m": self.get_cvd(5),
@@ -91,7 +102,7 @@ class CVDComputer:
             "4h": self.get_cvd(240),
         }
 
-    def get_cvd_histogram(self, timeframe_minutes: int = 60, bins: int = 30) -> List[Dict]:
+    def get_cvd_histogram(self, timeframe_minutes: int = 60, bins: int = 30) -> list[dict]:
         """Get CVD as time-bucketed histogram for charting."""
         if not self._deltas:
             return []
@@ -115,16 +126,18 @@ class CVDComputer:
             bin_trades = [d for d in relevant if bin_start <= d["ts"] < bin_end]
             buy = sum(d["usd"] for d in bin_trades if d["delta"] > 0)
             sell = sum(d["usd"] for d in bin_trades if d["delta"] < 0)
-            histogram.append({
-                "time": int(bin_start),
-                "buy": round(buy, 2),
-                "sell": round(abs(sell), 2),
-                "net": round(buy - abs(sell), 2),
-            })
+            histogram.append(
+                {
+                    "time": int(bin_start),
+                    "buy": round(buy, 2),
+                    "sell": round(abs(sell), 2),
+                    "net": round(buy - abs(sell), 2),
+                }
+            )
 
         return histogram
 
-    def detect_divergence(self, prices: List[float], timeframe_minutes: int = 60) -> Optional[Dict]:
+    def detect_divergence(self, prices: list[float], timeframe_minutes: int = 60) -> dict | None:
         """
         Detect CVD divergence from price action.
         - Bearish: price rising + CVD flat/falling = manufactured pump

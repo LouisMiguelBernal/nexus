@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import logging
 import time
-from typing import Dict, Iterable, List, Optional, Tuple
+from collections.abc import Iterable
 
 from backend.storage.db import get_connection
 
@@ -27,19 +27,21 @@ _RETENTION_SECONDS = 7 * 24 * 3600
 def save_snapshots(
     symbol: str,
     metric: str,
-    rows: Iterable[Tuple[float, Optional[float], Optional[Dict]]],
+    rows: Iterable[tuple[float, float | None, dict | None]],
 ) -> int:
     """Insert a batch. ``rows`` = iterable of (t, value, extra_dict)."""
     conn = get_connection()
     payload = []
     for t, value, extra in rows:
-        payload.append((
-            symbol,
-            metric,
-            float(t),
-            None if value is None else float(value),
-            json.dumps(extra) if extra else None,
-        ))
+        payload.append(
+            (
+                symbol,
+                metric,
+                float(t),
+                None if value is None else float(value),
+                json.dumps(extra) if extra else None,
+            )
+        )
     if not payload:
         return 0
     conn.executemany(
@@ -50,7 +52,7 @@ def save_snapshots(
     return len(payload)
 
 
-def prune_old(now: Optional[float] = None) -> int:
+def prune_old(now: float | None = None) -> int:
     """Delete rows older than the retention window. Returns row count deleted."""
     now = now or time.time()
     cutoff = now - _RETENTION_SECONDS
@@ -66,7 +68,7 @@ def fetch_range(
     start: float,
     end: float,
     limit: int = 5000,
-) -> List[Dict]:
+) -> list[dict]:
     """Fetch snapshots for a symbol+metric in [start, end] by unix seconds."""
     conn = get_connection()
     rows = conn.execute(
@@ -78,13 +80,13 @@ def fetch_range(
         """,
         (symbol.upper(), metric, start, end, limit),
     ).fetchall()
-    out: List[Dict] = []
+    out: list[dict] = []
     for r in rows:
         entry = {"t": r["t"], "value": r["value"]}
         if r["extra"]:
             try:
                 entry["extra"] = json.loads(r["extra"])
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
         out.append(entry)
     return out

@@ -5,14 +5,12 @@ Local storage for zones, alerts, journal, briefs.
 
 import logging
 import sqlite3
-from pathlib import Path
-from typing import Optional
 
 from backend.config import DB_PATH
 
 logger = logging.getLogger("nexus.db")
 
-_connection: Optional[sqlite3.Connection] = None
+_connection: sqlite3.Connection | None = None
 
 
 def get_connection() -> sqlite3.Connection:

@@ -17,13 +17,12 @@ from __future__ import annotations
 
 import statistics
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from backend.config import EXCHANGE_WEIGHTS
 from backend.ingestion.binance_ws import binance_data
-from backend.ingestion.okx_ws import okx_data
 from backend.ingestion.mexc_ws import mexc_data
-
+from backend.ingestion.okx_ws import okx_data
 
 # Map venue name -> WSManager connection name (binance has a different conn key)
 _CONN_NAME = {
@@ -32,7 +31,7 @@ _CONN_NAME = {
     "mexc": "mexc",
 }
 
-_VENUES: List[Tuple[str, Any]] = [
+_VENUES: list[tuple[str, Any]] = [
     ("binance", binance_data),
     ("okx", okx_data),
     ("mexc", mexc_data),
@@ -47,7 +46,7 @@ OUTLIER_Z_HARD = 4.0
 OUTLIER_Z_SOFT = 2.0
 
 
-def _venue_mid(store: Any, symbol: str) -> Optional[float]:
+def _venue_mid(store: Any, symbol: str) -> float | None:
     book = store.order_books.get(symbol) if hasattr(store, "order_books") else None
     if not book:
         return None
@@ -56,7 +55,8 @@ def _venue_mid(store: Any, symbol: str) -> Optional[float]:
     if not bids or not asks:
         return None
     try:
-        bb = float(bids[0][0]); ba = float(asks[0][0])
+        bb = float(bids[0][0])
+        ba = float(asks[0][0])
     except (TypeError, ValueError, IndexError):
         return None
     if bb <= 0 or ba <= 0:
@@ -64,7 +64,7 @@ def _venue_mid(store: Any, symbol: str) -> Optional[float]:
     return (bb + ba) / 2.0
 
 
-def _staleness_factor(seconds_since: Optional[float]) -> float:
+def _staleness_factor(seconds_since: float | None) -> float:
     if seconds_since is None:
         return 0.5  # unknown - treat as half-weight
     if seconds_since <= STALE_OK_S:
@@ -74,7 +74,7 @@ def _staleness_factor(seconds_since: Optional[float]) -> float:
     return 1.0 - (seconds_since - STALE_OK_S) / (STALE_DEAD_S - STALE_OK_S)
 
 
-def _spread_factor(book: Optional[dict]) -> float:
+def _spread_factor(book: dict | None) -> float:
     """Tighter spread → higher factor. Caps at 1.0; falls off past 50bps."""
     if not book:
         return 0.5
@@ -83,7 +83,8 @@ def _spread_factor(book: Optional[dict]) -> float:
     if not bids or not asks:
         return 0.5
     try:
-        bb = float(bids[0][0]); ba = float(asks[0][0])
+        bb = float(bids[0][0])
+        ba = float(asks[0][0])
     except (TypeError, ValueError):
         return 0.5
     if bb <= 0 or ba <= 0 or ba <= bb:
@@ -114,9 +115,9 @@ def _volume_factor(store: Any, symbol: str) -> float:
     return 0.3 + (n - 5) / 195.0 * 0.7
 
 
-def _outlier_z(symbol: str) -> Dict[str, float]:
+def _outlier_z(symbol: str) -> dict[str, float]:
     """Per-venue absolute z-score of mid vs cross-exchange median."""
-    mids: Dict[str, float] = {}
+    mids: dict[str, float] = {}
     for name, store in _VENUES:
         m = _venue_mid(store, symbol)
         if m is not None:
@@ -133,10 +134,7 @@ def _outlier_z(symbol: str) -> Dict[str, float]:
     # the realistic noise floor - venues drifting under that are not outliers.
     mad_floor = median * 5e-4 if median > 0 else 1e-9
     mad = max(mad, mad_floor)
-    return {
-        name: abs(m - median) / (1.4826 * mad)
-        for name, m in mids.items()
-    }
+    return {name: abs(m - median) / (1.4826 * mad) for name, m in mids.items()}
 
 
 def _outlier_factor(z: float) -> float:
@@ -149,8 +147,8 @@ def _outlier_factor(z: float) -> float:
 
 def evaluate_feeds(
     symbol: str,
-    ws_manager: Optional[Any] = None,
-) -> Dict[str, Dict[str, Any]]:
+    ws_manager: Any | None = None,
+) -> dict[str, dict[str, Any]]:
     """Compute per-venue health for `symbol`.
 
     Returns: {venue: {connected, last_event_age_s, mid, z, degradation,
@@ -160,7 +158,7 @@ def evaluate_feeds(
 
     gap = ws_manager.gap_report() if ws_manager is not None else {}
     z_by_venue = _outlier_z(sym)
-    out: Dict[str, Dict[str, Any]] = {}
+    out: dict[str, dict[str, Any]] = {}
 
     for name, store in _VENUES:
         conn_key = _CONN_NAME[name]
@@ -202,8 +200,8 @@ def evaluate_feeds(
 
 def normalized_dynamic_weights(
     symbol: str,
-    ws_manager: Optional[Any] = None,
-) -> Dict[str, float]:
+    ws_manager: Any | None = None,
+) -> dict[str, float]:
     """Per-venue dynamic weights renormalized to sum=1 across non-degraded feeds."""
     health = evaluate_feeds(symbol, ws_manager=ws_manager)
     raw = {name: h["dynamic_weight"] for name, h in health.items()}
@@ -213,16 +211,19 @@ def normalized_dynamic_weights(
     return {name: w / total for name, w in raw.items()}
 
 
-def feed_health_summary(ws_manager: Optional[Any] = None, symbols: Optional[List[str]] = None) -> Dict[str, Any]:
+def feed_health_summary(ws_manager: Any | None = None, symbols: list[str] | None = None) -> dict[str, Any]:
     """Aggregate /api/feed/health payload across watched symbols."""
     from backend.config import DEFAULT_SYMBOLS
+
     syms = symbols or DEFAULT_SYMBOLS
     snap = {sym: evaluate_feeds(sym, ws_manager=ws_manager) for sym in syms}
     # Per-venue rollup (average degradation across symbols)
-    rollup: Dict[str, Dict[str, Any]] = {}
+    rollup: dict[str, dict[str, Any]] = {}
     for venue in [v for v, _ in _VENUES]:
         degs = [snap[s][venue]["degradation"] for s in syms if venue in snap[s]]
-        ages = [snap[s][venue]["last_event_age_s"] for s in syms if snap[s][venue]["last_event_age_s"] is not None]
+        ages = [
+            snap[s][venue]["last_event_age_s"] for s in syms if snap[s][venue]["last_event_age_s"] is not None
+        ]
         connected_any = any(snap[s][venue]["connected"] for s in syms if venue in snap[s])
         rollup[venue] = {
             "connected": connected_any,

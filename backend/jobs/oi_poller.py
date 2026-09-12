@@ -8,14 +8,15 @@ why "OI Δ 1H" was stuck at 0 in the Matrix Engine. This loop refreshes every
 30s (Binance/OKX OI endpoints rate-limit cheaply at this cadence) and also
 samples funding so the term-structure factor has real data.
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Mapping
+from collections.abc import Mapping
 
-from backend.computation.oi_analysis import OITracker
 from backend.computation.funding import FundingTracker
+from backend.computation.oi_analysis import OITracker
 
 logger = logging.getLogger("nexus.oi_poller")
 

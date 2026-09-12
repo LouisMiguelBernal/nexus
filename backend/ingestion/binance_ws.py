@@ -5,16 +5,18 @@ Primary data source: order book, aggTrades, liquidations, klines, mark price.
 
 import asyncio
 import logging
-import time
 import ssl
+import time
 from collections import defaultdict, deque
-from typing import Dict, List, Optional
 
 from backend.config import (
-    WS_BINANCE_FUTURES, DEFAULT_SYMBOLS, DEFAULT_INTERVAL,
-    BINANCE_FUTURES_BASE, BINANCE_FUTURES_ENDPOINTS,
+    BINANCE_FUTURES_BASE,
+    BINANCE_FUTURES_ENDPOINTS,
+    DEFAULT_INTERVAL,
+    DEFAULT_SYMBOLS,
+    WS_BINANCE_FUTURES,
 )
-from backend.ingestion.ws_manager import WSConnection, WSManager
+from backend.ingestion.ws_manager import WSConnection
 
 logger = logging.getLogger("nexus.binance_ws")
 
@@ -24,19 +26,19 @@ class BinanceFuturesData:
 
     def __init__(self):
         # Order book snapshots per symbol: {symbol: {"bids": [...], "asks": [...]}}
-        self.order_books: Dict[str, dict] = {}
+        self.order_books: dict[str, dict] = {}
         # Aggregated trades for CVD: {symbol: deque(maxlen=10000)}
-        self.agg_trades: Dict[str, deque] = defaultdict(lambda: deque(maxlen=10000))
+        self.agg_trades: dict[str, deque] = defaultdict(lambda: deque(maxlen=10000))
         # Liquidation events: {symbol: deque(maxlen=500)}
-        self.liquidations: Dict[str, deque] = defaultdict(lambda: deque(maxlen=500))
+        self.liquidations: dict[str, deque] = defaultdict(lambda: deque(maxlen=500))
         # Latest klines per symbol+interval: {symbol: {interval: [ohlcv]}}
-        self.klines: Dict[str, Dict[str, list]] = defaultdict(dict)
+        self.klines: dict[str, dict[str, list]] = defaultdict(dict)
         # Historical closed klines per symbol: {symbol: deque(maxlen=200)}
-        self.kline_history: Dict[str, deque] = defaultdict(lambda: deque(maxlen=200))
+        self.kline_history: dict[str, deque] = defaultdict(lambda: deque(maxlen=200))
         # Mark price + funding: {symbol: {"mark_price": float, "funding_rate": float, "next_funding": int}}
-        self.mark_prices: Dict[str, dict] = {}
+        self.mark_prices: dict[str, dict] = {}
         # Last update timestamps
-        self.last_update: Dict[str, float] = {}
+        self.last_update: dict[str, float] = {}
 
     def update_order_book(self, symbol: str, data: dict):
         self.order_books[symbol] = {
@@ -104,16 +106,19 @@ class BinanceFuturesData:
         }
         self.last_update[f"{symbol}_mark"] = time.time()
 
-
     async def fetch_historical_klines(self, symbol: str, interval: str = "15m", limit: int = 100):
         """Fetch historical klines from Binance REST API to seed kline_history.
         Uses urllib (sync, in thread) because aiohttp DNS resolver is blocked by PLDT ISP."""
+        import concurrent.futures
         import json
         import urllib.error
         import urllib.request
-        import concurrent.futures
+
         from backend.ingestion.rate_guard import (
-            BINANCE_FUTURES_HOST, note_http_error, record_success, should_skip,
+            BINANCE_FUTURES_HOST,
+            note_http_error,
+            record_success,
+            should_skip,
         )
 
         # Don't seed klines during an active ban - it would extend it.
@@ -134,11 +139,11 @@ class BinanceFuturesData:
             except urllib.error.HTTPError as http_err:
                 try:
                     body = http_err.read().decode("utf-8", "replace")
-                except Exception:
+                except Exception:  # noqa: BLE001
                     body = ""
                 if note_http_error(BINANCE_FUTURES_HOST, http_err.code, body):
                     return None  # rate-limited - skip the permissive retry
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
             # Permissive SSL fallback
             try:
@@ -152,18 +157,18 @@ class BinanceFuturesData:
             except urllib.error.HTTPError as http_err:
                 try:
                     body = http_err.read().decode("utf-8", "replace")
-                except Exception:
+                except Exception:  # noqa: BLE001
                     body = ""
                 note_http_error(BINANCE_FUTURES_HOST, http_err.code, body)
                 return None
-            except Exception:
+            except Exception:  # noqa: BLE001
                 return None
 
         try:
             loop = asyncio.get_event_loop()
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 data = await loop.run_in_executor(pool, _fetch)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.warning(f"Kline fetch executor error for {symbol}: {e}")
             data = None
 
@@ -232,7 +237,7 @@ async def _handle_binance_message(name: str, data: dict):
 
 
 def build_binance_streams(
-    symbols: Optional[List[str]] = None,
+    symbols: list[str] | None = None,
     interval: str = DEFAULT_INTERVAL,
 ) -> str:
     """Build combined stream URL for Binance Futures."""
@@ -240,19 +245,21 @@ def build_binance_streams(
     streams = []
     for sym in symbols:
         s = sym.lower()
-        streams.extend([
-            f"{s}@depth20@100ms",
-            f"{s}@aggTrade",
-            f"{s}@forceOrder",
-            f"{s}@kline_{interval}",
-            f"{s}@markPrice@1s",
-        ])
+        streams.extend(
+            [
+                f"{s}@depth20@100ms",
+                f"{s}@aggTrade",
+                f"{s}@forceOrder",
+                f"{s}@kline_{interval}",
+                f"{s}@markPrice@1s",
+            ]
+        )
     stream_str = "/".join(streams)
     return f"{WS_BINANCE_FUTURES}?streams={stream_str}"
 
 
 def create_binance_connection(
-    symbols: Optional[List[str]] = None,
+    symbols: list[str] | None = None,
     interval: str = DEFAULT_INTERVAL,
 ) -> WSConnection:
     """Create a WSConnection for Binance Futures combined stream."""

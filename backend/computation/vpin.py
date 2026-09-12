@@ -51,7 +51,7 @@ import logging
 import math
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Deque, Dict, List, Literal, Optional
+from typing import Literal
 
 logger = logging.getLogger("nexus.vpin")
 
@@ -67,17 +67,18 @@ def _norm_cdf(x: float) -> float:
 @dataclass
 class _Bucket:
     """Accumulator for a single volume bucket (closed at dollar_volume ≥ target)."""
+
     target_notional: float
     notional: float = 0.0
     buy_notional: float = 0.0
     sell_notional: float = 0.0
     trade_count: int = 0
-    first_price: Optional[float] = None
-    last_price: Optional[float] = None
-    open_ts: Optional[float] = None
-    close_ts: Optional[float] = None
+    first_price: float | None = None
+    last_price: float | None = None
+    open_ts: float | None = None
+    close_ts: float | None = None
 
-    def add(self, price: float, qty: float, side: Optional[str], ts: Optional[float]) -> None:
+    def add(self, price: float, qty: float, side: str | None, ts: float | None) -> None:
         notional = price * qty
         self.notional += notional
         self.trade_count += 1
@@ -92,7 +93,7 @@ class _Bucket:
             self.sell_notional += notional
         # Unknown side: deferred; reclassified on close via BVC.
 
-    def finalize(self, bvc_sigma: float) -> Dict[str, float]:
+    def finalize(self, bvc_sigma: float) -> dict[str, float]:
         """Close the bucket and compute VPIN contribution."""
         # If some/all trades were side-unknown, apply BVC to the residual.
         classified = self.buy_notional + self.sell_notional
@@ -125,13 +126,13 @@ class _Bucket:
 
 @dataclass
 class VPINResult:
-    running: float                   # SMA of last `window` bucket VPINs
-    last_bucket: float               # VPIN of the most recent closed bucket
-    buckets_closed: int              # total buckets closed in this tracker's lifetime
+    running: float  # SMA of last `window` bucket VPINs
+    last_bucket: float  # VPIN of the most recent closed bucket
+    buckets_closed: int  # total buckets closed in this tracker's lifetime
     window: int
-    toxic: bool                      # running > toxic_threshold (default 0.85)
+    toxic: bool  # running > toxic_threshold (default 0.85)
     bucket_target_notional: float
-    history: List[Dict[str, float]] = field(default_factory=list)
+    history: list[dict[str, float]] = field(default_factory=list)
 
 
 class VPINTracker:
@@ -167,9 +168,9 @@ class VPINTracker:
         self.bvc_lookback = int(bvc_lookback)
 
         self._current = _Bucket(target_notional=self.bucket_target_notional)
-        self._vpin_hist: Deque[float] = deque(maxlen=self.window)
-        self._return_hist: Deque[float] = deque(maxlen=self.bvc_lookback)
-        self._closed_buckets: Deque[Dict[str, float]] = deque(maxlen=256)
+        self._vpin_hist: deque[float] = deque(maxlen=self.window)
+        self._return_hist: deque[float] = deque(maxlen=self.bvc_lookback)
+        self._closed_buckets: deque[dict[str, float]] = deque(maxlen=256)
         self._total_closed = 0
 
     # ------------------------------------------------------------------
@@ -192,16 +193,16 @@ class VPINTracker:
         self,
         price: float,
         qty: float,
-        side: Optional[Literal["buy", "sell"]] = None,
-        ts: Optional[float] = None,
-    ) -> Optional[Dict[str, float]]:
+        side: Literal["buy", "sell"] | None = None,
+        ts: float | None = None,
+    ) -> dict[str, float] | None:
         """Ingest one trade. Returns the closed-bucket dict if this trade
         sealed a bucket, else None."""
         if price <= 0 or qty <= 0:
             return None
         self._current.add(price, qty, side, ts)
 
-        closed: Optional[Dict[str, float]] = None
+        closed: dict[str, float] | None = None
         # Close bucket when target notional reached.
         while self._current.notional >= self.bucket_target_notional:
             closed = self._close_current()
@@ -211,7 +212,7 @@ class VPINTracker:
             break
         return closed
 
-    def _close_current(self) -> Dict[str, float]:
+    def _close_current(self) -> dict[str, float]:
         sigma = self._bvc_sigma()
         snap = self._current.finalize(bvc_sigma=sigma)
         self._vpin_hist.append(snap["vpin"])
@@ -240,7 +241,7 @@ class VPINTracker:
             history=list(self._closed_buckets),
         )
 
-    def as_dict(self) -> Dict:
+    def as_dict(self) -> dict:
         s = self.snapshot()
         return {
             "vpin": s.running,

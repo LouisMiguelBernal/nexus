@@ -16,26 +16,26 @@ any monitoring state.
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Sequence
+from collections.abc import Sequence
 
 try:
     from backend.risk.var import VaRCalculator  # type: ignore
-except Exception:  # pragma: no cover - keep module importable in isolation
+except Exception:  # pragma: no cover - keep module importable in isolation  # noqa: BLE001
     VaRCalculator = None  # type: ignore
 
 
 class RiskAttributionTracker:
     def __init__(self):
-        self._last_contributions: Dict[str, float] = {}
+        self._last_contributions: dict[str, float] = {}
         self._last_total_var: float = 0.0
 
     def compute(
         self,
-        positions: Dict[str, float],
-        returns_by_symbol: Dict[str, Sequence[float]],
+        positions: dict[str, float],
+        returns_by_symbol: dict[str, Sequence[float]],
         *,
         confidence: float = 0.99,
-    ) -> Dict:
+    ) -> dict:
         if VaRCalculator is None:
             return {"error": "VaRCalculator unavailable"}
 
@@ -60,14 +60,13 @@ class RiskAttributionTracker:
             "component_var": contribs,
             "marginal_var": result.get("marginal_var", {}) if isinstance(result, dict) else {},
             "ranked_contributions": [
-                {"symbol": s, "component_var": v,
-                 "pct_of_total": (v / total * 100.0) if total else 0.0}
+                {"symbol": s, "component_var": v, "pct_of_total": (v / total * 100.0) if total else 0.0}
                 for s, v in ranked
             ],
             "confidence": confidence,
         }
 
-    def last_snapshot(self) -> Dict:
+    def last_snapshot(self) -> dict:
         return {
             "portfolio_var": self._last_total_var,
             "component_var": dict(self._last_contributions),

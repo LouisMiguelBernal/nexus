@@ -16,13 +16,13 @@ to the composite score and is reported as unavailable rather than counted as
 zero risk - the difference matters, because "no earthquakes" and "USGS is down"
 are not the same signal.
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import re
 import time
-from typing import Dict, List, Optional
 
 import httpx
 
@@ -34,14 +34,14 @@ logger = logging.getLogger("nexus.geo.sources")
 _UA = "nexus-terminal/1.0 (local research client)"
 
 
-async def _get(client: httpx.AsyncClient, url: str) -> Optional[httpx.Response]:
+async def _get(client: httpx.AsyncClient, url: str) -> httpx.Response | None:
     try:
         resp = await client.get(url, headers={"User-Agent": _UA})
         if resp.status_code != 200:
             logger.debug("geo source %s -> HTTP %s", url, resp.status_code)
             return None
         return resp
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.debug("geo source %s failed: %s", url, e)
         return None
 
@@ -61,8 +61,13 @@ def _strip(raw: str) -> str:
     text = re.sub(r"<!\[CDATA\[([\s\S]*?)\]\]>", r"\1", raw)
     text = _TAG_RE.sub(" ", text)
     for entity, char in (
-        ("&amp;", "&"), ("&lt;", "<"), ("&gt;", ">"),
-        ("&quot;", '"'), ("&apos;", "'"), ("&#39;", "'"), ("&nbsp;", " "),
+        ("&amp;", "&"),
+        ("&lt;", "<"),
+        ("&gt;", ">"),
+        ("&quot;", '"'),
+        ("&apos;", "'"),
+        ("&#39;", "'"),
+        ("&nbsp;", " "),
     ):
         text = text.replace(entity, char)
     text = re.sub(r"&#(\d+);", lambda m: chr(int(m.group(1))), text)
@@ -70,7 +75,7 @@ def _strip(raw: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def _tag(block: str, name: str) -> Optional[str]:
+def _tag(block: str, name: str) -> str | None:
     m = re.search(rf"<{name}[^>]*>([\s\S]*?)</{name}>", block, re.IGNORECASE)
     return _strip(m.group(1)) if m else None
 
@@ -79,15 +84,15 @@ def parse_rss(
     xml: str,
     source: str,
     limit: int = 20,
-    extra_tags: Optional[Dict[str, str]] = None,
-) -> List[Dict]:
+    extra_tags: dict[str, str] | None = None,
+) -> list[dict]:
     """
     ``extra_tags`` maps an output key to a namespaced element name, for feeds
     that carry structured fields alongside the prose (GDACS alert level, for
     instance). Reading those is always better than inferring severity from the
     text.
     """
-    items: List[Dict] = []
+    items: list[dict] = []
     for match in _ITEM_RE.finditer(xml):
         if len(items) >= limit:
             break
@@ -112,7 +117,8 @@ def parse_rss(
 # Individual feeds
 # ---------------------------------------------------------------------------
 
-async def fetch_seismic(client: httpx.AsyncClient) -> Dict:
+
+async def fetch_seismic(client: httpx.AsyncClient) -> dict:
     resp = await _get(client, GEO_SOURCES["usgs"])
     if not resp:
         return {"available": False, "events": []}
@@ -125,19 +131,21 @@ async def fetch_seismic(client: httpx.AsyncClient) -> Dict:
         mag = p.get("mag")
         if not isinstance(mag, (int, float)):
             continue
-        events.append({
-            "magnitude": round(float(mag), 1),
-            "place": p.get("place") or "",
-            "time": p.get("time"),
-            "tsunami": bool(p.get("tsunami")),
-            "lon": coords[0],
-            "lat": coords[1],
-        })
+        events.append(
+            {
+                "magnitude": round(float(mag), 1),
+                "place": p.get("place") or "",
+                "time": p.get("time"),
+                "tsunami": bool(p.get("tsunami")),
+                "lon": coords[0],
+                "lat": coords[1],
+            }
+        )
     events.sort(key=lambda e: e["magnitude"], reverse=True)
     return {"available": True, "events": events[:20]}
 
 
-async def fetch_disasters(client: httpx.AsyncClient) -> Dict:
+async def fetch_disasters(client: httpx.AsyncClient) -> dict:
     """
     GDACS alerts, severity read from the structured ``<gdacs:alertlevel>`` tag.
 
@@ -170,7 +178,7 @@ async def fetch_disasters(client: httpx.AsyncClient) -> Dict:
     return {"available": True, "events": events[:30]}
 
 
-async def fetch_natural_events(client: httpx.AsyncClient) -> Dict:
+async def fetch_natural_events(client: httpx.AsyncClient) -> dict:
     """NASA EONET open events, bucketed by category."""
     resp = await _get(client, GEO_SOURCES["eonet"])
     if not resp:
@@ -183,16 +191,18 @@ async def fetch_natural_events(client: httpx.AsyncClient) -> Dict:
         category = cats[0] if cats else "Other"
         by_category[category] = by_category.get(category, 0) + 1
         geometry = (e.get("geometry") or [{}])[-1]
-        events.append({
-            "title": e.get("title") or "",
-            "category": category,
-            "date": geometry.get("date"),
-            "link": e.get("link") or "",
-        })
+        events.append(
+            {
+                "title": e.get("title") or "",
+                "category": category,
+                "date": geometry.get("date"),
+                "link": e.get("link") or "",
+            }
+        )
     return {"available": True, "events": events[:40], "by_category": by_category}
 
 
-async def fetch_space_weather(client: httpx.AsyncClient) -> Dict:
+async def fetch_space_weather(client: httpx.AsyncClient) -> dict:
     """
     NOAA storm scales. G/S/R run 0-5; anything at 3+ is operationally relevant
     (HF blackouts, GPS degradation, satellite drag).
@@ -220,15 +230,14 @@ async def fetch_space_weather(client: httpx.AsyncClient) -> Dict:
     }
 
 
-async def fetch_wires(client: httpx.AsyncClient) -> Dict:
+async def fetch_wires(client: httpx.AsyncClient) -> dict:
     """Conflict / policy / energy wires. Deduped on title prefix."""
-    async def one(name: str, url: str) -> List[Dict]:
+
+    async def one(name: str, url: str) -> list[dict]:
         resp = await _get(client, url)
         return parse_rss(resp.text, name, limit=12) if resp else []
 
-    batches = await asyncio.gather(
-        *(one(name, url) for name, url in GEO_RSS), return_exceptions=True
-    )
+    batches = await asyncio.gather(*(one(name, url) for name, url in GEO_RSS), return_exceptions=True)
 
     seen, items = set(), []
     for batch in batches:
@@ -243,7 +252,7 @@ async def fetch_wires(client: httpx.AsyncClient) -> Dict:
     return {"available": bool(items), "items": items[:50]}
 
 
-async def fetch_all() -> Dict:
+async def fetch_all() -> dict:
     """
     Every local source in parallel. Returns whatever answered; the caller reads
     ``available`` per block rather than assuming a complete snapshot.

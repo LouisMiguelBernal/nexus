@@ -17,12 +17,13 @@ not stop the geo score reaching the macro gate, and vice versa. On failure the
 previous snapshot stays published - stale beats blank - and ``updated_at`` stops
 advancing, which is what the UI reads to show age.
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from backend.computation import cross_regime
 from backend.config import (
@@ -55,14 +56,14 @@ class WorldState:
     """
 
     def __init__(self) -> None:
-        self.board: Dict[str, List[Dict]] = {}
-        self.macro: Dict[str, Any] = {}
-        self.regime: Dict[str, Any] = {}
-        self.geo: Dict[str, Any] = {}
-        self.proxies: Dict[str, Dict] = {}
-        self.updated_at: Dict[str, float] = {}
+        self.board: dict[str, list[dict]] = {}
+        self.macro: dict[str, Any] = {}
+        self.regime: dict[str, Any] = {}
+        self.geo: dict[str, Any] = {}
+        self.proxies: dict[str, dict] = {}
+        self.updated_at: dict[str, float] = {}
 
-    def quote(self, symbol: str) -> Optional[Dict]:
+    def quote(self, symbol: str) -> dict | None:
         for rows in self.board.values():
             for row in rows:
                 if row.get("symbol") == symbol:
@@ -74,6 +75,7 @@ class WorldState:
 # Section refreshers
 # ---------------------------------------------------------------------------
 
+
 async def refresh_board(state: WorldState) -> None:
     """Every tracked cross-asset instrument, grouped, plus the regime proxies."""
     pairs = [(sym, name) for group in CROSS_ASSET_UNIVERSE.values() for sym, name in group]
@@ -83,7 +85,7 @@ async def refresh_board(state: WorldState) -> None:
         return
 
     by_symbol = {q["symbol"]: q for q in quotes}
-    board: Dict[str, List[Dict]] = {}
+    board: dict[str, list[dict]] = {}
     for group, members in CROSS_ASSET_UNIVERSE.items():
         board[group] = [
             {**by_symbol[sym], "group": group, "asset_class": "cross_asset"}
@@ -120,13 +122,15 @@ async def refresh_macro(state: WorldState) -> None:
     curve = []
     for symbol, label, years in _CURVE:
         q = state.quote(symbol)
-        curve.append({
-            "symbol": symbol,
-            "label": label,
-            "years": years,
-            "yield": q.get("price") if q else None,
-            "change": q.get("change") if q else None,
-        })
+        curve.append(
+            {
+                "symbol": symbol,
+                "label": label,
+                "years": years,
+                "yield": q.get("price") if q else None,
+                "change": q.get("change") if q else None,
+            }
+        )
 
     short = curve[0]["yield"]
     long = curve[2]["yield"]
@@ -166,7 +170,7 @@ async def refresh_geo(state: WorldState, macro_gate=None) -> None:
                 band=score.get("band", "unknown"),
                 reason=score.get("reason"),
             )
-        except Exception as e:  # a gate write must never kill the poller
+        except Exception as e:  # a gate write must never kill the poller  # noqa: BLE001
             logger.error("failed to publish geo risk to macro gate: %s", e)
 
 
@@ -174,12 +178,13 @@ async def refresh_geo(state: WorldState, macro_gate=None) -> None:
 # Loop
 # ---------------------------------------------------------------------------
 
+
 async def _safe(name: str, coro) -> None:
     try:
         await coro
     except asyncio.CancelledError:
         raise
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.error("world poller: %s refresh failed: %s", name, e)
 
 
@@ -191,7 +196,9 @@ async def run(state: WorldState, macro_gate=None) -> None:
     """
     logger.info(
         "world poller starting (board %.0fs, macro %.0fs, geo %.0fs)",
-        CROSS_ASSET_POLL_SECONDS, MACRO_POLL_SECONDS, GEO_POLL_SECONDS,
+        CROSS_ASSET_POLL_SECONDS,
+        MACRO_POLL_SECONDS,
+        GEO_POLL_SECONDS,
     )
 
     await _safe("board", refresh_board(state))
@@ -218,6 +225,6 @@ async def run(state: WorldState, macro_gate=None) -> None:
         except asyncio.CancelledError:
             logger.info("world poller stopped")
             raise
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error("world poller loop error: %s", e)
             await asyncio.sleep(30)
